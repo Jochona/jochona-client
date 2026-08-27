@@ -791,7 +791,7 @@ Potential deliverables:
 
 ## 13. Initial Engineering Backlog
 
-1. ~~Confirm project name availability~~ Done 2026-08-27: "Lunaframe" was contested (GitHub handle taken; trademark and package-registry status unverifiable in time), so the product is **Jochona**. The `Jochona` GitHub org is registered and owned; repository-name collisions were zero. Domain decided: **jochona.com** (all other TLDs verified unregistered; `.com` chosen canonical), being purchased via Cloudflare. Remaining: confirm registration, sweep npm/PyPI/crates.io/app-store handles.
+1. ~~Confirm project name availability~~ Done 2026-08-27: "Lunaframe" was contested (GitHub handle taken, trademark unverifiable in time), so the product is **Jochona**. The `Jochona` GitHub org is registered and owned; repository-name collisions were zero. Domain **jochona.com** purchased via Cloudflare; CNAME set. Package-registry handle claims (npm/PyPI/crates.io) evaluated and **skipped**: the client is a C++/Qt binary distributed via GitHub Releases, never published to a package registry.
 2. Import Moonlight Qt history by bare-mirror push and establish the upstream sync remote per ADR-0002.
 3. Application identifier: **`com.jochona.client`** — reverse of the owned jochona.com domain. M0 builds may carry a provisional `dev.jochona.client` until Cloudflare DNS proves control; the id is frozen before M1 branding.
 4. Separate Jochona configuration from official Moonlight; implement the opt-in Moonlight settings importer (hosts, MACs, pairing key into the OS vault).
@@ -861,7 +861,7 @@ Jochona Client succeeds when:
 
 Begin with a focused compatibility phase:
 
-1. jochona.com via Cloudflare (in progress); freeze `com.jochona.client` and sweep remaining package-registry handles.
+1. ~~jochona.com via Cloudflare~~ Done; app id frozen as `com.jochona.client` (package-registry claims skipped — not applicable to a distributed binary).
 2. Import Moonlight Qt history by bare-mirror push and establish the upstream remote.
 3. Build and run the unmodified client on Windows, macOS, and Linux using the inherited CI matrix.
 4. Confirm end-to-end streaming against the intended Vibepollo version.
