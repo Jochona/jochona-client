@@ -52,6 +52,9 @@
 #include "backend/autoupdatechecker.h"
 #include "backend/computermanager.h"
 #include "backend/systemproperties.h"
+#include "backend/thememanager.h"
+#include "core/credentialstore.h"
+#include "core/settingsdatabase.h"
 #include "streaming/session.h"
 #include "settings/streamingpreferences.h"
 #include "gui/sdlgamepadkeynavigation.h"
@@ -1069,6 +1072,19 @@ int main(int argc, char *argv[])
     if (hasGUI) {
         engine.rootContext()->setContextProperty("initialView", initialView);
         engine.rootContext()->setContextProperty("runConfigChecks", commandLineParserResult == GlobalCommandLineParser::NormalStartRequested);
+
+        // Jochona: settings database and OS credential vault (proposal.md
+        // 6.15, 7.1). Exposed to QML ahead of any consumer; open() logs its
+        // own diagnostics if it fails, and QML reads simply see an empty
+        // "database" property in that case rather than a crash.
+        auto database = new SettingsDatabase(&app);
+        database->open();
+        engine.rootContext()->setContextProperty("database", database);
+
+        auto credentialStore = new CredentialStore(&app);
+        engine.rootContext()->setContextProperty("credentialStore", credentialStore);
+
+        engine.rootContext()->setContextProperty("themeManager", ThemeManager::get());
 
         // Load the main.qml file
         engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));

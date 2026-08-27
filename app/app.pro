@@ -1,4 +1,4 @@
-QT += core quick network quickcontrols2 svg
+QT += core quick network quickcontrols2 svg sql
 CONFIG += c++17
 
 unix:!macx {
@@ -64,7 +64,7 @@ win32 {
     }
 
     INCLUDEPATH += $$PWD/../libs/windows/include
-    LIBS += ws2_32.lib winmm.lib dxva2.lib ole32.lib gdi32.lib user32.lib d3d9.lib dwmapi.lib dbghelp.lib
+    LIBS += ws2_32.lib winmm.lib dxva2.lib ole32.lib gdi32.lib user32.lib d3d9.lib dwmapi.lib dbghelp.lib advapi32.lib
 }
 macx:!disable-prebuilts {
     !exists($$PWD/../libs/mac) {
@@ -73,6 +73,11 @@ macx:!disable-prebuilts {
 
     INCLUDEPATH += $$PWD/../libs/mac/include $$PWD/../libs/mac/include/SDL2
     LIBS += -L$$PWD/../libs/mac/lib
+}
+unix:!macx {
+    # CredentialStore dlopen()s libsecret at runtime (app/core/credentialstore.cpp)
+    # rather than linking it, so only libdl is needed here.
+    LIBS += -ldl
 }
 
 unix:if(!macx|disable-prebuilts) {
@@ -175,7 +180,7 @@ macx {
         CONFIG += discord-rpc libplacebo
     }
 
-    LIBS += -lobjc -framework VideoToolbox -framework AVFoundation -framework CoreVideo -framework CoreGraphics -framework CoreMedia -framework AppKit -framework Metal -framework QuartzCore
+    LIBS += -lobjc -framework VideoToolbox -framework AVFoundation -framework CoreVideo -framework CoreGraphics -framework CoreMedia -framework AppKit -framework Metal -framework QuartzCore -framework Security -framework CoreFoundation
     CONFIG += ffmpeg
 }
 
@@ -192,10 +197,13 @@ SOURCES += \
     backend/computermanager.cpp \
     backend/boxartmanager.cpp \
     backend/richpresencemanager.cpp \
+    backend/thememanager.cpp \
     cli/commandlineparser.cpp \
     cli/listapps.cpp \
     cli/quitstream.cpp \
     cli/startstream.cpp \
+    core/settingsdatabase.cpp \
+    core/credentialstore.cpp \
     settings/compatfetcher.cpp \
     settings/mappingfetcher.cpp \
     settings/streamingpreferences.cpp \
@@ -236,10 +244,13 @@ HEADERS += \
     backend/computermanager.h \
     backend/boxartmanager.h \
     backend/richpresencemanager.h \
+    backend/thememanager.h \
     cli/commandlineparser.h \
     cli/listapps.h \
     cli/quitstream.h \
     cli/startstream.h \
+    core/settingsdatabase.h \
+    core/credentialstore.h \
     settings/streamingpreferences.h \
     streaming/input/input.h \
     streaming/session.h \
