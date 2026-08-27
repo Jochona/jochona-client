@@ -108,93 +108,311 @@
 <context>
     <name>ComputerModel</name>
     <message>
-        <location filename="../gui/computermodel.cpp" line="50"/>
+        <location filename="../gui/computermodel.cpp" line="69"/>
         <source>Online</source>
         <translation>Online</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="53"/>
+        <location filename="../gui/computermodel.cpp" line="72"/>
         <source>Offline</source>
         <translation>Offline</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="56"/>
-        <location filename="../gui/computermodel.cpp" line="68"/>
-        <location filename="../gui/computermodel.cpp" line="80"/>
-        <location filename="../gui/computermodel.cpp" line="82"/>
-        <location filename="../gui/computermodel.cpp" line="83"/>
+        <location filename="../gui/computermodel.cpp" line="62"/>
+        <location filename="../gui/computermodel.cpp" line="75"/>
+        <location filename="../gui/computermodel.cpp" line="87"/>
+        <location filename="../gui/computermodel.cpp" line="99"/>
+        <location filename="../gui/computermodel.cpp" line="104"/>
+        <location filename="../gui/computermodel.cpp" line="105"/>
         <source>Unknown</source>
         <translation>Onbekend</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="62"/>
+        <location filename="../gui/computermodel.cpp" line="56"/>
+        <source>Direct (LAN)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="58"/>
+        <source>VPN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="60"/>
+        <source>Tailnet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="81"/>
         <source>Paired</source>
         <translation>Gekoppeld</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="65"/>
+        <location filename="../gui/computermodel.cpp" line="84"/>
         <source>Unpaired</source>
         <translation>Niet gekoppeld</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="72"/>
+        <location filename="../gui/computermodel.cpp" line="91"/>
         <source>Name: %1</source>
         <translation>Naam: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="73"/>
+        <location filename="../gui/computermodel.cpp" line="92"/>
         <source>Status: %1</source>
         <translation>Status: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="74"/>
+        <location filename="../gui/computermodel.cpp" line="93"/>
         <source>Active Address: %1</source>
         <translation>Actief adres: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="75"/>
+        <location filename="../gui/computermodel.cpp" line="94"/>
         <source>UUID: %1</source>
         <translation>UUID: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="76"/>
+        <location filename="../gui/computermodel.cpp" line="95"/>
         <source>Local Address: %1</source>
         <translation>Lokaal adres: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="77"/>
+        <location filename="../gui/computermodel.cpp" line="96"/>
         <source>Remote Address: %1</source>
         <translation>Extern adres: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="78"/>
+        <location filename="../gui/computermodel.cpp" line="97"/>
         <source>IPv6 Address: %1</source>
         <translation>IPv6-adres: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="79"/>
+        <location filename="../gui/computermodel.cpp" line="98"/>
         <source>Manual Address: %1</source>
         <translation>Handmatig adres: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="80"/>
+        <location filename="../gui/computermodel.cpp" line="99"/>
         <source>MAC Address: %1</source>
         <translation>MAC-adres: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="81"/>
+        <location filename="../gui/computermodel.cpp" line="100"/>
+        <source>Manual MAC: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="100"/>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="101"/>
+        <source>Wake Port: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="101"/>
+        <source>Automatic</source>
+        <translation type="unfinished">Automatisch</translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="102"/>
+        <source>Wake Broadcast: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="102"/>
+        <source>All interfaces</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/computermodel.cpp" line="103"/>
         <source>Pair State: %1</source>
         <translation>Koppelingsstatus: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="82"/>
+        <location filename="../gui/computermodel.cpp" line="104"/>
         <source>Running Game ID: %1</source>
         <translation>Id van draaiend spel: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="83"/>
+        <location filename="../gui/computermodel.cpp" line="105"/>
         <source>HTTPS Port: %1</source>
         <translation>HTTPS-poort: %1</translation>
+    </message>
+</context>
+<context>
+    <name>ConnectionTestDialog</name>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="42"/>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="44"/>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="46"/>
+        <source>TCP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="42"/>
+        <source>Discovery &amp; legacy pairing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="43"/>
+        <source>Forward or unblock TCP port 47984. Older GameStream hosts use it for discovery and pairing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="44"/>
+        <source>Pairing &amp; app list</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="45"/>
+        <source>Forward or unblock TCP port 47989. Jochona uses it to pair with your host and load its app list.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="46"/>
+        <source>Stream handshake</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="47"/>
+        <source>Forward or unblock TCP port 48010. It negotiates the stream before playback starts.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="48"/>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="50"/>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="52"/>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="54"/>
+        <source>UDP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="48"/>
+        <source>Video stream</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="49"/>
+        <source>Forward or unblock UDP port 47998. This carries the video feed from your host.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="50"/>
+        <source>Controller &amp; input</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="51"/>
+        <source>Forward or unblock UDP port 47999. This carries your controller, mouse, and keyboard input.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="52"/>
+        <source>Audio stream</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="53"/>
+        <source>Forward or unblock UDP port 48000. This carries the audio feed from your host.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="54"/>
+        <source>Mic &amp; handshake ping</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="55"/>
+        <source>Forward or unblock UDP port 48010. Newer hosts use it to finish the handshake and, on Sunshine, to carry microphone audio.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="210"/>
+        <source>Connection Test</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="226"/>
+        <source>Testing your network connection to determine if any required ports are blocked. This may take a few seconds…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="229"/>
+        <source>The test could not be completed because none of Jochona&apos;s connection-testing servers were reachable. Check your Internet connection and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="232"/>
+        <source>This network does not appear to be blocking Jochona. If you still can&apos;t connect, check your PC&apos;s firewall settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="234"/>
+        <source>Your network is blocking %1 of the %2 ports Jochona needs. Streaming may fail or be unreliable until they&apos;re forwarded or unblocked.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="279"/>
+        <source>%1 %2 — %3</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="303"/>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/ConnectionTestDialog.qml" line="311"/>
+        <source>Test Again</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ControllerManagerView</name>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="34"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="53"/>
+        <source>Controllers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="105"/>
+        <source>Connected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="105"/>
+        <source>Disconnected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="111"/>
+        <source>No controllers detected. Connect a controller to configure it here.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="200"/>
+        <source>Slot %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="279"/>
+        <source>Calibration — %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="286"/>
+        <source>Left stick deadzone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="320"/>
+        <source>More calibration controls land in a later M2 pass.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -206,11 +424,397 @@
     </message>
 </context>
 <context>
+    <name>HomeView</name>
+    <message>
+        <location filename="../gui/HomeView.qml" line="31"/>
+        <source>Home</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="67"/>
+        <source>Unable to connect to the specified PC.</source>
+        <translation type="unfinished">Kan niet verbinden met de geselecteerde PC.</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="70"/>
+        <source>This PC&apos;s Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="73"/>
+        <source>Click the Help button for possible solutions.</source>
+        <translation type="unfinished">Klik op de hulp-knop voor mogelijke oplossingen.</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="93"/>
+        <source>Waking…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="95"/>
+        <source>Checking…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="97"/>
+        <source>Offline — wakeable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="97"/>
+        <location filename="../gui/HomeView.qml" line="232"/>
+        <source>Offline</source>
+        <translation type="unfinished">Offline</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="99"/>
+        <source>Ready to pair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="100"/>
+        <source>Online — ready</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="210"/>
+        <source>Wake</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="232"/>
+        <source>PC Status: %1</source>
+        <translation type="unfinished">PC-status: %1</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="232"/>
+        <source>Online</source>
+        <translation type="unfinished">Online</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="237"/>
+        <source>View All Apps</source>
+        <translation type="unfinished">Alle apps bekijken</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="248"/>
+        <source>Wake PC</source>
+        <translation type="unfinished">PC ontwaken</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="248"/>
+        <source>(Wake-on-LAN; only reaches hosts on the same local network)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="256"/>
+        <source>Test Network</source>
+        <translation type="unfinished">Netwerk testen</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="264"/>
+        <source>Rename PC</source>
+        <translation type="unfinished">PC hernoemen</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="272"/>
+        <source>Delete PC</source>
+        <translation type="unfinished">PC verwijderen</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="280"/>
+        <source>View Details</source>
+        <translation type="unfinished">Details bekijken</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="292"/>
+        <source>The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="365"/>
+        <source>Looking for hosts on your network…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="366"/>
+        <source>No hosts yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="379"/>
+        <source>Add a PC with the + button above. Hosts running Sunshine, Apollo, or Vibepollo appear here automatically.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="380"/>
+        <source>Automatic discovery is off. Add a PC with the + button above.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="403"/>
+        <source>Please enter %1 on your host PC. This dialog will close when pairing is completed.</source>
+        <translation type="unfinished">Voer %1 in op uw host-PC. Dit dialoogvenster sluit zodra de koppeling is voltooid.</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="404"/>
+        <source>If your host PC is running Sunshine, navigate to the Sunshine web UI to enter the PIN.</source>
+        <translation type="unfinished">Als uw host-PC Sunshine draait, navigeert u naar de Sunshine-webinterface om de PIN in te voeren.</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="416"/>
+        <source>Are you sure you want to remove &apos;%1&apos;?</source>
+        <translation type="unfinished">Weet u zeker dat u &apos;%1&apos; wilt verwijderen?</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="430"/>
+        <source>Jochona is testing your network connection to determine if any required ports are blocked.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="430"/>
+        <source>This may take a few seconds…</source>
+        <translation type="unfinished">Dit kan enkele seconden duren…</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="437"/>
+        <source>The network test could not be performed because none of Moonlight&apos;s connection testing servers were reachable from this PC. Check your Internet connection or try again later.</source>
+        <translation type="unfinished">De netwerktest kon niet worden uitgevoerd omdat geen van de verbindingstestservers van Moonlight bereikbaar was vanaf deze PC. Controleer uw internetverbinding of probeer het later opnieuw.</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="443"/>
+        <source>This network does not appear to be blocking Jochona. If you still have trouble connecting, check your PC&apos;s firewall settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="443"/>
+        <source>If you are trying to stream over the Internet, install the Moonlight Internet Hosting Tool on your gaming PC and run the included Internet Streaming Tester to check your gaming PC&apos;s Internet connection.</source>
+        <translation type="unfinished">Als u via internet wilt streamen, installeert u de Moonlight Internet Hosting Tool op uw gaming-PC en voert u de meegeleverde Internet Streaming Tester uit om de internetverbinding van uw gaming-PC te controleren.</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="447"/>
+        <source>Your PC&apos;s current network connection seems to be blocking Jochona. Streaming over the Internet may not work while connected to this network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="447"/>
+        <source>The following network ports were blocked:</source>
+        <translation type="unfinished">De volgende netwerk poorten zijn geblokkeerd:</translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="459"/>
+        <source>Enter the new name for this PC:</source>
+        <translation type="unfinished">Voer de nieuwe naam in voor deze PC:</translation>
+    </message>
+</context>
+<context>
     <name>NvHTTP</name>
     <message>
         <location filename="../backend/nvhttp.cpp" line="381"/>
         <source>Missing audio capture device. Reinstalling GeForce Experience should resolve this error.</source>
         <translation>Audio opname apparaat ontbreekt. Installeer GeForce Experience opnieuw om dit probleem op te lossen.</translation>
+    </message>
+</context>
+<context>
+    <name>OnScreenKeyboard</name>
+    <message>
+        <location filename="../gui/OnScreenKeyboard.qml" line="27"/>
+        <source>Done</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/OnScreenKeyboard.qml" line="97"/>
+        <source>Shift</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/OnScreenKeyboard.qml" line="98"/>
+        <source>abc</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/OnScreenKeyboard.qml" line="98"/>
+        <source>?123</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/OnScreenKeyboard.qml" line="99"/>
+        <source>Space</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/OnScreenKeyboard.qml" line="100"/>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>PairView</name>
+    <message>
+        <location filename="../gui/PairView.qml" line="44"/>
+        <source>Pairing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="161"/>
+        <source>Your pairing code appears here</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="163"/>
+        <source>Enter this code on %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="164"/>
+        <source>Sent — the host&apos;s code is now the pairing code</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="165"/>
+        <source>Devices linked</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="166"/>
+        <source>Pairing didn&apos;t complete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="173"/>
+        <source>Ready</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="174"/>
+        <source>Code issued</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="175"/>
+        <source>Typing host&apos;s code</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="176"/>
+        <source>Trusted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="177"/>
+        <source>Not linked yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="184"/>
+        <source>Checking…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="184"/>
+        <source>Offline</source>
+        <translation type="unfinished">Offline</translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="185"/>
+        <source>Approval pending</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="186"/>
+        <source>Showing a code</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="187"/>
+        <source>Paired</source>
+        <translation type="unfinished">Gekoppeld</translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="188"/>
+        <source>Declined</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="205"/>
+        <source>Make sure %1 is turned on, connected to your network, and running Sunshine, Apollo, or Vibepollo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="208"/>
+        <source>Open the host app on %1 — in Sunshine that&apos;s the web UI&apos;s PIN page — and type the code.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="209"/>
+        <source>Waiting for %1 to approve this device.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="213"/>
+        <source>%1 now trusts this device. You won&apos;t need a code again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="393"/>
+        <source>Pair with %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="405"/>
+        <source>A one-time code links this device to your host. It takes about a minute.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="438"/>
+        <source>This device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="442"/>
+        <source>Jochona holds the code. Nothing to do on this side.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="589"/>
+        <source>Type the 4-digit code shown on %1. It becomes the pairing code.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="602"/>
+        <source>Pair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="640"/>
+        <source>Host showing a code? Enter it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="650"/>
+        <source>Show my code instead</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="659"/>
+        <source>Try again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="666"/>
+        <location filename="../gui/PairView.qml" line="684"/>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="666"/>
+        <source>Cancel</source>
+        <translation type="unfinished">Annuleren</translation>
+    </message>
+    <message>
+        <location filename="../gui/PairView.qml" line="683"/>
+        <source>Select</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -226,9 +830,8 @@
         <translation>Kan niet verbinden met de geselecteerde PC.</translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="66"/>
         <source>This PC&apos;s Internet connection is blocking Moonlight. Streaming over the Internet may not work while connected to this network.</source>
-        <translation>De internetverbinding van deze PC blokkeert Moonlight. Streamen via het Internet werkt mogelijk niet via dit netwerk.</translation>
+        <translation type="vanished">De internetverbinding van deze PC blokkeert Moonlight. Streamen via het Internet werkt mogelijk niet via dit netwerk.</translation>
     </message>
     <message>
         <location filename="../gui/PcView.qml" line="69"/>
@@ -271,9 +874,8 @@
         <translation>Details bekijken</translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="225"/>
         <source>The version of GeForce Experience on %1 is not supported by this build of Moonlight. You must update Moonlight to stream from %1.</source>
-        <translation>De versie van GeForce Experience op %1 wordt niet ondersteund door deze versie van Moonlight, Je moet Moonlight updaten om te streamen vanaf %1.</translation>
+        <translation type="vanished">De versie van GeForce Experience op %1 wordt niet ondersteund door deze versie van Moonlight, Je moet Moonlight updaten om te streamen vanaf %1.</translation>
     </message>
     <message>
         <location filename="../gui/PcView.qml" line="324"/>
@@ -281,22 +883,20 @@
         <translation>Dit kan enkele seconden duren…</translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="335"/>
         <source>This network does not appear to be blocking Moonlight. If you still have trouble connecting, check your PC&apos;s firewall settings.</source>
-        <translation>Dit netwerk lijkt Moonlight niet te blokkeren. Als u nog steeds problemen ondervindt met de verbinding, controleer dan de firewall-instellingen van uw PC.</translation>
+        <translation type="vanished">Dit netwerk lijkt Moonlight niet te blokkeren. Als u nog steeds problemen ondervindt met de verbinding, controleer dan de firewall-instellingen van uw PC.</translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="335"/>
+        <location filename="../gui/PcView.qml" line="337"/>
         <source>If you are trying to stream over the Internet, install the Moonlight Internet Hosting Tool on your gaming PC and run the included Internet Streaming Tester to check your gaming PC&apos;s Internet connection.</source>
         <translation>Als u via internet wilt streamen, installeert u de Moonlight Internet Hosting Tool op uw gaming-PC en voert u de meegeleverde Internet Streaming Tester uit om de internetverbinding van uw gaming-PC te controleren.</translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="339"/>
         <source>Your PC&apos;s current network connection seems to be blocking Moonlight. Streaming over the Internet may not work while connected to this network.</source>
-        <translation>De huidige netwerkverbinding van uw PC lijkt Moonlight te blokkeren. Streamen via internet werkt mogelijk niet terwijl u verbonden bent met dit netwerk.</translation>
+        <translation type="vanished">De huidige netwerkverbinding van uw PC lijkt Moonlight te blokkeren. Streamen via internet werkt mogelijk niet terwijl u verbonden bent met dit netwerk.</translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="339"/>
+        <location filename="../gui/PcView.qml" line="341"/>
         <source>The following network ports were blocked:</source>
         <translation>De volgende netwerk poorten zijn geblokkeerd:</translation>
     </message>
@@ -304,6 +904,11 @@
         <location filename="../gui/PcView.qml" line="331"/>
         <source>The network test could not be performed because none of Moonlight&apos;s connection testing servers were reachable from this PC. Check your Internet connection or try again later.</source>
         <translation>De netwerktest kon niet worden uitgevoerd omdat geen van de verbindingstestservers van Moonlight bereikbaar was vanaf deze PC. Controleer uw internetverbinding of probeer het later opnieuw.</translation>
+    </message>
+    <message>
+        <location filename="../gui/PcView.qml" line="66"/>
+        <source>This PC&apos;s Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/PcView.qml" line="170"/>
@@ -326,6 +931,11 @@
         <translation>Alle apps bekijken</translation>
     </message>
     <message>
+        <location filename="../gui/PcView.qml" line="225"/>
+        <source>The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../gui/PcView.qml" line="297"/>
         <source>Please enter %1 on your host PC. This dialog will close when pairing is completed.</source>
         <translation>Voer %1 in op uw host-PC. Dit dialoogvenster sluit zodra de koppeling is voltooid.</translation>
@@ -342,11 +952,25 @@
     </message>
     <message>
         <location filename="../gui/PcView.qml" line="324"/>
-        <source>Moonlight is testing your network connection to determine if any required ports are blocked.</source>
-        <translation>Moonlight test uw netwerkverbinding om te bepalen of er vereiste poorten geblokkeerd zijn.</translation>
+        <source>Jochona is testing your network connection to determine if any required ports are blocked.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/PcView.qml" line="351"/>
+        <location filename="../gui/PcView.qml" line="337"/>
+        <source>This network does not appear to be blocking Jochona. If you still have trouble connecting, check your PC&apos;s firewall settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/PcView.qml" line="341"/>
+        <source>Your PC&apos;s current network connection seems to be blocking Jochona. Streaming over the Internet may not work while connected to this network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Moonlight is testing your network connection to determine if any required ports are blocked.</source>
+        <translation type="vanished">Moonlight test uw netwerkverbinding om te bepalen of er vereiste poorten geblokkeerd zijn.</translation>
+    </message>
+    <message>
+        <location filename="../gui/PcView.qml" line="353"/>
         <source>Enter the new name for this PC:</source>
         <translation>Voer de nieuwe naam in voor deze PC:</translation>
     </message>
@@ -354,27 +978,27 @@
 <context>
     <name>PendingPairingTask</name>
     <message>
-        <location filename="../backend/computermanager.cpp" line="604"/>
+        <location filename="../backend/computermanager.cpp" line="665"/>
         <source>The PIN from the PC didn&apos;t match. Please try again.</source>
         <translation>De PIN van de PC komt niet overeen. Probeer het opnieuw.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="608"/>
+        <location filename="../backend/computermanager.cpp" line="669"/>
         <source>You cannot pair while a previous session is still running on the host PC. Quit any running games or reboot the host PC, then try pairing again.</source>
         <translation>U kunt niet koppelen terwijl er nog een eerdere sessie op de host-PC actief is. Sluit alle actieve spellen af of start de host-PC opnieuw op en probeer vervolgens opnieuw te koppelen.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="611"/>
+        <location filename="../backend/computermanager.cpp" line="672"/>
         <source>Pairing failed. Please try again.</source>
         <translation>Koppelen mislukt. Probeer opnieuw.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="615"/>
+        <location filename="../backend/computermanager.cpp" line="676"/>
         <source>Another pairing attempt is already in progress.</source>
         <translation>Een andere koppelpoging is al bezig.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="625"/>
+        <location filename="../backend/computermanager.cpp" line="686"/>
         <source>GeForce Experience returned error: %1</source>
         <translation>GeForce Experience gaf de volgende fout terug: %1</translation>
     </message>
@@ -382,7 +1006,7 @@
 <context>
     <name>PendingQuitTask</name>
     <message>
-        <location filename="../backend/computermanager.cpp" line="675"/>
+        <location filename="../backend/computermanager.cpp" line="736"/>
         <source>The running game wasn&apos;t started by this PC. You must quit the game on the host PC manually or use the device that originally started the game.</source>
         <translation>De huidige game is niet gestart door deze PC. Je moet de game handmatig afsluiten op de host PC of op het apparaat dat de game heeft opgestart.</translation>
     </message>
@@ -402,10 +1026,14 @@
         <translation>Verbinding met %1 mislukt</translation>
     </message>
     <message>
+        <source>Computer %1 has not been paired. Please open Moonlight to pair before streaming.</source>
+        <translation type="vanished">Computer %1 is nog niet gekoppeld. Open Moonlight om te koppelen voordat u gaat streamen.</translation>
+    </message>
+    <message>
         <location filename="../cli/quitstream.cpp" line="88"/>
         <location filename="../cli/startstream.cpp" line="89"/>
-        <source>Computer %1 has not been paired. Please open Moonlight to pair before streaming.</source>
-        <translation>Computer %1 is nog niet gekoppeld. Open Moonlight om te koppelen voordat u gaat streamen.</translation>
+        <source>Computer %1 has not been paired. Please open Jochona to pair before streaming.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../cli/quitstream.cpp" line="102"/>
@@ -419,35 +1047,39 @@
         <translation>Applicatie %1 niet gevonden</translation>
     </message>
     <message>
-        <location filename="../cli/listapps.cpp" line="108"/>
         <source>Computer %1 has not been paired. Please open Moonlight to pair before retrieving games list.</source>
-        <translation>Computer %1 is niet gekoppeld. Open Moonlight om te koppelen voor het ophalen van de spellijst.</translation>
+        <translation type="vanished">Computer %1 is niet gekoppeld. Open Moonlight om te koppelen voor het ophalen van de spellijst.</translation>
+    </message>
+    <message>
+        <location filename="../cli/listapps.cpp" line="108"/>
+        <source>Computer %1 has not been paired. Please open Jochona to pair before retrieving games list.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>QPlatformTheme</name>
     <message>
-        <location filename="../main.cpp" line="867"/>
+        <location filename="../main.cpp" line="874"/>
         <source>&amp;Yes</source>
         <translation>&amp;Ja</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="868"/>
+        <location filename="../main.cpp" line="875"/>
         <source>&amp;No</source>
         <translation>&amp;Nee</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="869"/>
+        <location filename="../main.cpp" line="876"/>
         <source>OK</source>
         <translation>Oké</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="870"/>
+        <location filename="../main.cpp" line="877"/>
         <source>Help</source>
         <translation>Hulp</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="871"/>
+        <location filename="../main.cpp" line="878"/>
         <source>Cancel</source>
         <translation>Annuleren</translation>
     </message>
@@ -463,205 +1095,318 @@
 <context>
     <name>Session</name>
     <message>
-        <location filename="../streaming/session.cpp" line="104"/>
+        <location filename="../streaming/session.cpp" line="114"/>
         <source>No video received from host.</source>
         <translation>Geen video ontvangen van de host.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="105"/>
+        <location filename="../streaming/session.cpp" line="115"/>
         <source>Check your firewall and port forwarding rules for port(s): %1</source>
         <translation>Controleer uw firewall en poortdoorstuurregels voor poort(en): %1</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="110"/>
+        <location filename="../streaming/session.cpp" line="120"/>
         <source>Your network connection isn&apos;t performing well. Reduce your video bitrate setting or try a faster connection.</source>
         <translation>Uw netwerkverbinding presteert niet goed. Verlaag de bitsnelheid van uw video of probeer een snellere verbinding.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="116"/>
+        <location filename="../streaming/session.cpp" line="126"/>
         <source>Something went wrong on your host PC when starting the stream.</source>
         <translation>Er is iets mis gegaan op de host PC tijdens het starten van de stream.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="117"/>
+        <location filename="../streaming/session.cpp" line="127"/>
         <source>Make sure you don&apos;t have any DRM-protected content open on your host PC. You can also try restarting your host PC.</source>
         <translation>Zorg ervoor dat er geen DRM-beveiligde content openstaat op uw host-PC. U kunt ook proberen uw host-PC opnieuw op te starten.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="122"/>
+        <location filename="../streaming/session.cpp" line="132"/>
         <source>The host PC reported a fatal video encoding error.</source>
         <translation>De host PC rapporteerde een fatale video codeerfout.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="123"/>
+        <location filename="../streaming/session.cpp" line="133"/>
         <source>Try disabling HDR mode, changing the streaming resolution, or changing your host PC&apos;s display resolution.</source>
         <translation>Probeer HDR uit te zetten, de resolutie van de stream te veranderen, of de schermresolutie van de host-PC te veranderen.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="131"/>
+        <location filename="../streaming/session.cpp" line="141"/>
         <source>Connection terminated</source>
         <translation>Verbinding verbroken</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="132"/>
+        <location filename="../streaming/session.cpp" line="142"/>
         <source>Error code: %1</source>
         <translation>Fout­code: %1</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="958"/>
         <source>The version of GeForce Experience on %1 is not supported by this build of Moonlight. You must update Moonlight to stream from %1.</source>
-        <translation>De versie van Geforce Experience op %1 word niet ondersteund door deze versie van Moonlight. Je moet Moonlight updaten om te streamen vanaf %1.</translation>
+        <translation type="vanished">De versie van Geforce Experience op %1 word niet ondersteund door deze versie van Moonlight. Je moet Moonlight updaten om te streamen vanaf %1.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="963"/>
+        <location filename="../streaming/session.cpp" line="990"/>
         <source>Your selection to enable remote desktop mouse mode may cause problems in games.</source>
         <translation>Je keuze om remote desktop muis modus te gebruiken kan problemen veroorzaken in games.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="967"/>
+        <location filename="../streaming/session.cpp" line="994"/>
         <source>Your settings selection to force software decoding may cause poor streaming performance.</source>
         <translation>Je instelling om software decoding te forceren kan slechte prestaties veroorzaken.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1003"/>
+        <location filename="../streaming/session.cpp" line="1030"/>
         <source>Your host PC doesn&apos;t support encoding HEVC.</source>
         <translation>Uw host-PC ondersteunt coderen met HEVC niet.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1021"/>
+        <location filename="../streaming/session.cpp" line="1048"/>
         <source>Using software decoding due to your selection to force HEVC without GPU support. This may cause poor streaming performance.</source>
         <translation>Er wordt softwaredecodering gebruikt vanwege uw keuze om HEVC te forceren zonder GPU-ondersteuning. Dit kan leiden tot slechte streamingprestaties.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="973"/>
+        <location filename="../streaming/session.cpp" line="1000"/>
         <source>Your host software or GPU doesn&apos;t support encoding AV1.</source>
         <translation>De software of GPU van uw host ondersteunt het coderen van AV1 niet.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="991"/>
+        <location filename="../streaming/session.cpp" line="1018"/>
         <source>Using software decoding due to your selection to force AV1 without GPU support. This may cause poor streaming performance.</source>
         <translation>Er wordt softwaredecodering gebruikt omdat u AV1 zonder GPU-ondersteuning hebt geforceerd. Dit kan leiden tot slechte streamingprestaties.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1068"/>
+        <location filename="../streaming/session.cpp" line="1095"/>
         <source>Your host PC doesn&apos;t support HDR streaming.</source>
         <translation>Uw host-PC ondersteunt geen HDR-streaming.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1060"/>
+        <location filename="../streaming/session.cpp" line="1087"/>
         <source>HDR is not supported using the H.264 codec.</source>
         <translation>HDR wordt niet ondersteund met de H.264-codec.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1083"/>
+        <location filename="../streaming/session.cpp" line="1110"/>
         <source>This PC&apos;s GPU doesn&apos;t support AV1 Main10 decoding for HDR streaming.</source>
         <translation>De GPU van deze PC ondersteunt geen AV1 Main10-decodering voor HDR-streaming.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1064"/>
+        <location filename="../streaming/session.cpp" line="1091"/>
         <source>This PC&apos;s GPU doesn&apos;t support 10-bit HEVC or AV1 decoding for HDR streaming.</source>
         <translation>De GPU van deze PC ondersteunt geen 10-bits HEVC- of AV1-decodering voor HDR-streaming.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1116"/>
+        <location filename="../streaming/session.cpp" line="1143"/>
         <source>Your host PC and client PC don&apos;t support the same HDR video codecs.</source>
         <translation>Uw host-PC en client-PC ondersteunen niet dezelfde HDR-videocodecs.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1209"/>
+        <location filename="../streaming/session.cpp" line="1236"/>
         <source>Video resolutions over 4K are not supported by the H.264 codec.</source>
         <translation>Videoresoluties boven 4K worden niet ondersteund door de H.264-codec.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1606"/>
+        <location filename="../streaming/session.cpp" line="1633"/>
         <source>Host returned error: %1</source>
         <translation>Host gaf fout terug: %1</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1040"/>
+        <location filename="../streaming/session.cpp" line="1067"/>
         <source>Using software decoding due to your selection to force H.264 without GPU support. This may cause poor streaming performance.</source>
         <translation>Gebruik maken van software decodering door selectie om H.264 te forceren zonder GPU ondersteuning. Dit kan slechte streamingkwaliteit veroorzaken.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1050"/>
+        <location filename="../streaming/session.cpp" line="985"/>
+        <source>The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="1077"/>
         <source>Your host PC and client PC don&apos;t support the same video codecs. This may cause poor streaming performance.</source>
         <translation>Uw server PC en cliënt PC ondersteunen niet dezelfde videocodering. Dit kan slechte streamingkwaliteit veroorzaken.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1053"/>
+        <location filename="../streaming/session.cpp" line="1080"/>
         <source>Your client GPU doesn&apos;t support H.264 decoding. This may cause poor streaming performance.</source>
         <translation>Uw cliënt GPU ondersteund geen H.264 decodering. Dit kan slechte streamingkwaliteit veroorzaken.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1089"/>
-        <location filename="../streaming/session.cpp" line="1107"/>
+        <location filename="../streaming/session.cpp" line="1116"/>
+        <location filename="../streaming/session.cpp" line="1134"/>
         <source>Using software decoding due to your selection to force HDR without GPU support. This may cause poor streaming performance.</source>
         <translation>Er wordt softwaredecodering gebruikt vanwege uw keuze om HDR te forceren zonder GPU-ondersteuning. Dit kan leiden tot slechte streamingprestaties.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1101"/>
+        <location filename="../streaming/session.cpp" line="1128"/>
         <source>This PC&apos;s GPU doesn&apos;t support HEVC Main10 decoding for HDR streaming.</source>
         <translation>De videokaart van deze PC ondersteunt geen HEVC Main10 decodatie voor HDR streaming.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1123"/>
+        <location filename="../streaming/session.cpp" line="1150"/>
         <source>Your host PC doesn&apos;t support YUV 4:4:4 streaming.</source>
         <translation>Uw host-PC ondersteunt geen YUV 4:4:4-streaming.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1131"/>
+        <location filename="../streaming/session.cpp" line="1158"/>
         <source>Your host PC doesn&apos;t support YUV 4:4:4 streaming for selected video codec.</source>
         <translation>Uw host-PC ondersteunt geen YUV 4:4:4-streaming voor de geselecteerde videocodec.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1146"/>
+        <location filename="../streaming/session.cpp" line="1173"/>
         <source>Using software decoding due to your selection to force YUV 4:4:4 without GPU support. This may cause poor streaming performance.</source>
         <translation>Softwaredecodering wordt gebruikt vanwege uw keuze om YUV 4:4:4 te forceren zonder GPU-ondersteuning. Dit kan leiden tot slechte streamingprestaties.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1152"/>
+        <location filename="../streaming/session.cpp" line="1179"/>
         <source>This PC&apos;s GPU doesn&apos;t support YUV 4:4:4 decoding for selected video codec.</source>
         <translation>De GPU van deze PC ondersteunt geen YUV 4:4:4-decodering voor geselecteerde videocodecs.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1161"/>
+        <location filename="../streaming/session.cpp" line="1188"/>
         <source>GeForce Experience 3.0 or higher is required for 4K streaming.</source>
         <translation>GeForce Experience 3.0 of nieuwer is vereist voor 4K streaming.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1176"/>
+        <location filename="../streaming/session.cpp" line="1203"/>
         <source>Your selected surround sound setting is not supported by the current audio device.</source>
         <translation>Je geselecteerde surround sound instelling wordt niet ondersteund door het huidige audio apparaat.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1182"/>
+        <location filename="../streaming/session.cpp" line="1209"/>
         <source>Failed to open audio device. Audio will be unavailable during this session.</source>
         <translation>Openen van audio apparaat mislukt. Audio is niet beschikbaar tijdens deze sessie.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1187"/>
+        <location filename="../streaming/session.cpp" line="1214"/>
         <source>An attached gamepad has no mapping and won&apos;t be usable. Visit the Moonlight help to resolve this.</source>
         <translation>Een aangesloten gamepad heeft geen instellingen en is dus niet bruikbaar. Bezoek Moonlight hulp om dit op te lossen.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1205"/>
+        <location filename="../streaming/session.cpp" line="1232"/>
         <source>Your host PC&apos;s GPU doesn&apos;t support streaming video resolutions over 4K.</source>
         <translation>De videokaart van de host PC ondersteund geen video resoluties hoger dan 4K.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1223"/>
+        <location filename="../streaming/session.cpp" line="1250"/>
         <source>Your selection to force hardware decoding cannot be satisfied due to missing hardware decoding support on this PC&apos;s GPU.</source>
         <translation>Je keuze om hardware decoding te forceren kon niet worden volbracht omdat de videokaart op deze PC geen ondersteuning bied voor hardware decoding.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1226"/>
+        <location filename="../streaming/session.cpp" line="1253"/>
         <source>Your codec selection and force hardware decoding setting are not compatible. This PC&apos;s GPU lacks support for decoding your chosen codec.</source>
         <translation>Je codec keuze en de keuze voor het forceren van hardware decodatie zijn niet compatibel. De videokaart van deze PC ondersteund de gekozen codec niet.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="2204"/>
+        <location filename="../streaming/session.cpp" line="2231"/>
         <source>Unable to initialize video decoder. Please check your streaming settings and try again.</source>
         <translation>Videodecoder kan niet worden geïnitialiseerd. Controleer uw streaminginstellingen en probeer het opnieuw.</translation>
+    </message>
+</context>
+<context>
+    <name>SessionStatusOverlay</name>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="81"/>
+        <source>No video from the host</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="82"/>
+        <source>Your router or firewall is likely blocking the video stream. Check port forwarding, then run a guided connection test below.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="86"/>
+        <source>Connection is too unstable to stream</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="87"/>
+        <source>Try lowering your video bitrate, or move to a faster, more stable network connection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="91"/>
+        <source>The stream stopped right after starting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="92"/>
+        <source>This is usually caused by the host PC. Try restarting the host, or check for other software using its GPU.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="96"/>
+        <source>Blocked by protected content</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="97"/>
+        <source>Close any DRM-protected media (streaming apps, Blu-ray players, etc.) on the host PC, then try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="101"/>
+        <source>The host reported a video encoding error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="102"/>
+        <source>Try disabling HDR, lowering the streaming resolution, or changing the host PC&apos;s display resolution.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="106"/>
+        <source>Connection failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="107"/>
+        <source>Error code %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="115"/>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="280"/>
+        <source>Connecting…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="280"/>
+        <source>Starting %1…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="282"/>
+        <source>Reconnecting… (attempt %1 of %2)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="305"/>
+        <source>Ports involved: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="308"/>
+        <source>This PC&apos;s Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="322"/>
+        <source>Reconnect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="330"/>
+        <source>Guided Connection Test</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="338"/>
+        <source>Quit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionStatusOverlay.qml" line="349"/>
+        <source>Cancel</source>
+        <translation type="unfinished">Annuleren</translation>
     </message>
 </context>
 <context>
@@ -753,7 +1498,7 @@
     </message>
     <message>
         <location filename="../gui/SettingsView.qml" line="743"/>
-        <location filename="../gui/SettingsView.qml" line="1218"/>
+        <location filename="../gui/SettingsView.qml" line="1244"/>
         <source>Fullscreen</source>
         <translation>Volledig scherm</translation>
     </message>
@@ -784,267 +1529,261 @@
     </message>
     <message>
         <location filename="../gui/SettingsView.qml" line="753"/>
-        <location filename="../gui/SettingsView.qml" line="1210"/>
+        <location filename="../gui/SettingsView.qml" line="1236"/>
         <source>Windowed</source>
         <translation>Venster</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="819"/>
+        <location filename="../gui/SettingsView.qml" line="822"/>
         <source>V-Sync</source>
         <translation>V-Sync</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="829"/>
+        <location filename="../gui/SettingsView.qml" line="832"/>
         <source>Disabling V-Sync allows sub-frame rendering latency, but it can display visible tearing</source>
         <translation>V-Sync uitschakelen zorg voor verlaagde latency, maar kan screen tearing veroorzaken</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="836"/>
+        <location filename="../gui/SettingsView.qml" line="838"/>
         <source>Frame pacing</source>
         <translation>Beeld­tempo</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="846"/>
+        <location filename="../gui/SettingsView.qml" line="848"/>
         <source>Frame pacing reduces micro-stutter by delaying frames that come in too early</source>
         <translation>Frame pacing verminderd het stotteren door frames te vertragen die te vroeg aan komen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="856"/>
+        <location filename="../gui/SettingsView.qml" line="882"/>
         <source>Audio Settings</source>
         <translation>Audio­instellingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="891"/>
+        <location filename="../gui/SettingsView.qml" line="917"/>
         <source>Stereo</source>
         <translation>Stereo</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="895"/>
+        <location filename="../gui/SettingsView.qml" line="921"/>
         <source>5.1 surround sound</source>
         <translation>5.1 surround sound</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="899"/>
+        <location filename="../gui/SettingsView.qml" line="925"/>
         <source>7.1 surround sound</source>
         <translation>7.1 surround sound</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="913"/>
+        <location filename="../gui/SettingsView.qml" line="939"/>
         <source>Mute host PC speakers while streaming</source>
         <translation>Demp de speakers van de host PC tijdens het streamen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="923"/>
+        <location filename="../gui/SettingsView.qml" line="949"/>
         <source>You must restart any game currently in progress for this setting to take effect</source>
         <translation>Je moet alle spellen die actief zijn opnieuw opstarten om deze instelling actief te maken</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="929"/>
         <source>Mute audio stream when Moonlight is not the active window</source>
-        <translation>Demp audio stream wanneer Moonlight niet het actieve scherm is</translation>
+        <translation type="vanished">Demp audio stream wanneer Moonlight niet het actieve scherm is</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="940"/>
         <source>Mutes Moonlight&apos;s audio when you Alt+Tab out of the stream or click on a different window.</source>
-        <translation>Dempt het geluid van Moonlight wanneer u met Alt+Tab de stream verlaat of op een ander venster klikt.</translation>
+        <translation type="vanished">Dempt het geluid van Moonlight wanneer u met Alt+Tab de stream verlaat of op een ander venster klikt.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="989"/>
+        <location filename="../gui/SettingsView.qml" line="1015"/>
         <source>UI Settings</source>
         <translation>Interface­instellingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="999"/>
+        <location filename="../gui/SettingsView.qml" line="1025"/>
         <source>Language</source>
         <translation>Taal</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1025"/>
+        <location filename="../gui/SettingsView.qml" line="1051"/>
         <source>Automatic</source>
         <translation>Automatisch</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1160"/>
         <source>You must restart Moonlight for this change to take effect</source>
-        <translation>Je moet Moonlight opnieuw opstarten voordat de verandering actief word</translation>
+        <translation type="vanished">Je moet Moonlight opnieuw opstarten voordat de verandering actief word</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1177"/>
+        <location filename="../gui/SettingsView.qml" line="1203"/>
         <source>GUI display mode</source>
         <translation>GUI-weergave­modus</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1214"/>
+        <location filename="../gui/SettingsView.qml" line="1240"/>
         <source>Maximized</source>
         <translation>Gemaximaliseerd</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1242"/>
+        <location filename="../gui/SettingsView.qml" line="1268"/>
         <source>Show configuration warnings</source>
         <translation>Configuratie­waarschuwingen tonen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1298"/>
+        <location filename="../gui/SettingsView.qml" line="1324"/>
         <source>Input Settings</source>
         <translation>Invoer­instellingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1319"/>
+        <location filename="../gui/SettingsView.qml" line="1345"/>
         <source>This enables seamless mouse control without capturing the client&apos;s mouse cursor. It is ideal for remote desktop usage but will not work in most games.</source>
         <translation>Dit activeert vloeiende muis besturing zonder de muis cursor van de client over te nemen. Het is ideal voor remote desktop maar werkt niet goed in de meeste games.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1321"/>
+        <location filename="../gui/SettingsView.qml" line="1347"/>
         <source>NOTE: Due to a bug in GeForce Experience, this option may not work properly if your host PC has multiple monitors.</source>
         <translation>OPMERKING: Vanwege een fout in GeForce Experience werkt deze optie mogelijk niet goed als uw host-PC meerdere monitoren heeft.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1621"/>
+        <location filename="../gui/SettingsView.qml" line="1647"/>
         <source>AV1</source>
         <translation>AV1</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1636"/>
+        <location filename="../gui/SettingsView.qml" line="855"/>
         <source>Enable HDR</source>
         <translation>HDR inschakelen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1651"/>
+        <location filename="../gui/SettingsView.qml" line="870"/>
         <source>The stream will be HDR-capable, but some games may require an HDR monitor on your host PC to enable HDR mode.</source>
         <translation>Dit zet de stream om in HDR, maar sommige spellen hebben een HDR-monitor nodig dat is aangesloten aan de Host&apos;s Computer.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1653"/>
+        <location filename="../gui/SettingsView.qml" line="872"/>
         <source>HDR streaming is not supported on this PC.</source>
         <translation>HDR-streaming wordt niet ondersteund op deze pc.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1659"/>
+        <location filename="../gui/SettingsView.qml" line="1718"/>
         <source>Enable YUV 4:4:4</source>
         <translation>YUV 4:4:4 inschakelen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1740"/>
+        <location filename="../gui/SettingsView.qml" line="1813"/>
         <source>Show performance stats while streaming</source>
         <translation>Toon prestatiestatistieken tijdens het streamen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1750"/>
+        <location filename="../gui/SettingsView.qml" line="1823"/>
         <source>Display real-time stream performance information while streaming.</source>
         <translation>Geef realtime informatie over streamprestaties weer tijdens het streamen.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1751"/>
+        <location filename="../gui/SettingsView.qml" line="1824"/>
         <source>You can toggle it at any time while streaming using Ctrl+Alt+Shift+S or Select+L1+R1+X.</source>
         <translation>Je kunt het op elk gewenst moment tijdens het streamen in- of uitschakelen met Ctrl+Alt+Shift+S of Select+L1+R1+X.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1752"/>
+        <location filename="../gui/SettingsView.qml" line="1825"/>
         <source>The performance overlay is not supported on Steam Link or Raspberry Pi.</source>
         <translation>De prestatie-overlay wordt niet ondersteund op Steam Link of Raspberry Pi.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1340"/>
         <source>NOTE: Certain keyboard shortcuts like Ctrl+Alt+Del on Windows cannot be intercepted by any application, including Moonlight.</source>
-        <translation>INFO: Sommige toetsenbord snelkoppelingen zoals Ctrl+Alt+Del in Windows kunnen niet worden opgevangen door applicaties, ook niet door Moonlight.</translation>
+        <translation type="vanished">INFO: Sommige toetsenbord snelkoppelingen zoals Ctrl+Alt+Del in Windows kunnen niet worden opgevangen door applicaties, ook niet door Moonlight.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1403"/>
+        <location filename="../gui/SettingsView.qml" line="1429"/>
         <source>Use touchscreen as a virtual trackpad</source>
         <translation>Gebruik een touchscreen als virtueel trackpad</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1420"/>
+        <location filename="../gui/SettingsView.qml" line="1446"/>
         <source>Swap left and right mouse buttons</source>
         <translation>Verwissel linker- en rechtermuisknop</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1432"/>
+        <location filename="../gui/SettingsView.qml" line="1458"/>
         <source>Reverse mouse scrolling direction</source>
         <translation>Keer muis scroll richting om</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1446"/>
+        <location filename="../gui/SettingsView.qml" line="1472"/>
         <source>Gamepad Settings</source>
         <translation>Gamepad­instellingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1456"/>
+        <location filename="../gui/SettingsView.qml" line="1482"/>
         <source>Swap A/B and X/Y gamepad buttons</source>
         <translation>Verwissel A/B en X/Y gamepad knoppen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1466"/>
+        <location filename="../gui/SettingsView.qml" line="1492"/>
         <source>This switches gamepads into a Nintendo-style button layout</source>
         <translation>Dit veranderd gamepads naar een Nintendo-stijl knoppen layout</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1472"/>
+        <location filename="../gui/SettingsView.qml" line="1498"/>
         <source>Force gamepad #1 always connected</source>
         <translation>Forceer gamepad #1 als altijd verbonden</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1482"/>
+        <location filename="../gui/SettingsView.qml" line="1508"/>
         <source>Forces a single gamepad to always stay connected to the host, even if no gamepads are actually connected to this PC.</source>
         <translation>Forceer een enkele gamepad om altijd verbonden te blijven met de host, zelfs als er geen gamepads verbonden zijn met deze PC.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1320"/>
+        <location filename="../gui/SettingsView.qml" line="1346"/>
         <source>You can toggle this while streaming using Ctrl+Alt+Shift+M.</source>
         <translation>Je kunt deze instelling tijdens het streamen aan of uit zetten met Ctrl+Alt+Shift+M.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1490"/>
+        <location filename="../gui/SettingsView.qml" line="1516"/>
         <source>Enable mouse control with gamepads by holding the &apos;Start&apos; button</source>
         <translation>Activeer muis besturing met gamepads door de &apos;Start&apos; toets vast te houden</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1501"/>
         <source>Process gamepad input when Moonlight is in the background</source>
-        <translation>Verwerk gamepad input wanneer Moonlight in de achtergrond staat</translation>
+        <translation type="vanished">Verwerk gamepad input wanneer Moonlight in de achtergrond staat</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1512"/>
         <source>Allows Moonlight to capture gamepad inputs even if it&apos;s not the current window in focus</source>
-        <translation>Sta Moonlight toe gamepad input te verwerken zelfs als het niet het actieve window is</translation>
+        <translation type="vanished">Sta Moonlight toe gamepad input te verwerken zelfs als het niet het actieve window is</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="949"/>
+        <location filename="../gui/SettingsView.qml" line="975"/>
         <source>Host Settings</source>
         <translation>Host­instellingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1521"/>
+        <location filename="../gui/SettingsView.qml" line="1547"/>
         <source>Advanced Settings</source>
         <translation>Geavanceerde instellingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="866"/>
+        <location filename="../gui/SettingsView.qml" line="892"/>
         <source>Audio configuration</source>
         <translation>Audio­configuratie</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1231"/>
+        <location filename="../gui/SettingsView.qml" line="1257"/>
         <source>Show connection quality warnings</source>
         <translation>Geef verbindingskwaliteit waarschuwingen weer</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1254"/>
+        <location filename="../gui/SettingsView.qml" line="1280"/>
         <source>Discord Rich Presence integration</source>
         <translation>Discord Rich Presence integratie</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1264"/>
+        <location filename="../gui/SettingsView.qml" line="1290"/>
         <source>Updates your Discord status to display the name of the game you&apos;re streaming.</source>
         <translation>Werkt uw Discord-status bij met de naam van de game die u streamt.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1483"/>
+        <location filename="../gui/SettingsView.qml" line="1509"/>
         <source>Only enable this option when streaming a game that doesn&apos;t support gamepads being connected after startup.</source>
         <translation>Schakel deze optie alleen in wanneer u een game streamt die geen ondersteuning biedt voor het aansluiten van gamepads na het opstarten.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1309"/>
+        <location filename="../gui/SettingsView.qml" line="1335"/>
         <source>Optimize mouse for remote desktop instead of games</source>
         <translation>Optimaliseer de muis voor remote desktop in plaats van games</translation>
     </message>
@@ -1077,118 +1816,159 @@
         <translation>60 FPS</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1270"/>
+        <location filename="../gui/SettingsView.qml" line="1296"/>
         <source>Keep the display awake while streaming</source>
         <translation>Houd het scherm wakker tijdens het streamen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1280"/>
+        <location filename="../gui/SettingsView.qml" line="1306"/>
         <source>Prevents the screensaver from starting or the display from going to sleep while streaming.</source>
         <translation>Voorkomt dat de screensaver start of dat het scherm in slaapstand gaat tijdens het streamen.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1331"/>
+        <location filename="../gui/SettingsView.qml" line="1357"/>
         <source>Capture system keyboard shortcuts</source>
         <translation>Verwerk systeem-toetsenbordsnelkoppelingen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1339"/>
+        <location filename="../gui/SettingsView.qml" line="1365"/>
         <source>This enables the capture of system-wide keyboard shortcuts like Alt+Tab that would normally be handled by the client OS while streaming.</source>
         <translation>Dit activeert het verwerken van systeem-toetsenbordsnelkoppelingen zoals Alt+Tab die normaal door het besturingssysteem verwerkt worden tijdens het streamen.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1369"/>
+        <location filename="../gui/SettingsView.qml" line="1395"/>
         <source>in fullscreen</source>
         <translation>in volledig scherm</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1373"/>
+        <location filename="../gui/SettingsView.qml" line="1399"/>
         <source>always</source>
         <translation>altijd</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1413"/>
+        <location filename="../gui/SettingsView.qml" line="1439"/>
         <source>When checked, the touchscreen acts like a trackpad. When unchecked, the touchscreen will directly control the mouse pointer.</source>
         <translation>Wanneer aangevinkt, fungeert het toutchscreen als een trackpad. Wanneer niet aangevinkt, bedient het touchscreen direct de muis cursor.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="959"/>
+        <location filename="../gui/SettingsView.qml" line="985"/>
         <source>Optimize game settings for streaming</source>
         <translation>Optimaliseer game instellingen voor streamen</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="970"/>
+        <location filename="../gui/SettingsView.qml" line="955"/>
+        <source>Mute audio stream when Jochona is not the active window</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="966"/>
+        <source>Mutes Jochona&apos;s audio when you Alt+Tab out of the stream or click on a different window.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="996"/>
         <source>Quit app on host PC after ending stream</source>
         <translation>Stop app op de host PC na het stoppen van de stream</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="980"/>
+        <location filename="../gui/SettingsView.qml" line="1006"/>
         <source>This will close the app or game you are streaming when you end your stream. You will lose any unsaved progress!</source>
         <translation>Hiermee sluit u de app of het spel die u aan het streamen bent wanneer u de stream beëindigt. U verliest alle niet-opgeslagen voortgang!</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1531"/>
+        <location filename="../gui/SettingsView.qml" line="1186"/>
+        <source>You must restart Jochona for this change to take effect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="1366"/>
+        <source>NOTE: Certain keyboard shortcuts like Ctrl+Alt+Del on Windows cannot be intercepted by any application, including Jochona.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="1527"/>
+        <source>Process gamepad input when Jochona is in the background</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="1538"/>
+        <source>Allows Jochona to capture gamepad inputs even if it&apos;s not the current window in focus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="1557"/>
         <source>Video decoder</source>
         <translation>Video­decoder</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1556"/>
-        <location filename="../gui/SettingsView.qml" line="1609"/>
+        <location filename="../gui/SettingsView.qml" line="1582"/>
+        <location filename="../gui/SettingsView.qml" line="1635"/>
+        <location filename="../gui/SettingsView.qml" line="1693"/>
         <source>Automatic (Recommended)</source>
         <translation>Automatisch (aanbevolen)</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1560"/>
+        <location filename="../gui/SettingsView.qml" line="1586"/>
         <source>Force software decoding</source>
         <translation>Software­ontcijfering forceren</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1564"/>
+        <location filename="../gui/SettingsView.qml" line="1590"/>
         <source>Force hardware decoding</source>
         <translation>Hardware­ontcijfering forceren</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1579"/>
+        <location filename="../gui/SettingsView.qml" line="1605"/>
         <source>Video codec</source>
         <translation>Video­codec</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1613"/>
+        <location filename="../gui/SettingsView.qml" line="1639"/>
         <source>H.264</source>
         <translation>H.264</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1617"/>
+        <location filename="../gui/SettingsView.qml" line="1643"/>
         <source>HEVC (H.265)</source>
         <translation>HEVC (H.265)</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1681"/>
+        <location filename="../gui/SettingsView.qml" line="1662"/>
+        <source>Renderer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="1740"/>
         <source>Good for streaming desktop and text-heavy games, but not recommended for fast-paced games.</source>
         <translation>Geschikt voor het streamen van desktop- en tekstgames, maar niet aanbevolen voor snelle games.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1683"/>
+        <location filename="../gui/SettingsView.qml" line="1742"/>
         <source>YUV 4:4:4 is not supported on this PC.</source>
         <translation>YUV 4:4:4 wordt niet ondersteund op deze PC.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1689"/>
+        <location filename="../gui/SettingsView.qml" line="1748"/>
         <source>Unlock bitrate limit (Experimental)</source>
         <translation>Bitsnelheidslimiet ontgrendelen (Experimenteel)</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1702"/>
+        <location filename="../gui/SettingsView.qml" line="1761"/>
         <source>This unlocks extremely high video bitrates for use with Sunshine hosts. It should only be used when streaming over an Ethernet LAN connection.</source>
         <translation>Dit maakt extreem hoge videobitsnelheden mogelijk voor gebruik met Sunshine-hosts. Gebruik dit alleen bij streaming via een Ethernet LAN-verbinding.</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1708"/>
+        <location filename="../gui/SettingsView.qml" line="1767"/>
         <source>Automatically find PCs on the local network (Recommended)</source>
         <translation>Ontdek automatisch PCs op het lokale netwerk (Aanbevolen)</translation>
     </message>
     <message>
-        <location filename="../gui/SettingsView.qml" line="1729"/>
+        <location filename="../gui/SettingsView.qml" line="1789"/>
+        <source>Use the modern home screen (requires restart)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/SettingsView.qml" line="1802"/>
         <source>Automatically detect blocked connections (Recommended)</source>
         <translation>Detecteer geblokkeerde verbindingen automatisch (Aanbevolen)</translation>
     </message>
@@ -1218,8 +1998,12 @@
     </message>
     <message>
         <location filename="../gui/StreamSegue.qml" line="65"/>
+        <source>This PC&apos;s Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>This PC&apos;s Internet connection is blocking Moonlight. Streaming over the Internet may not work while connected to this network.</source>
-        <translation>De internetverbinding van deze PC blokkeert Moonlight. Streamen via internet werkt mogelijk niet terwijl u verbonden bent met dit netwerk.</translation>
+        <translation type="vanished">De internetverbinding van deze PC blokkeert Moonlight. Streamen via internet werkt mogelijk niet terwijl u verbonden bent met dit netwerk.</translation>
     </message>
     <message>
         <location filename="../gui/StreamSegue.qml" line="168"/>
@@ -1243,9 +2027,174 @@
     </message>
 </context>
 <context>
+    <name>WelcomeView</name>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="30"/>
+        <source>Welcome</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="91"/>
+        <source>Couldn&apos;t reach %1. This network is blocking Jochona — streaming over the Internet may not work from here.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="92"/>
+        <source>Couldn&apos;t reach %1. Check the address and that the host app is running, then try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="121"/>
+        <source>Checking…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="123"/>
+        <source>Offline</source>
+        <translation type="unfinished">Offline</translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="125"/>
+        <source>Ready to pair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="126"/>
+        <source>Paired</source>
+        <translation type="unfinished">Gekoppeld</translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="183"/>
+        <source>Welcome to Jochona</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="193"/>
+        <source>Stream games from your own PC to this screen — no account, just your hardware on your network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="203"/>
+        <source>You&apos;ll need a PC running Sunshine, Apollo, or Vibepollo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="220"/>
+        <source>Find my gaming PC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="225"/>
+        <source>Skip setup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="247"/>
+        <source>Choose your gaming PC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="259"/>
+        <source>PCs on your network appear here automatically.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="260"/>
+        <source>Automatic discovery is off — add your PC by address.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="350"/>
+        <source>Done</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="350"/>
+        <source>Pair</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="404"/>
+        <source>Looking for PCs on your network…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="405"/>
+        <source>No PCs yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="416"/>
+        <source>Hosts show up within a few seconds. If yours doesn&apos;t, add it by address below.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="433"/>
+        <source>Enter an address instead</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="445"/>
+        <location filename="../gui/WelcomeView.qml" line="597"/>
+        <location filename="../gui/WelcomeView.qml" line="670"/>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="475"/>
+        <source>Add your PC by address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="486"/>
+        <source>Type the IP address or hostname of your gaming PC.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="538"/>
+        <source>192.168.1.50</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="574"/>
+        <source>Contacting %1…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="589"/>
+        <source>Add</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="632"/>
+        <source>You&apos;re set up</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="642"/>
+        <source>Your host is paired. It lives on Home now — pick it any time to see your games.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="656"/>
+        <source>Start playing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="669"/>
+        <source>Select</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/WelcomeView.qml" line="670"/>
+        <source>Skip</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>main</name>
     <message>
-        <location filename="../gui/main.qml" line="444"/>
+        <location filename="../gui/main.qml" line="451"/>
         <source>Settings</source>
         <translation>Instellingen</translation>
     </message>
@@ -1260,67 +2209,83 @@
         <translation>Neem deel aan de community op Discord</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="326"/>
+        <location filename="../gui/main.qml" line="329"/>
         <source>Add PC manually</source>
         <translation>PC handmatig toe­voegen</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="366"/>
         <source>Update available for Moonlight: Version %1</source>
-        <translation>Update beschikbaar voor Moonlight: Versie %1</translation>
+        <translation type="vanished">Update beschikbaar voor Moonlight: Versie %1</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="413"/>
+        <location filename="../gui/main.qml" line="420"/>
         <source>Gamepad Mapper</source>
         <translation>Gamepad-mapper</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="459"/>
+        <location filename="../gui/main.qml" line="466"/>
         <source>Hardware acceleration doesn&apos;t work on XWayland. Continuing on XWayland may result in poor streaming performance. Try running with QT_QPA_PLATFORM=wayland or switch to X11.</source>
         <translation>Hardware acceleration werkt niet met XWayland. Doorgaan met XWayland kan slechte streaming prestaties veroorzaken. Probeer te spelen met QT_QPA_PLATFORM=wayland of verander naar X11.</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="468"/>
         <source>This version of Moonlight isn&apos;t optimized for your PC. Please download the &apos;%1&apos; version of Moonlight for the best streaming performance.</source>
-        <translation>Deze versie van Moonlight is niet geoptimaliseerd voor uw PC. Download de &apos;%1&apos;-versie van Moonlight voor de beste streamingprestaties.</translation>
+        <translation type="vanished">Deze versie van Moonlight is niet geoptimaliseerd voor uw PC. Download de &apos;%1&apos;-versie van Moonlight voor de beste streamingprestaties.</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="477"/>
         <source>Moonlight detected gamepads without a mapping:</source>
-        <translation>Moonlight heeft gamepads gedetecteerd zonder mapping:</translation>
+        <translation type="vanished">Moonlight heeft gamepads gedetecteerd zonder mapping:</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="390"/>
+        <location filename="../gui/main.qml" line="397"/>
         <source>Help</source>
         <translation>Hulp</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="451"/>
         <source>No functioning hardware accelerated video decoder was detected by Moonlight. Your streaming performance may be severely degraded in this configuration.</source>
-        <translation>Geen werkende hardware versnelde videodecoder gevonden door Moonlight. De streamingkwaliteit kan ernstig beïnvloed worden met deze configuratie.</translation>
+        <translation type="vanished">Geen werkende hardware versnelde videodecoder gevonden door Moonlight. De streamingkwaliteit kan ernstig beïnvloed worden met deze configuratie.</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="453"/>
+        <location filename="../gui/main.qml" line="369"/>
+        <source>Update available for Jochona: Version %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/main.qml" line="458"/>
+        <source>No functioning hardware accelerated video decoder was detected by Jochona. Your streaming performance may be severely degraded in this configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/main.qml" line="460"/>
         <source>Click the Help button for more information on solving this problem.</source>
         <translation>Klik op de hulp-knop voor meer informatie over het oplossen van dit probleem.</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="461"/>
+        <location filename="../gui/main.qml" line="468"/>
         <source>Click the Help button for more information.</source>
         <translation>Klik op de hulp-knop voor meer informatie.</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="479"/>
+        <location filename="../gui/main.qml" line="477"/>
+        <source>This version of Jochona isn&apos;t optimized for your PC. Please download the &apos;%1&apos; version of Moonlight for the best streaming performance.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/main.qml" line="486"/>
+        <source>Jochona detected gamepads without a mapping:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/main.qml" line="488"/>
         <source>Click the Help button for information on how to map your gamepads.</source>
         <translation>Klik op de Hulp-knop voor meer informatie over het toewijzen van uw gamepads.</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="487"/>
+        <location filename="../gui/main.qml" line="496"/>
         <source>Are you sure you want to quit?</source>
         <translation>Weet u zeker dat u wilt stoppen?</translation>
     </message>
     <message>
-        <location filename="../gui/main.qml" line="517"/>
+        <location filename="../gui/main.qml" line="526"/>
         <source>Enter the IP address of your host PC:</source>
         <translation>Voer het IP-adres van uw host-PC in:</translation>
     </message>
