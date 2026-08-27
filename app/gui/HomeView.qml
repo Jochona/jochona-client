@@ -50,17 +50,6 @@ CenteredGridView {
         ComputerManager.computerAddCompleted.disconnect(addComplete)
     }
 
-    function pairingComplete(error)
-    {
-        pairDialog.close()
-
-        if (error !== undefined) {
-            errorDialog.text = error
-            errorDialog.helpText = ""
-            errorDialog.open()
-        }
-    }
-
     function addComplete(success, detectedPortBlocking)
     {
         if (!success) {
@@ -81,7 +70,6 @@ CenteredGridView {
     {
         var model = Qt.createQmlObject('import ComputerModel 1.0; ComputerModel {}', parent, '')
         model.initialize(ComputerManager)
-        model.pairingCompleted.connect(pairingComplete)
         model.connectionTestCompleted.connect(testConnectionDialog.connectionTestComplete)
         return model
     }
@@ -193,8 +181,13 @@ CenteredGridView {
                 }
 
                 Label {
+                    // Availability, plus the connection path for reachable
+                    // paired hosts (proposal §6.5: show which network path
+                    // the stream would take).
                     text: homeGrid.statusText(model.online, model.paired, model.statusUnknown,
                                               model.wakeable, hostRow.waking)
+                          + (model.online && model.paired && model.connectionPath !== "Unknown"
+                             ? " · " + model.connectionPath : "")
                     font.pointSize: Tokens.sizeBody
                     color: Tokens.textSecondary
                     elide: Text.ElideRight
@@ -299,10 +292,13 @@ CenteredGridView {
                     stackView.push(appView)
                 }
                 else {
-                    var pin = computerModel.generatePinString()
-                    computerModel.pairComputer(index, pin)
-                    pairDialog.pin = pin
-                    pairDialog.open()
+                    // Jochona M2: the pairing ceremony is a full surface, not
+                    // a dialog; PairView owns PIN display, host mirroring,
+                    // success, and recoverable failure.
+                    stackView.push("qrc:/gui/PairView.qml", {
+                        "computerModel": computerModel,
+                        "computerIndex": index
+                    })
                 }
             } else if (model.wakeable && !hostRow.waking) {
                 // Gamepad-first: Enter on an offline wakeable host is the
@@ -392,20 +388,6 @@ CenteredGridView {
         // Using Setup-Guide here instead of Troubleshooting because it's likely that users
         // will arrive here by forgetting to enable GameStream or not forwarding ports.
         helpUrl: "https://github.com/moonlight-stream/moonlight-docs/wiki/Setup-Guide"
-    }
-
-    NavigableMessageDialog {
-        id: pairDialog
-        closePolicy: Popup.CloseOnEscape
-
-        // don't allow edits to the rest of the window while open
-        property string pin : "0000"
-        text:qsTr("Please enter %1 on your host PC. This dialog will close when pairing is completed.").arg(pin)+"\n\n"+
-             qsTr("If your host PC is running Sunshine, navigate to the Sunshine web UI to enter the PIN.")
-        standardButtons: Dialog.Cancel
-        onRejected: {
-            // FIXME: We should interrupt pairing here
-        }
     }
 
     NavigableMessageDialog {

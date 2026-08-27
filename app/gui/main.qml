@@ -116,6 +116,22 @@ ApplicationWindow {
             // the initial view and pushing it to the StackView
             doEarlyInit()
             push(initialView)
+
+            // Jochona: first-run guided setup (M2). Modern shell only, and
+            // only when no hosts are known yet — returning users with hosts
+            // skip the welcome entirely. Pushed above Home so skipping and
+            // finishing both land on the host list.
+            if (StreamingPreferences.modernHomeScreen &&
+                    String(initialView).indexOf("HomeView") !== -1) {
+                var probe = Qt.createQmlObject(
+                            'import ComputerModel 1.0; ComputerModel {}',
+                            stackView, 'firstRunProbe')
+                probe.initialize(ComputerManager)
+                if (probe.rowCount() === 0) {
+                    push("qrc:/gui/WelcomeView.qml")
+                }
+                probe.destroy()
+            }
         }
 
         onCurrentItemChanged: {
