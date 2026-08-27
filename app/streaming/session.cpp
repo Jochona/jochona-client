@@ -972,7 +972,7 @@ void Session::emitLaunchWarning(QString text)
 bool Session::validateLaunch(SDL_Window* testWindow)
 {
     if (!m_Computer->isSupportedServerVersion) {
-        emit displayLaunchError(tr("The version of GeForce Experience on %1 is not supported by this build of Moonlight. You must update Moonlight to stream from %1.").arg(m_Computer->name));
+        emit displayLaunchError(tr("The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.").arg(m_Computer->name));
         return false;
     }
 
@@ -1816,7 +1816,7 @@ void Session::exec()
     // We always want a resizable window with High DPI enabled
     Uint32 defaultWindowFlags = SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
 
-    // If we're starting in windowed mode and the Moonlight GUI is maximized or
+    // If we're starting in windowed mode and the Jochona GUI is maximized or
     // minimized, match that with the streaming window.
     if (!m_IsFullScreen && m_QtWindow != nullptr) {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
@@ -1843,7 +1843,7 @@ void Session::exec()
 #ifdef Q_OS_DARWIN
     std::string windowName = QString(m_Computer->name).toStdString();
 #else
-    std::string windowName = QString(m_Computer->name + " - Moonlight").toStdString();
+    std::string windowName = QString(m_Computer->name + " - Jochona").toStdString();
 #endif
 
     m_Window = SDL_CreateWindow(windowName.c_str(),
