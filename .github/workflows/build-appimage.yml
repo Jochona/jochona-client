@@ -1,3 +1,4 @@
+# Jochona: triggers trimmed to PR + manual dispatch (see docs/github-setup.md). Re-adding push triggers requires minute-budget review (Free-plan macOS = 10x).
 ---
 name: Build - Linux AppImage
 permissions:
