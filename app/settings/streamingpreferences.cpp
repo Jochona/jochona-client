@@ -135,7 +135,9 @@ void StreamingPreferences::reload()
     playAudioOnHost = settings.value(SER_HOSTAUDIO, false).toBool();
     multiController = settings.value(SER_MULTICONT, true).toBool();
     enableMdns = settings.value(SER_MDNS, true).toBool();
-    modernHomeScreen = settings.value(SER_MODERN_HOME, false).toBool();
+    // Jochona M1: modern shell is the default; the flag remains as an escape
+    // hatch to the legacy PcView until the old screens are retired.
+    modernHomeScreen = settings.value(SER_MODERN_HOME, true).toBool();
     quitAppAfter = settings.value(SER_QUITAPPAFTER, false).toBool();
     absoluteMouseMode = settings.value(SER_ABSMOUSEMODE, false).toBool();
     absoluteTouchMode = settings.value(SER_ABSTOUCHMODE, true).toBool();

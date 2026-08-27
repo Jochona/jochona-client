@@ -9,6 +9,8 @@ import StreamingPreferences 1.0
 import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
 
+import "style"
+
 // Jochona: M1 modern home screen (ADR-0001). Feature-flagged replacement for
 // PcView (StreamingPreferences.modernHomeScreen). Controller-first host list:
 // one full-width row per Host, status expressed by color plus text (never color
@@ -24,8 +26,8 @@ CenteredGridView {
     topMargin: 24
     bottomMargin: 8
     // Single centered column of wide rows
-    cellWidth: homeGrid.availableWidth > 0 ? Math.min(homeGrid.availableWidth, 900) : 900
-    cellHeight: 96
+    cellWidth: homeGrid.availableWidth > 0 ? Math.min(homeGrid.availableWidth, Tokens.listMaxWidth) : Tokens.listMaxWidth
+    cellHeight: Tokens.rowHeight
     objectName: qsTr("Home")
 
     Component.onCompleted: {
@@ -85,8 +87,10 @@ CenteredGridView {
     }
 
     // One-line availability description; state is never conveyed by color alone.
-    function statusText(online, paired, statusUnknown, wakeable)
+    function statusText(online, paired, statusUnknown, wakeable, waking)
     {
+        if (waking)
+            return qsTr("Waking…")
         if (statusUnknown)
             return qsTr("Checking…")
         if (!online)
@@ -99,37 +103,47 @@ CenteredGridView {
     function statusColor(online, paired, statusUnknown)
     {
         if (statusUnknown)
-            return "#9e9e9e"
+            return Tokens.statusUnknown
         if (!online)
-            return "#757575"
+            return Tokens.statusOffline
         if (!paired)
-            return "#ffb300"
-        return "#4caf50"
+            return Tokens.statusPairing
+        return Tokens.statusOnline
     }
 
     model: computerModel
 
     delegate: NavigableItemDelegate {
+        id: hostRow
         width: homeGrid.cellWidth
         height: homeGrid.cellHeight
         grid: homeGrid
 
         property alias pcContextMenu : pcContextMenuLoader.item
 
+        // Visible waking state (M1 WOL): wakeComputer() is fire-and-forget in
+        // the model, so we show an optimistic Waking state until the poller
+        // flips the host online, with a timeout so a dead host recovers the row.
+        readonly property bool waking: wakeTimer.running && !model.online
+        Timer {
+            id: wakeTimer
+            interval: 45000
+        }
+
         // Card background; the base ItemDelegate style is left untouched so the
         // rest of the app is visually unaffected by this screen's existence.
         Rectangle {
             anchors.fill: parent
             anchors.margins: 4
-            radius: 10
-            color: parent.highlighted ? "#323a4d" : "#262b38"
+            radius: Tokens.radiusCard
+            color: parent.highlighted ? Tokens.surfaceFocus : Tokens.surface
             border.width: parent.highlighted ? 2 : 1
-            border.color: parent.highlighted ? "#7986cb" : "#3a4152"
+            border.color: parent.highlighted ? Tokens.borderFocus : Tokens.border
         }
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 20
+            anchors.leftMargin: Tokens.gutter
             anchors.rightMargin: 16
             spacing: 18
 
@@ -144,7 +158,7 @@ CenteredGridView {
                     width: 20
                     height: 20
                     radius: 10
-                    visible: !model.statusUnknown
+                    visible: !model.statusUnknown && !hostRow.waking
                     color: homeGrid.statusColor(model.online, model.paired, model.statusUnknown)
                 }
 
@@ -159,7 +173,7 @@ CenteredGridView {
                     anchors.centerIn: parent
                     width: 30
                     height: 30
-                    visible: model.statusUnknown
+                    visible: model.statusUnknown || hostRow.waking
                     running: visible
                 }
             }
@@ -171,17 +185,18 @@ CenteredGridView {
 
                 Label {
                     text: model.name
-                    font.pointSize: 18
-                    font.family: "Space Grotesk"
+                    font.pointSize: Tokens.sizeSection
+                    font.family: Tokens.fontDisplay
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
 
                 Label {
-                    text: homeGrid.statusText(model.online, model.paired, model.statusUnknown, model.wakeable)
-                    font.pointSize: 11
-                    color: "#9fa8ba"
+                    text: homeGrid.statusText(model.online, model.paired, model.statusUnknown,
+                                              model.wakeable, hostRow.waking)
+                    font.pointSize: Tokens.sizeBody
+                    color: Tokens.textSecondary
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
@@ -191,11 +206,11 @@ CenteredGridView {
             // a chevron hinting at the app list.
             Label {
                 Layout.alignment: Qt.AlignVCenter
-                visible: !model.online && model.wakeable
+                visible: !model.online && model.wakeable && !hostRow.waking
                 text: qsTr("Wake")
-                font.pointSize: 13
+                font.pointSize: Tokens.sizeAction
                 font.bold: true
-                color: parent.parent.highlighted ? "#9fa8ff" : "#7986cb"
+                color: parent.parent.highlighted ? Tokens.accentFocus : Tokens.accent
             }
 
             Label {
@@ -203,7 +218,7 @@ CenteredGridView {
                 visible: model.online && model.paired
                 text: "›"
                 font.pointSize: 28
-                color: "#7986cb"
+                color: Tokens.accent
             }
         }
 
@@ -231,7 +246,10 @@ CenteredGridView {
                     // ADR-0004: Direct Wake only — the magic packet cannot cross
                     // an overlay like Tailscale, so the constraint is stated here.
                     text: qsTr("Wake PC") + (model.online ? "" : "\n" + qsTr("(Wake-on-LAN; only reaches hosts on the same local network)"))
-                    onTriggered: computerModel.wakeComputer(index)
+                    onTriggered: {
+                        computerModel.wakeComputer(index)
+                        wakeTimer.restart()
+                    }
                     visible: !model.online && model.wakeable
                 }
                 NavigableMenuItem {
@@ -286,7 +304,12 @@ CenteredGridView {
                     pairDialog.pin = pin
                     pairDialog.open()
                 }
-            } else if (!model.online) {
+            } else if (model.wakeable && !hostRow.waking) {
+                // Gamepad-first: Enter on an offline wakeable host is the
+                // primary action (wake), not the menu. Menu stays on hold.
+                computerModel.wakeComputer(index)
+                wakeTimer.restart()
+            } else {
                 // Using open() here because it may be activated by keyboard
                 pcContextMenu.open()
             }
