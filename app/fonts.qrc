@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/">
+        <file>fonts/Inter-Regular.ttf</file>
+        <file>fonts/Inter-Medium.ttf</file>
+        <file>fonts/Inter-SemiBold.ttf</file>
+        <file>fonts/Inter-Bold.ttf</file>
+        <file>fonts/SpaceGrotesk-Regular.ttf</file>
+        <file>fonts/SpaceGrotesk-Medium.ttf</file>
+        <file>fonts/SpaceGrotesk-Bold.ttf</file>
+        <file>fonts/NotoEmoji.ttf</file>
+        <file>fonts/LICENSE-Inter.txt</file>
+        <file>fonts/LICENSE-SpaceGrotesk.txt</file>
+        <file>fonts/LICENSE-NotoEmoji.txt</file>
+    </qresource>
+</RCC>

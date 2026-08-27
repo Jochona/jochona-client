@@ -9,6 +9,7 @@
 #include <QNetworkProxyFactory>
 #include <QPalette>
 #include <QFont>
+#include <QFontDatabase>
 #include <QCursor>
 #include <QElapsedTimer>
 #include <QTemporaryFile>
@@ -970,6 +971,31 @@ int main(int argc, char *argv[])
     // We require the Material theme
     QQuickStyle::setStyle("Material");
 
+    // Jochona: brand typography. Inter carries UI text, Space Grotesk is the
+    // display face (screens select it explicitly), and Noto Color Emoji
+    // guarantees color emoji on every Linux box — macOS/Windows would fall
+    // back to their system emoji fonts anyway, but cross-platform consistency
+    // is the point. All three are SIL OFL; texts ship in :/fonts/.
+    {
+        static const char* const brandFonts[] = {
+            ":/fonts/Inter-Regular.ttf",
+            ":/fonts/Inter-Medium.ttf",
+            ":/fonts/Inter-SemiBold.ttf",
+            ":/fonts/Inter-Bold.ttf",
+            ":/fonts/SpaceGrotesk-Regular.ttf",
+            ":/fonts/SpaceGrotesk-Medium.ttf",
+            ":/fonts/SpaceGrotesk-Bold.ttf",
+            ":/fonts/NotoEmoji.ttf",
+        };
+        for (const char* path : brandFonts) {
+            if (QFontDatabase::addApplicationFont(QLatin1String(path)) < 0)
+                qWarning() << "Failed to load bundled font" << path;
+        }
+
+        QFont brandFont = app.font();
+        brandFont.setFamilies({QStringLiteral("Inter"), QStringLiteral("Noto Emoji")});
+        app.setFont(brandFont);
+    }
     // Our icons are styled for a dark theme, so we do not allow the user to override this
     qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
 

@@ -462,7 +462,8 @@ wayland {
 
 RESOURCES += \
     resources.qrc \
-    qml.qrc
+    qml.qrc \
+    fonts.qrc
 
 TRANSLATIONS += \
     languages/qml_zh_CN.ts \

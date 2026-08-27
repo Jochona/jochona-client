@@ -172,6 +172,7 @@ CenteredGridView {
                 Label {
                     text: model.name
                     font.pointSize: 18
+                    font.family: "Space Grotesk"
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -341,6 +342,7 @@ CenteredGridView {
                 text: StreamingPreferences.enableMdns ? qsTr("Looking for hosts on your network…")
                                                       : qsTr("No hosts yet")
                 font.pointSize: 22
+                font.family: "Space Grotesk"
                 font.bold: true
                 Layout.alignment: Qt.AlignVCenter
             }
