@@ -316,7 +316,10 @@ ApplicationWindow {
 
             NavigableToolButton {
                 id: addPcButton
-                visible: stackView.currentItem instanceof PcView
+                // Jochona: HomeView replaces PcView under the modernHomeScreen
+                // flag; both are the host-list surface for this action.
+                visible: stackView.currentItem instanceof PcView ||
+                         stackView.currentItem instanceof HomeView
 
                 iconSource:  "qrc:/res/ic_add_to_queue_white_48px.svg"
 
