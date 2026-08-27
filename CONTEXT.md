@@ -81,6 +81,9 @@ _Avoid_: remote wake (ambiguous), WoL server
 
 **Wake Provider**:
 A Wake mechanism other than the Client Device's own Direct Wake — Overlay Wake or Relay Wake. Configured explicitly per Host; wake success, Host readiness, and connection remain three separate outcomes.
+**Controller Surface**:
+A touch-sensitive region on a controller that carries input beyond buttons — trackpads (Steam Controller/Steam Deck) or touchpads (DualShock 4, DualSense); bindable as a pointer source via a Controller Map transform.
+_Avoid_: touchpad (as a catch-all), pad (ambiguous with Player Slot)
 
 ## Banned usage
 

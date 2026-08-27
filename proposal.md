@@ -209,6 +209,11 @@ The controller manager will provide:
 - Stick and trigger calibration.
 - Dead zones, anti-dead zones, sensitivity, and response curves.
 - Button remapping. Controller Maps apply client-side in the input pipeline before protocol send, so they work with every host; each map carries a raw-passthrough toggle that bypasses all transforms for latency comparison and debugging.
+- Controller Surfaces and motion are routable inputs, not just visualization targets:
+  - Trackpads (Steam Controller/Steam Deck) and touchpads (DualShock 4, DualSense) bind as pointer sources: relative or absolute mouse emulation, tap-to-click, two-finger scroll, and edge gestures, all configurable per Controller Map.
+  - Gyro binds to left stick, right stick, or mouse (gyro aiming), with dead zone, sensitivity, inversion, and "only while aiming/input" gating conventions exposed.
+  - Mouse-emulating transforms run client-side before protocol send, so surfaces and gyro work against every host regardless of host-side virtual-device support; native motion forwarding to hosts that consume it (moonlight-common-c already carries motion) remains available as the alternative binding.
+  - When the Host Application is a Desktop, the Controller Map suggestion engine offers the touchpad-as-mouse preset by default.
 - Rumble and trigger-rumble tests.
 - Per-controller and per-game profiles.
 - Configurable application shortcuts separate from game input.
@@ -782,6 +787,7 @@ Exit criteria:
 Potential deliverables:
 
 - Adaptive bitrate and quality controls, client-driven against Vibepollo's runtime bitrate endpoint.
+- Controller Surface bindings per §6.2: trackpad/touchpad pointer emulation and gyro aiming as configurable Controller Map transforms, client-side.
 - Better VRR and frame-pacing behavior.
 - Broader host coverage and presentation for the adaptive-trigger and motion support that already exists in the protocol.
 - Carefully scoped specialty-controller support.
