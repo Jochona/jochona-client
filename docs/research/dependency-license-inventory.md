@@ -201,10 +201,10 @@ bundled by us.
 
 | # | Unknown | Why it matters |
 |---|---|---|
-| U1 | Steam Link SDK license (SLVideo/SLAudio) + SDK Qt static/dynamic | Gates the Steam Link zip (§5) |
+| U1 | Steam Link SDK license (SLVideo/SLAudio) + SDK Qt static/dynamic — **externally verified 2026-08-27 (§8): the SDK repo contains no license file at all** | Gates the Steam Link zip (§5); remains NOT CLEARED for public distribution |
 | U2 | Every license inside the moonlight-qt-deps v12 archives (Win/mac/SL): OpenSSL, FFmpeg (+config), SDL2, SDL2_ttf (+embedded deps), opus, libplacebo, discord-rpc, NE10/armasm/opus statics | Shipped in MSI/DMG/portable zip or linked into binaries (§3.3) |
 | U3 | Qt 6.11.1 license text as actually deployed by windeployqt / macdeployqt / apt Qt6 | LGPL compliance proof (§3.2) |
-| U4 | h264bitstream upstream provenance; LGPL-2.1 "only" vs "+"; copyright holders (no per-file notices) | Static-link compatibility (§3.1) |
+| U4 | h264bitstream upstream provenance — **RESOLVED 2026-08-27 (§8): LGPL-2.1-or-later, compatible** | Residual: vendored copy stripped per-file license headers — restore them |
 | U5 | `ModeSeven.ttf` license | Shipped in every binary (§3.7) |
 | U6 | `discord.svg` usage rights (Discord brand terms) | Shipped in every binary (§3.7) |
 | U7 | AppImage CI source-built deps' license texts + final linuxdeploy bundle membership | AppImage notices (§3.5) |
@@ -236,3 +236,11 @@ bundled by us.
    `discord.svg`; add Material icons attribution (U5, U6, U9).
 7. **Confirm portable-zip CRT DLL redistribution** matches the current MS
    redist license terms (U8).
+
+## 8. Follow-up verification (external sources, 2026-08-27, by Main)
+
+Two UNKNOWNs resolved against upstream sources directly (outside the in-repo evidence rule):
+
+1. **U4 resolved — h264bitstream is LGPL-2.1-or-later.** Upstream `aizvorski/h264bitstream` header block (`h264_stream.h`): "either version 2.1 of the License, or (at your option) any later version." LGPL-2.1-or-later permits relicensing under LGPL-3.0, whose terms permit static combination with a GPL-3.0 program provided relink+source conditions ride along — satisfied here by the GPL source release. Compatible. **Residual defect:** the vendored `h264bitstream/` copy in this repo deleted upstream's per-file license headers while keeping only the bare LICENSE text — restore the upstream headers (notice retention).
+2. **U1 sharpened — Steam Link SDK has no license grant.** The public `ValveSoftware/steamlink-sdk` repository contains no LICENSE/COPYING file in its root; the README describes building and deploying applications but makes no license statement. The static-link question for `SLVideo`/`SLAudio` cannot be answered from documents. Practical mitigation already in place: the artifact ships no SDK files, and upstream Moonlight has distributed the same static build for years with Valve's knowledge (the SDK exists for third-party apps). Before Jochona's first public release: get a one-line confirmation from Valve or gate the Steam Link artifact — never let the release pipeline auto-publish it unconfirmed.
+3. Everything else (U2, U3, U5–U9) remains open; the v12 deps archives audit (action 3) is next-highest value and fully automatable.
