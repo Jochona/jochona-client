@@ -548,7 +548,7 @@ unix:!macx: {
     desktop.files = deploy/linux/com.jochona.client.desktop
     desktop.path = $$PREFIX/$$DATADIR/applications/
 
-    icons.files = res/moonlight.svg
+    icons.files = res/jochona-512.png
     icons.path = $$PREFIX/$$DATADIR/icons/hicolor/scalable/apps/
 
     # Jochona: renamed from com.moonlight_stream.Moonlight.appdata.xml
@@ -558,7 +558,7 @@ unix:!macx: {
     INSTALLS += target desktop icons appstream
 }
 win32 {
-    RC_ICONS = moonlight.ico
+    RC_ICONS = Jochona.ico
     # Jochona: exe file metadata (Properties > Details, UAC prompts) carries
     # Jochona identity even though TARGET keeps the upstream Moonlight.exe
     # filename for M0 (see TARGET comment above).
@@ -576,7 +576,7 @@ macx {
 
     QMAKE_INFO_PLIST = $$OUT_PWD/Info.plist
 
-    APP_BUNDLE_RESOURCES.files = moonlight.icns
+    APP_BUNDLE_RESOURCES.files = Jochona.icns
     APP_BUNDLE_RESOURCES.path = Contents/Resources
 
     APP_BUNDLE_PLIST.files = $$OUT_PWD/Info.plist

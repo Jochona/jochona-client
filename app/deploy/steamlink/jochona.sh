@@ -3,7 +3,7 @@
 # The default HOME is not persistent, so override
 # it to a path on the onboard flash. Otherwise our
 # pairing data will be lost each reboot.
-HOME=/usr/local/moonlight
+HOME=/usr/local/jochona
 
 # Enable Steam Controller detection in SDL
 # https://github.com/moonlight-stream/moonlight-qt/issues/697

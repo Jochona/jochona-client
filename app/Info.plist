@@ -11,7 +11,7 @@
 	<key>CFBundleGetInfoString</key>
 	<string>Stream games and other applications from another PC</string>
 	<key>CFBundleIconFile</key>
-	<string>moonlight</string>
+	<string>Jochona</string>
 	<!-- Jochona: reverse-DNS app id distinct from upstream com.moonlight-stream.Moonlight -->
 	<key>CFBundleIdentifier</key>
 	<string>com.jochona.client</string>
