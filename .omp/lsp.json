@@ -1,0 +1,34 @@
+{
+  "servers": {
+    "clangd": {
+      "command": "/opt/homebrew/opt/llvm/bin/clangd",
+      "args": [
+        "--compile-commands-dir=build-local",
+        "--background-index",
+        "--header-insertion=never",
+        "--clang-tidy"
+      ],
+      "rootMarkers": [".git", "moonlight-qt.pro"]
+    },
+    "qmlls": {
+      "command": "/opt/homebrew/bin/qmlls",
+      "args": [],
+      "fileTypes": [".qml"],
+      "languageId": "qml",
+      "rootMarkers": [".git", "moonlight-qt.pro"]
+    },
+    "pyright": {
+      "rootMarkers": [".git"],
+      "settings": {
+        "python": {
+          "analysis": {
+            "typeCheckingMode": "basic"
+          }
+        }
+      }
+    },
+    "bashls": { "rootMarkers": [".git"] },
+    "yamlls": { "rootMarkers": [".git"] },
+    "marksman": { "rootMarkers": [".git"] }
+  }
+}
