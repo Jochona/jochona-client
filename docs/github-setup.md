@@ -12,10 +12,13 @@ Owner: `gogolB`, owner of the `Jochona` GitHub org (Free plan, created 2026-08-2
 ## Done by CLI (already executed)
 
 ```bash
-git init -b main && git add -A && git commit -m "Initial docs: proposal, glossary, ADRs"
+git init -b main && git add -A && git commit            # docs bootstrap under gogolB/
 gh repo create gogolB/jochona-client --private --source . --remote origin --push
-gh api -X PUT repos/gogolB/jochona-client/environments/release   # gate for signing secrets
-# branch protection: PR required before merge to main
+gh repo rename jochona-client --yes                    # Lunaframe -> Jochona rename
+gh repo create Jochona/jochona-client --private        # org home (2026-08-27)
+git remote set-url origin git@github.com:Jochona/jochona-client.git && git push -u origin main
+gh api -X PUT repos/Jochona/jochona-client/environments/release
+gh repo delete gogolB/jochona-client --yes             # PENDING: needs `gh auth refresh -s delete_repo`
 ```
 
 ## Import the upstream fork (Milestone 0, run when ready)
@@ -116,9 +119,10 @@ gh api -X PUT repos/Jochona/jochona-client/teams/dev -f permission=push
 
 ## Org migration — DONE 2026-08-27
 
-1. Org `Jochona` created on the web (Free plan, org creation cannot be done via API).
-2. Transferred from inside the local clone: `gh repo transfer Jochona` — `origin` updated automatically.
-3. Post-transfer verification: re-check the `release` environment and its protection rules survived (`gh api repos/Jochona/jochona-client/environments`), branch protection carried over, and grant SignPath access against the `Jochona/…` path when signing is set up.
+1. Org `Jochona` created on the web (Free plan; org creation is web-only — no API).
+2. Repo recreated under the org and pushed; `origin` repointed. `gh repo transfer` does not exist in gh CLI and the REST transfer requires a web accept, so create-push-delete was used. The stale `gogolB/jochona-client` copy still exists until deleted (`gh auth refresh -h github.com -s delete_repo`, then `gh repo delete gogolB/jochona-client --yes`).
+3. **Free-plan limitation hit:** branch protection is unavailable on private org repos without GitHub Pro — the protection PUT returned 403 "Upgrade to GitHub Pro or make this repository public". Conventions (PRs, reviews) are voluntary until the public flip; re-apply protection at flip time.
+4. When signing is set up, grant SignPath access against the `Jochona/jochona-client` path.
 
 ## CI (comes with the M0 import, not before)
 
