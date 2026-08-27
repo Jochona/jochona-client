@@ -1673,6 +1673,7 @@ bool Session::startConnectionAsync()
             m_StreamConfig.streamingRemotely = STREAM_CFG_LOCAL;
             break;
         case NvComputer::RI_VPN:
+        case NvComputer::RI_TAILNET:
             // It looks like our route to this PC is over a VPN, so cap at 1024 bytes.
             // Treat it as remote even if the target address is in RFC 1918 address space.
             m_StreamConfig.streamingRemotely = STREAM_CFG_REMOTE;

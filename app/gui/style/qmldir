@@ -1,2 +1,4 @@
 module style
 singleton Tokens 1.0 Tokens.qml
+singleton ThemeEngine 1.0 ThemeEngine.qml
+singleton Glyphs 1.0 Glyphs.qml

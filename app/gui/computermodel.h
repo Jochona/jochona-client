@@ -16,7 +16,11 @@ class ComputerModel : public QAbstractListModel
         WakeableRole,
         StatusUnknownRole,
         ServerSupportedRole,
-        DetailsRole
+        DetailsRole,
+        WakePortRole,
+        WakeBroadcastRole,
+        ManualMacRole,
+        ConnectionPathRole
     };
 
 public:
@@ -42,6 +46,13 @@ public:
     Q_INVOKABLE void wakeComputer(int computerIndex);
 
     Q_INVOKABLE void renameComputer(int computerIndex, QString name);
+
+    // Wake-on-LAN overrides for the details screen (proposal §6.5). mac is
+    // colon-hex ("" clears), port 0 = automatic, broadcast "" = all NICs.
+    Q_INVOKABLE void setWakeOverrides(int computerIndex, QString mac, int port, QString broadcast);
+
+    // Skip the polling sleep for this host and re-check it right now.
+    Q_INVOKABLE void reprobeComputer(int computerIndex);
 
     Q_INVOKABLE Session* createSessionForCurrentGame(int computerIndex);
 

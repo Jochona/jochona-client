@@ -134,11 +134,22 @@ private:
     int m_Retries = 10;
 };
 
+// A polling thread that can be told to skip its sleep and re-poll the host
+// immediately (the "Re-check now" action after waking a machine or fixing
+// the network).
+class IImmediateProber
+{
+public:
+    virtual ~IImmediateProber() = default;
+
+    virtual void
+    requestImmediateProbe() = 0;
+};
 class ComputerPollingEntry
 {
 public:
     ComputerPollingEntry()
-        : m_ActiveThread(nullptr)
+        : m_ActiveThread(nullptr), m_Prober(nullptr)
     {
 
     }
@@ -171,6 +182,20 @@ public:
         m_ActiveThread = thread;
     }
 
+    // The PcMonitorThread registered via setActiveThread, exposed through the
+    // prober interface; set alongside setActiveThread by the poll starter.
+    void setProber(IImmediateProber* prober)
+    {
+        m_Prober = prober;
+    }
+
+    void requestImmediateProbe()
+    {
+        if (m_Prober != nullptr) {
+            m_Prober->requestImmediateProbe();
+        }
+    }
+
     void interrupt()
     {
         cleanInactiveList();
@@ -183,6 +208,9 @@ public:
             m_InactiveList.append(m_ActiveThread);
 
             m_ActiveThread = nullptr;
+            // The thread is heading for the inactive list (and delete); drop
+            // the prober pointer with it so requestImmediateProbe can't dangle.
+            m_Prober = nullptr;
         }
     }
 
@@ -202,6 +230,7 @@ private:
             }
         }
     }
+    IImmediateProber* m_Prober;
 
     QThread* m_ActiveThread;
     QList<QThread*> m_InactiveList;
@@ -243,6 +272,15 @@ public:
     void renameHost(NvComputer* computer, QString name);
 
     void clientSideAttributeUpdated(NvComputer* computer);
+
+    // Wake-on-LAN overrides (proposal §6.5): colon-hex mac ("" clears),
+    // forced destination port (0 = auto sweep), forced broadcast destination
+    // ("" = sweep all NIC broadcasts). Persisted immediately.
+    void setWakeOverrides(NvComputer* computer, QString macAddress, quint16 port, QString broadcastAddress);
+
+    // Nudge the polling thread for this host to re-probe right now instead
+    // of waiting out its 3 s sleep.
+    void reprobeHost(NvComputer* computer);
 
 signals:
     void computerStateChanged(NvComputer* computer);

@@ -10,11 +10,12 @@
 #include <QThreadPool>
 #include <QCoreApplication>
 #include <QRandomGenerator>
+#include <atomic>
 
 #define SER_HOSTS "hosts"
 #define SER_HOSTS_BACKUP "hostsbackup"
 
-class PcMonitorThread : public QThread
+class PcMonitorThread : public QThread, public IImmediateProber
 {
     Q_OBJECT
 
@@ -23,7 +24,7 @@ class PcMonitorThread : public QThread
 
 public:
     PcMonitorThread(NvComputer* computer)
-        : m_Computer(computer)
+        : m_ProbeNow(false), m_Computer(computer)
     {
         setObjectName("Polling thread for " + computer->name);
     }
@@ -118,6 +119,13 @@ private:
                 qInfo() << m_Computer->name << "is now offline";
                 m_Computer->state = NvComputer::CS_OFFLINE;
                 stateChanged = true;
+                m_Computer->activeReachability = NvComputer::RI_UNKNOWN;
+            }
+
+            // Refresh the cached path label (LAN/Tailnet/VPN) when the host
+            // just came online or we've never classified the current path.
+            if (online && (!wasOnline || m_Computer->activeReachability == NvComputer::RI_UNKNOWN)) {
+                m_Computer->activeReachability = m_Computer->getActiveAddressReachability();
             }
 
             // Grab the applist if it's empty or it's been long enough that we need to refresh
@@ -146,15 +154,27 @@ private:
             // so we can be interrupted reasonably quickly.
             // FIXME: QWaitCondition would be better.
             for (int i = 0; i < 30 && !isInterruptionRequested(); i++) {
+                if (m_ProbeNow.exchange(false)) {
+                    // A "Re-check now" request cut the sleep short
+                    break;
+                }
                 QThread::msleep(100);
             }
         }
+    }
+
+public:
+    void
+    requestImmediateProbe() override
+    {
+        m_ProbeNow = true;
     }
 
 signals:
    void computerStateChanged(NvComputer* computer);
 
 private:
+    std::atomic<bool> m_ProbeNow;
     NvComputer* m_Computer;
 };
 
@@ -413,6 +433,7 @@ void ComputerManager::startPollingComputer(NvComputer* computer)
         connect(thread, &PcMonitorThread::computerStateChanged,
                 this, &ComputerManager::handleComputerStateChanged);
         pollingEntry->setActiveThread(thread);
+        pollingEntry->setProber(thread);
         thread->start();
     }
 }
@@ -423,7 +444,6 @@ void ComputerManager::handleMdnsServiceResolved(MdnsPendingComputer* computer,
     QHostAddress v6Global = getBestGlobalAddressV6(addresses);
     bool added = false;
 
-    // Add the host using the IPv4 address
     for (const QHostAddress& address : std::as_const(addresses)) {
         if (address.protocol() == QAbstractSocket::IPv4Protocol) {
             // NB: We don't just call addNewHost() here with v6Global because the IPv6
@@ -561,6 +581,47 @@ void ComputerManager::clientSideAttributeUpdated(NvComputer* computer)
 {
     // Notify the UI of the state change
     handleComputerStateChanged(computer);
+}
+
+void ComputerManager::setWakeOverrides(NvComputer* computer, QString macAddress, quint16 port, QString broadcastAddress)
+{
+    {
+        QWriteLocker lock(&computer->lock);
+
+        // Colon-hex form ("aa:bb:cc:dd:ee:ff"); anything unparsable is dropped,
+        // an empty result means "fall back to the learned MAC".
+        QByteArray parsedMac;
+        for (const QString& octet : macAddress.split(':', Qt::SkipEmptyParts)) {
+            bool ok;
+            uint value = octet.trimmed().toUInt(&ok, 16);
+            if (ok && value <= 0xFF) {
+                parsedMac.append(static_cast<char>(value));
+            }
+        }
+        if (parsedMac.size() != 6) {
+            parsedMac.clear();
+        }
+
+        computer->manualMacAddress = parsedMac;
+        computer->wakePort = port;
+        computer->wakeBroadcastAddress = broadcastAddress.trimmed();
+    }
+
+    // Persist immediately; these are explicit user edits, not polled state
+    saveHosts();
+
+    // Notify the UI of the state change
+    handleComputerStateChanged(computer);
+}
+
+void ComputerManager::reprobeHost(NvComputer* computer)
+{
+    QReadLocker lock(&m_Lock);
+
+    ComputerPollingEntry* entry = m_PollEntries.value(computer->uuid, nullptr);
+    if (entry != nullptr) {
+        entry->requestImmediateProbe();
+    }
 }
 
 void ComputerManager::handleAboutToQuit()
@@ -965,7 +1026,8 @@ private:
 
                 // If this wasn't added via mDNS but it is a RFC 1918 IPv4 address and not a VPN,
                 // go ahead and do the STUN request now to populate an external address.
-                if (!m_Mdns && addressIsSiteLocalV4 && newComputer->getActiveAddressReachability() != NvComputer::RI_VPN) {
+                if (!m_Mdns && addressIsSiteLocalV4 && newComputer->getActiveAddressReachability() != NvComputer::RI_VPN &&
+                        newComputer->getActiveAddressReachability() != NvComputer::RI_TAILNET) {
                     quint32 addr;
                     int err = LiFindExternalAddressIP4("stun.moonlight-stream.org", 3478, &addr);
                     if (err == 0) {

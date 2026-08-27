@@ -8,6 +8,12 @@
         <file>fonts/SpaceGrotesk-Medium.ttf</file>
         <file>fonts/SpaceGrotesk-Bold.ttf</file>
         <file>fonts/NotoEmoji.ttf</file>
+        <file>fonts/kenney_input_xbox_series.ttf</file>
+        <file>fonts/kenney_input_playstation_series.ttf</file>
+        <file>fonts/kenney_input_nintendo_switch.ttf</file>
+        <file>fonts/kenney_input_steam_deck.ttf</file>
+        <file>fonts/kenney_input_generic.ttf</file>
+        <file>fonts/LICENSE-Kenney.txt</file>
         <file>fonts/LICENSE-Inter.txt</file>
         <file>fonts/LICENSE-SpaceGrotesk.txt</file>
         <file>fonts/LICENSE-NotoEmoji.txt</file>

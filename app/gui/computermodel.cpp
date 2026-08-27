@@ -37,11 +37,30 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
     case BusyRole:
         return computer->currentGameId != 0;
     case WakeableRole:
-        return !computer->macAddress.isEmpty();
+        // A manual override MAC makes a host wakeable even with nothing learned
+        return !computer->macAddress.isEmpty() || !computer->manualMacAddress.isEmpty();
     case StatusUnknownRole:
         return computer->state == NvComputer::CS_UNKNOWN;
     case ServerSupportedRole:
         return computer->isSupportedServerVersion;
+    case WakePortRole:
+        return computer->wakePort;
+    case WakeBroadcastRole:
+        return computer->wakeBroadcastAddress;
+    case ManualMacRole:
+        return computer->manualMacAddress.isEmpty() ?
+                   QString() : QString(computer->manualMacAddress.toHex(':'));
+    case ConnectionPathRole:
+        switch (computer->activeReachability) {
+        case NvComputer::RI_LAN:
+            return tr("Direct (LAN)");
+        case NvComputer::RI_VPN:
+            return tr("VPN");
+        case NvComputer::RI_TAILNET:
+            return tr("Tailnet");
+        default:
+            return tr("Unknown");
+        }
     case DetailsRole: {
         QString state, pairState;
 
@@ -78,6 +97,9 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
                tr("IPv6 Address: %1").arg(computer->ipv6Address.toString()) + '\n' +
                tr("Manual Address: %1").arg(computer->manualAddress.toString()) + '\n' +
                tr("MAC Address: %1").arg(computer->macAddress.isEmpty() ? tr("Unknown") : QString(computer->macAddress.toHex(':'))) + '\n' +
+               tr("Manual MAC: %1").arg(computer->manualMacAddress.isEmpty() ? tr("None") : QString(computer->manualMacAddress.toHex(':'))) + '\n' +
+               tr("Wake Port: %1").arg(computer->wakePort == 0 ? tr("Automatic") : QString::number(computer->wakePort)) + '\n' +
+               tr("Wake Broadcast: %1").arg(computer->wakeBroadcastAddress.isEmpty() ? tr("All interfaces") : computer->wakeBroadcastAddress) + '\n' +
                tr("Pair State: %1").arg(pairState) + '\n' +
                tr("Running Game ID: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->currentGameId) : tr("Unknown")) + '\n' +
                tr("HTTPS Port: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->activeHttpsPort) : tr("Unknown"));
@@ -110,6 +132,10 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[StatusUnknownRole] = "statusUnknown";
     names[ServerSupportedRole] = "serverSupported";
     names[DetailsRole] = "details";
+    names[WakePortRole] = "wakePort";
+    names[WakeBroadcastRole] = "wakeBroadcast";
+    names[ManualMacRole] = "manualMac";
+    names[ConnectionPathRole] = "connectionPath";
 
     return names;
 }
@@ -177,6 +203,22 @@ void ComputerModel::renameComputer(int computerIndex, QString name)
     Q_ASSERT(computerIndex < m_Computers.count());
 
     m_ComputerManager->renameHost(m_Computers[computerIndex], name);
+}
+
+void ComputerModel::setWakeOverrides(int computerIndex, QString mac, int port, QString broadcast)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    m_ComputerManager->setWakeOverrides(m_Computers[computerIndex], mac,
+                                        static_cast<quint16>(qBound(0, port, 65535)),
+                                        broadcast);
+}
+
+void ComputerModel::reprobeComputer(int computerIndex)
+{
+    Q_ASSERT(computerIndex < m_Computers.count());
+
+    m_ComputerManager->reprobeHost(m_Computers[computerIndex]);
 }
 
 QString ComputerModel::generatePinString()

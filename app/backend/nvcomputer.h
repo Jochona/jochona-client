@@ -58,6 +58,10 @@ public:
         RI_UNKNOWN,
         RI_LAN,
         RI_VPN,
+        // Active path is a Tailscale/tailnet address (CGNAT 100.64/10 or a
+        // detected ts* interface). Reported separately so the UI can label
+        // "Tailnet" instead of a generic VPN badge.
+        RI_TAILNET
     };
 
     ReachabilityType
@@ -89,6 +93,9 @@ public:
 
     // Ephemeral traits
     ComputerState state;
+    // Cached path classification kept fresh by the polling thread; safe and
+    // cheap for the UI to display (the real probe does network I/O).
+    ReachabilityType activeReachability;
     PairState pairState;
     NvAddress activeAddress;
     uint16_t activeHttpsPort;
@@ -107,6 +114,12 @@ public:
     NvAddress ipv6Address;
     NvAddress manualAddress;
     QByteArray macAddress;
+    // User-configured Wake-on-LAN overrides (proposal §6.5). All optional;
+    // empty/zero means "use learned behavior". manualMacAddress wins over
+    // the learned macAddress when set (NIC MAC rotated or was never sent).
+    QByteArray manualMacAddress;
+    quint16 wakePort;             // 0 = standard+dynamic port sweep
+    QString wakeBroadcastAddress; // empty = sweep all NIC broadcasts/multicasts
     QString name;
     bool hasCustomName;
     QString uuid;

@@ -22,6 +22,9 @@
 #define SER_SRVCERT "srvcert"
 #define SER_CUSTOMNAME "customname"
 #define SER_NVIDIASOFTWARE "nvidiasw"
+#define SER_MACOVERRIDE "macoverride"
+#define SER_WAKEPORT "wakeport"
+#define SER_WAKEBROADCAST "wakebroadcast"
 
 NvComputer::NvComputer(QSettings& settings)
 {
@@ -39,6 +42,9 @@ NvComputer::NvComputer(QSettings& settings)
                                     settings.value(SER_MANUALPORT, QVariant(DEFAULT_HTTP_PORT)).toUInt());
     this->serverCert = QSslCertificate(settings.value(SER_SRVCERT).toByteArray());
     this->isNvidiaServerSoftware = settings.value(SER_NVIDIASOFTWARE).toBool();
+    this->manualMacAddress = settings.value(SER_MACOVERRIDE).toByteArray();
+    this->wakePort = static_cast<quint16>(settings.value(SER_WAKEPORT, 0).toUInt());
+    this->wakeBroadcastAddress = settings.value(SER_WAKEBROADCAST).toString();
 
     int appCount = settings.beginReadArray(SER_APPLIST);
     this->appList.reserve(appCount);
@@ -54,6 +60,7 @@ NvComputer::NvComputer(QSettings& settings)
     this->currentGameId = 0;
     this->pairState = PS_UNKNOWN;
     this->state = CS_UNKNOWN;
+    this->activeReachability = RI_UNKNOWN;
     this->gfeVersion = nullptr;
     this->appVersion = nullptr;
     this->maxLumaPixelsHEVC = 0;
@@ -92,6 +99,9 @@ void NvComputer::serialize(QSettings& settings, bool serializeApps) const
     settings.setValue(SER_MANUALPORT, manualAddress.port());
     settings.setValue(SER_SRVCERT, serverCert.toPem());
     settings.setValue(SER_NVIDIASOFTWARE, isNvidiaServerSoftware);
+    settings.setValue(SER_MACOVERRIDE, manualMacAddress);
+    settings.setValue(SER_WAKEPORT, wakePort);
+    settings.setValue(SER_WAKEBROADCAST, wakeBroadcastAddress);
 
     // Avoid deleting an existing applist if we couldn't get one
     if (!appList.isEmpty() && serializeApps) {
@@ -117,6 +127,9 @@ bool NvComputer::isEqualSerialized(const NvComputer &that) const
            this->manualAddress == that.manualAddress &&
            this->serverCert == that.serverCert &&
            this->isNvidiaServerSoftware == that.isNvidiaServerSoftware &&
+           this->manualMacAddress == that.manualMacAddress &&
+           this->wakePort == that.wakePort &&
+           this->wakeBroadcastAddress == that.wakeBroadcastAddress &&
            this->appList == that.appList;
 }
 
@@ -209,13 +222,22 @@ NvComputer::NvComputer(NvHTTP& http, QString serverInfo)
     this->gpuModel = NvHTTP::getXmlString(serverInfo, "gputype");
     this->activeAddress = http.address();
     this->state = NvComputer::CS_ONLINE;
+    this->activeReachability = RI_UNKNOWN;
     this->pendingQuit = false;
     this->isSupportedServerVersion = CompatFetcher::isGfeVersionSupported(this->gfeVersion);
+    // Wake overrides are user-local settings; a host discovered over the wire
+    // starts with none (they live on the persisted copy and survive update()).
+    this->manualMacAddress = QByteArray();
+    this->wakePort = 0;
+    this->wakeBroadcastAddress = QString();
 }
 
 bool NvComputer::wake() const
 {
     QByteArray wolPayload;
+    QByteArray effectiveMac;
+    quint16 forcedPort;
+    QString forcedBroadcast;
 
     {
         QReadLocker readLocker(&lock);
@@ -225,7 +247,11 @@ bool NvComputer::wake() const
             return true;
         }
 
-        if (macAddress.isEmpty()) {
+        effectiveMac = manualMacAddress.isEmpty() ? macAddress : manualMacAddress;
+        forcedPort = wakePort;
+        forcedBroadcast = wakeBroadcastAddress;
+
+        if (effectiveMac.isEmpty()) {
             qWarning() << name << "has no MAC address stored";
             return false;
         }
@@ -233,7 +259,7 @@ bool NvComputer::wake() const
         // Create the WoL payload
         wolPayload.append(QByteArray::fromHex("FFFFFFFFFFFF"));
         for (int i = 0; i < 16; i++) {
-            wolPayload.append(macAddress);
+            wolPayload.append(effectiveMac);
         }
         Q_ASSERT(wolPayload.size() == 102);
     }
@@ -254,38 +280,51 @@ bool NvComputer::wake() const
     // case the host has timed out in ARP entries.
     QMap<QString, quint16> addressMap;
     QSet<quint16> basePortSet;
-    const auto uniqueHostAddresses = uniqueAddresses();
-    for (const NvAddress& addr : uniqueHostAddresses) {
-        addressMap.insert(addr.address(), addr.port());
-        basePortSet.insert(addr.port());
+
+    if (!forcedBroadcast.isEmpty()) {
+        // User forced a specific destination (directed subnet broadcast for
+        // hosts whose NIC only hears it there). Nothing else is tried.
+        addressMap.insert(forcedBroadcast, 0);
     }
-    addressMap.insert("255.255.255.255", 0);
-
-    // Try to broadcast on all available NICs
-    const auto allInterfaces = QNetworkInterface::allInterfaces();
-    for (const QNetworkInterface& nic : allInterfaces) {
-        // Ensure the interface is up and skip the loopback adapter
-        if ((nic.flags() & QNetworkInterface::IsUp) == 0 ||
-                (nic.flags() & QNetworkInterface::IsLoopBack) != 0) {
-            continue;
+    else {
+        // Add the addresses that we know this host to be
+        // and broadcast addresses for this link just in
+        // case the host has timed out in ARP entries.
+        const auto uniqueHostAddresses = uniqueAddresses();
+        for (const NvAddress& addr : uniqueHostAddresses) {
+            addressMap.insert(addr.address(), addr.port());
+            basePortSet.insert(addr.port());
         }
+        addressMap.insert("255.255.255.255", 0);
+    }
 
-        QHostAddress allNodesMulticast("FF02::1");
-        const auto allInterfaceAddresses = nic.addressEntries();
-        for (const QNetworkAddressEntry& addr : allInterfaceAddresses) {
-            // Store the scope ID for this NIC if IPv6 is enabled
-            if (!addr.ip().scopeId().isEmpty()) {
-                allNodesMulticast.setScopeId(addr.ip().scopeId());
+    if (forcedBroadcast.isEmpty()) {
+        // Try to broadcast on all available NICs
+        const auto allInterfaces = QNetworkInterface::allInterfaces();
+        for (const QNetworkInterface& nic : allInterfaces) {
+            // Ensure the interface is up and skip the loopback adapter
+            if ((nic.flags() & QNetworkInterface::IsUp) == 0 ||
+                    (nic.flags() & QNetworkInterface::IsLoopBack) != 0) {
+                continue;
             }
 
-            // Skip IPv6 which doesn't support broadcast
-            if (!addr.broadcast().isNull()) {
-                addressMap.insert(addr.broadcast().toString(), 0);
-            }
-        }
+            QHostAddress allNodesMulticast("FF02::1");
+            const auto allInterfaceAddresses = nic.addressEntries();
+            for (const QNetworkAddressEntry& addr : allInterfaceAddresses) {
+                // Store the scope ID for this NIC if IPv6 is enabled
+                if (!addr.ip().scopeId().isEmpty()) {
+                    allNodesMulticast.setScopeId(addr.ip().scopeId());
+                }
 
-        if (!allNodesMulticast.scopeId().isEmpty()) {
-            addressMap.insert(allNodesMulticast.toString(), 0);
+                // Skip IPv6 which doesn't support broadcast
+                if (!addr.broadcast().isNull()) {
+                    addressMap.insert(addr.broadcast().toString(), 0);
+                }
+            }
+
+            if (!allNodesMulticast.scopeId().isEmpty()) {
+                addressMap.insert(allNodesMulticast.toString(), 0);
+            }
         }
     }
 
@@ -313,6 +352,20 @@ bool NvComputer::wake() const
         // Try all IP addresses that this string resolves to
         for (QHostAddress& address : addressList) {
             QUdpSocket sock;
+
+            if (forcedPort != 0) {
+                // User forced a WOL port (e.g. a router UDP-forward relay).
+                // Send only there; the learned port sweep would be noise.
+                if (sock.writeDatagram(wolPayload, address, forcedPort)) {
+                    qInfo().nospace().noquote() << "Sent WoL packet to " << name << " via "
+                                                << address.toString() << ":" << forcedPort << " (forced port)";
+                    success = true;
+                }
+                else {
+                    qWarning() << "Send failed:" << sock.error();
+                }
+                continue;
+            }
 
             // Send to all static ports
             for (quint16 port : STATIC_WOL_PORTS) {
@@ -371,6 +424,16 @@ NvComputer::ReachabilityType NvComputer::getActiveAddressReachability() const
         copyOfActiveAddress = activeAddress;
     }
 
+    // Tailscale hands out addresses from the CGNAT range; a host reachable
+    // there is on the tailnet regardless of what the socket layer says.
+    {
+        QHostAddress activeIp(copyOfActiveAddress.address());
+        if (activeIp.protocol() == QAbstractSocket::IPv4Protocol &&
+                (activeIp.toIPv4Address() & 0xFFC00000) == 0x64400000) { // 100.64.0.0/10
+            return ReachabilityType::RI_TAILNET;
+        }
+    }
+
     QTcpSocket s;
     s.setProxy(QNetworkProxy::NoProxy);
     s.connectToHost(copyOfActiveAddress.address(), copyOfActiveAddress.port());
@@ -389,6 +452,14 @@ NvComputer::ReachabilityType NvComputer::getActiveAddressReachability() const
             for (const QNetworkAddressEntry& addr : allInterfaceAddresses) {
                 if (addr.ip() == s.localAddress()) {
                     qInfo() << "Found matching interface:" << nic.humanReadableName() << nic.hardwareAddress() << nic.flags();
+
+                    // Tailscale's adapter name is another reliable signal; its
+                    // MTU (1280) would otherwise classify tailnets as generic VPNs.
+                    const QString nicName = nic.humanReadableName().toLower();
+                    if (nicName.contains("tailscale") || nicName.startsWith("tsadaptor") ||
+                            nicName == "utun-tailscale") {
+                        return ReachabilityType::RI_TAILNET;
+                    }
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
                     qInfo() << "Interface Type:" << nic.type();

@@ -186,7 +186,7 @@ CenteredGridView {
                 Label {
                     text: model.name
                     font.pointSize: Tokens.sizeSection
-                    font.family: Tokens.fontDisplay
+                    font.family: Tokens.familyDisplay
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -208,7 +208,7 @@ CenteredGridView {
                 Layout.alignment: Qt.AlignVCenter
                 visible: !model.online && model.wakeable && !hostRow.waking
                 text: qsTr("Wake")
-                font.pointSize: Tokens.sizeAction
+                font.pointSize: Tokens.sizeBody
                 font.bold: true
                 color: parent.parent.highlighted ? Tokens.accentFocus : Tokens.accent
             }

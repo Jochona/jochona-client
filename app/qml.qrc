@@ -22,5 +22,7 @@
         <file>gui/CliPair.qml</file>
         <file>gui/style/qmldir</file>
         <file>gui/style/Tokens.qml</file>
+        <file>gui/style/ThemeEngine.qml</file>
+        <file>gui/style/Glyphs.qml</file>
     </qresource>
 </RCC>
