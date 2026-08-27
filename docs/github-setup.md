@@ -18,7 +18,7 @@ gh repo rename jochona-client --yes                    # Lunaframe -> Jochona re
 gh repo create Jochona/jochona-client --private        # org home (2026-08-27)
 git remote set-url origin git@github.com:Jochona/jochona-client.git && git push -u origin main
 gh api -X PUT repos/Jochona/jochona-client/environments/release
-gh repo delete gogolB/jochona-client --yes             # PENDING: needs `gh auth refresh -s delete_repo`
+gh repo delete gogolB/jochona-client --yes             # DONE — owner deleted 2026-08-27, 404 verified
 ```
 
 ## Upstream import — DONE 2026-08-27
@@ -123,7 +123,7 @@ gh api -X PUT repos/Jochona/jochona-client/teams/dev -f permission=push
 ## Org migration — DONE 2026-08-27
 
 1. Org `Jochona` created on the web (Free plan; org creation is web-only — no API).
-2. Repo recreated under the org and pushed; `origin` repointed. `gh repo transfer` does not exist in gh CLI and the REST transfer requires a web accept, so create-push-delete was used. The stale `gogolB/jochona-client` copy still exists until deleted (`gh auth refresh -h github.com -s delete_repo`, then `gh repo delete gogolB/jochona-client --yes`).
+2. Repo recreated under the org and pushed; `origin` repointed. `gh repo transfer` does not exist in gh CLI and the REST transfer requires a web accept, so create-push-delete was used. The stale `gogolB/jochona-client` copy was deleted by the owner on 2026-08-27 (404 verified) — `Jochona/jochona-client` is the single home.
 3. **Free-plan limitation hit:** branch protection is unavailable on private org repos without GitHub Pro — the protection PUT returned 403 "Upgrade to GitHub Pro or make this repository public". Conventions (PRs, reviews) are voluntary until the public flip; re-apply protection at flip time.
 4. When signing is set up, grant SignPath access against the `Jochona/jochona-client` path.
 
