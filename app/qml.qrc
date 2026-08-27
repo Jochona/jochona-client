@@ -30,5 +30,8 @@
         <file>gui/style/ThemeEngine.qml</file>
         <file>gui/style/Glyphs.qml</file>
         <file>gui/controller/ControllerManagerView.qml</file>
+        <file>gui/session/qmldir</file>
+        <file>gui/session/SessionStatusOverlay.qml</file>
+        <file>gui/session/ConnectionTestDialog.qml</file>
     </qresource>
 </RCC>

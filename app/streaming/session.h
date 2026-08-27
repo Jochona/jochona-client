@@ -106,6 +106,14 @@ public:
     Q_INVOKABLE void interrupt();
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
 
+    // Jochona M3 (session resilience): builds a fresh Session for the same
+    // host/app, mirroring AppModel::createSessionForApp() and
+    // ComputerModel::createSessionForCurrentGame(). Session is single-use
+    // (LiStopConnection() + decoder teardown happen once exec() returns), so
+    // a "reconnect" always means constructing a new Session; this re-enters
+    // that existing construction path instead of duplicating it in QML.
+    Q_INVOKABLE Session* createReconnectSession() { return new Session(m_Computer, m_App, m_Preferences); }
+
     static
     void getDecoderInfo(SDL_Window* window,
                         bool& isHardwareAccelerated, bool& isFullScreenOnly,
@@ -129,6 +137,13 @@ signals:
     void stageStarting(QString stage);
 
     void stageFailed(QString stage, int errorCode, QString failingPorts);
+
+    // Jochona M3 (session resilience): raw termination code + failing ports
+    // so QML can render its own plain-language guidance instead of parsing
+    // Session::displayLaunchError()'s pre-formatted text. Fires for every
+    // termination reason, including graceful (errorCode 0), so listeners
+    // can distinguish an intentional quit from a real failure.
+    void connectionTerminated(int errorCode, QString failingPorts);
 
     void connectionStarted();
 

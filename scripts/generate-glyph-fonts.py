@@ -113,8 +113,9 @@ QtObject {
         root._loaders = comps
     }
 
-    Component {
-        id: fontLoaderComp
+    // QtObject has no default property — the Component must hang off an
+    // explicit property or instantiation of the singleton fails at runtime.
+    readonly property Component fontLoaderComp: Component {
         FontLoader {}
     }
 

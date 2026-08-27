@@ -90,6 +90,16 @@ void Session::clConnectionTerminated(int errorCode)
     unsigned int portFlags = LiGetPortFlagsFromTerminationErrorCode(errorCode);
     s_ActiveSession->m_PortTestResults = LiTestClientConnectivity(CONN_TEST_SERVER, 443, portFlags);
 
+    // Jochona M3 (session resilience): give QML the raw error code and
+    // failing ports up front so it can render its own guidance table,
+    // independent of the pre-formatted strings emitted below via
+    // displayLaunchError(). Fires for every termination reason (including
+    // graceful, errorCode 0) so listeners can tell a real failure apart
+    // from an intentional quit.
+    char terminationPorts[128];
+    LiStringifyPortFlags(portFlags, ", ", terminationPorts, sizeof(terminationPorts));
+    emit s_ActiveSession->connectionTerminated(errorCode, QString(terminationPorts));
+
     // Display the termination dialog if this was not intended
     switch (errorCode) {
     case ML_ERROR_GRACEFUL_TERMINATION:
