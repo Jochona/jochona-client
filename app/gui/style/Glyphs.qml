@@ -20,8 +20,9 @@ import QtQuick 2.0
 QtObject {
     id: root
 
-    // Default prompt family until the M2 controller manager reports identity
-    readonly property string family: "xbox"
+    // Default prompt family until the M2 controller manager reports identity;
+    // writable so the UI can bind it to the connected controller's family.
+    property string family: "xbox"
 
     readonly property var fontFiles: {
               "xbox": "kenney_input_xbox_series",
@@ -86,7 +87,7 @@ QtObject {
             "back": "\u{E01C}",
             "guide": "\u{E041}",
             "share": "\u{E016}"
-        }
+        },
         "playstation": {
             "a": "\u{E04B}",
             "b": "\u{E041}",
@@ -107,7 +108,7 @@ QtObject {
             "guide": "\u{E03F}",
             "share": "\u{E00B}",
             "touchpad": "\u{E030}"
-        }
+        },
         "nintendo": {
             "a": "\u{E004}",
             "b": "\u{E006}",
@@ -127,7 +128,7 @@ QtObject {
             "back": "\u{E00C}",
             "guide": "\u{E008}",
             "share": "\u{E016}"
-        }
+        },
         "steam": {
             "a": "\u{E001}",
             "b": "\u{E003}",
@@ -148,7 +149,7 @@ QtObject {
             "guide": "\u{E005}",
             "share": "\u{E011}",
             "touchpad": "\u{E04B}"
-        }
+        },
         "generic": {
 
         }

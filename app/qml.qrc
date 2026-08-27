@@ -3,6 +3,11 @@
         <file>gui/main.qml</file>
         <file>gui/PcView.qml</file>
         <file>gui/HomeView.qml</file>
+        <file>gui/PairView.qml</file>
+        <file>gui/WelcomeView.qml</file>
+        <file>gui/OnScreenKeyboard.qml</file>
+        <file>gui/NavigableButton.qml</file>
+        <file>gui/ControllerHint.qml</file>
         <file>gui/AppView.qml</file>
         <file>gui/SettingsView.qml</file>
         <file>gui/StreamSegue.qml</file>
@@ -24,5 +29,6 @@
         <file>gui/style/Tokens.qml</file>
         <file>gui/style/ThemeEngine.qml</file>
         <file>gui/style/Glyphs.qml</file>
+        <file>gui/controller/ControllerManagerView.qml</file>
     </qresource>
 </RCC>

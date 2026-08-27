@@ -198,6 +198,8 @@ SOURCES += \
     backend/boxartmanager.cpp \
     backend/richpresencemanager.cpp \
     backend/thememanager.cpp \
+    backend/controllermanager.cpp \
+    backend/controllerprofilestore.cpp \
     cli/commandlineparser.cpp \
     cli/listapps.cpp \
     cli/quitstream.cpp \
@@ -245,6 +247,8 @@ HEADERS += \
     backend/boxartmanager.h \
     backend/richpresencemanager.h \
     backend/thememanager.h \
+    backend/controllermanager.h \
+    backend/controllerprofilestore.h \
     cli/commandlineparser.h \
     cli/listapps.h \
     cli/quitstream.h \

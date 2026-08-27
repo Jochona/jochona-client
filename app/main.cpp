@@ -53,6 +53,8 @@
 #include "backend/computermanager.h"
 #include "backend/systemproperties.h"
 #include "backend/thememanager.h"
+#include "backend/controllermanager.h"
+#include "backend/controllerprofilestore.h"
 #include "core/credentialstore.h"
 #include "core/settingsdatabase.h"
 #include "streaming/session.h"
@@ -962,6 +964,16 @@ int main(int argc, char *argv[])
                                                       [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {
                                                           return new SdlGamepadKeyNavigation(StreamingPreferences::get(qmlEngine));
                                                       });
+    qmlRegisterSingletonType<ControllerManager>("ControllerManager", 1, 0,
+                                                 "ControllerManager",
+                                                 [](QQmlEngine*, QJSEngine*) -> QObject* {
+                                                     return ControllerManager::get();
+                                                 });
+    qmlRegisterSingletonType<ControllerProfileStore>("ControllerProfileStore", 1, 0,
+                                                     "ControllerProfileStore",
+                                                     [](QQmlEngine*, QJSEngine*) -> QObject* {
+                                                         return ControllerProfileStore::get();
+                                                     });
     qmlRegisterSingletonType<StreamingPreferences>("StreamingPreferences", 1, 0,
                                                    "StreamingPreferences",
                                                    [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {

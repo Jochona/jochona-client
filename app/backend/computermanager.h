@@ -149,7 +149,7 @@ class ComputerPollingEntry
 {
 public:
     ComputerPollingEntry()
-        : m_ActiveThread(nullptr), m_Prober(nullptr)
+        : m_Prober(nullptr), m_ActiveThread(nullptr)
     {
 
     }

@@ -93,8 +93,9 @@ import QtQuick 2.0
 QtObject {
     id: root
 
-    // Default prompt family until the M2 controller manager reports identity
-    readonly property string family: "xbox"
+    // Default prompt family until the M2 controller manager reports identity;
+    // writable so the UI can bind it to the connected controller's family.
+    property string family: "xbox"
 
     readonly property var fontFiles: {FONTS}
 
@@ -183,7 +184,7 @@ def main() -> None:
 
     fonts_block = ",\n              ".join(f'"{k}": "{v}"' for k, v in fonts.items())
     qml = QML_HEAD.replace("{FONTS}", "{\n              " + fonts_block + "\n          }")
-    qml = qml.replace("{GLYPHS}", "\n".join(blocks))
+    qml = qml.replace("{GLYPHS}", ",\n".join(blocks))
     OUT_QML.write_text(qml, encoding="utf-8")
     print(f"wrote app/gui/style/Glyphs.qml "
           f"({len(LOGICAL)} logical glyphs x {len(FAMILIES)} families)")
