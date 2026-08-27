@@ -108,11 +108,11 @@ v1 architecture — a `.flatpakref` only works when a live OSTree repo sits behi
 
 1. CI runs `flatpak-builder --repo=repo …` + `flatpak build-update-repo repo`, pushes the repo tree to a `flatpak-repo` branch, and GitHub Pages serves it at `https://jochona.github.io/flatpak-repo/`.
 2. Each release attaches `jochona-client.flatpakref` (pointing at the Pages repo URL) and a `.flatpak` bundle (manual `flatpak install --bundle` fallback).
-3. Users: `flatpak install https://jochona.github.io/flatpak-repo/app.jochona.client.flatpakref` — update channel is the Pages repo; `.flatpakref` itself is static.
+3. Users: `flatpak install https://jochona.github.io/flatpak-repo/com.jochona.client.flatpakref` — update channel is the Pages repo; `.flatpakref` itself is static.
 4. Repo signing: HTTPS delivery is the v1 integrity mechanism; optional detached GPG via `build-update-repo --gpg-sign` later.
 5. Runtime/deps from Flathub's `org.kde.Platform` runtimes (consumption side is unaffected by the policy).
 
-Consequences to accept consciously: no Flathub search/browse discovery, no Flathub-run rebuilds, we host our own repo file update flow. If policy or project maturity changes the calculus later, a future submission also requires the app ID to be final (`app.jochona.client` once the domain is bought — Flathub verifies domain control; the GitHub-fallback prefix would have been `io.github.*`, not `com.github.*`) and a documented human-authored release of the submitted artifacts.
+Consequences to accept consciously: no Flathub search/browse discovery, no Flathub-run rebuilds, we host our own repo file update flow. If policy or project maturity changes the calculus later, a future submission also requires the app ID `com.jochona.client` (reverse of the owned jochona.com domain — Flathub verifies domain control) and a documented human-authored release of the submitted artifacts.
 
 ## Team access — commands verified 2026-08-27 (team created and deleted as dry-run)
 
