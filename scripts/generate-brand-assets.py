@@ -70,6 +70,12 @@ def main():
     # --- Linux ---
     save(icon.resize((512, 512), Image.LANCZOS), "app/res/jochona-512.png")
     save(icon.resize((128, 128), Image.LANCZOS), "app/res/com.jochona.client.png")
+    # Freedesktop hicolor layout: linuxdeploy and the desktop file's
+    # Icon=com.jochona.client require this exact filename in a sized directory.
+    save(icon.resize((128, 128), Image.LANCZOS),
+         "app/res/hicolor/128x128/apps/com.jochona.client.png")
+    save(icon.resize((512, 512), Image.LANCZOS),
+         "app/res/hicolor/512x512/apps/com.jochona.client.png")
 
     # --- Steam Link native icon (spec: 116x116) ---
     save(icon.resize((116, 116), Image.LANCZOS), "app/deploy/steamlink/jochona.png")
