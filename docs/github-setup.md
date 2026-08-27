@@ -4,7 +4,7 @@ Owner: `gogolB`, owner of the `Jochona` GitHub org (Free plan, created 2026-08-2
 
 ## Decisions baked in
 
-- Repo home: `Jochona/jochona-client`, **private for now** (transferred from `gogolB/jochona-client` 2026-08-27). Flip to public before: (a) SignPath OSS eligibility (requires a public repo), (b) heavy macOS CI minutes (see Runners), (c) any distribution. GPL triggers source obligations on distribution, not on hosting.
+- Repo home: `Jochona/jochona-client`, **PUBLIC since 2026-08-27** (FOSS posture confirmed by owner; org-private only during bootstrap). Consequences now live: unlimited Actions minutes (macOS concurrency still capped), branch protection available, SignPath OSS eligibility unblocked, GPL distribution obligations apply from the first published artifact.
 - Org exists and is owned by the project — GitHub namespace `Jochona` verified collision-free (0 repos matched before creation; the `users/jochona` lookup resolves to the org itself).
 - Moonlight Qt comes in as a bare-mirror history import into our own repo, not a GitHub-native fork (ADR-0002).
 - Runners: GitHub-hosted only at first. Nothing to install.
@@ -124,8 +124,8 @@ gh api -X PUT repos/Jochona/jochona-client/teams/dev -f permission=push
 
 1. Org `Jochona` created on the web (Free plan; org creation is web-only — no API).
 2. Repo recreated under the org and pushed; `origin` repointed. `gh repo transfer` does not exist in gh CLI and the REST transfer requires a web accept, so create-push-delete was used. The stale `gogolB/jochona-client` copy was deleted by the owner on 2026-08-27 (404 verified) — `Jochona/jochona-client` is the single home.
-3. **Free-plan limitation hit:** branch protection is unavailable on private org repos without GitHub Pro — the protection PUT returned 403 "Upgrade to GitHub Pro or make this repository public". Conventions (PRs, reviews) are voluntary until the public flip; re-apply protection at flip time.
-4. When signing is set up, grant SignPath access against the `Jochona/jochona-client` path.
+3. **Free-plan limitation (resolved by the public flip 2026-08-27):** branch protection was unavailable while private; now applied on `main` — PRs required for non-admins, `enforce_admins: false` while solo. Turn admin enforcement on when a second human joins.
+4. SignPath (public-repo prerequisite now met): create org at app.signpath.io → project `jochona-client` → signing policy (release builds only) → CI user token → store as `release` environment secrets → grant SignPath repo read access. Apple Developer ID cert + ASC API key remain the last signing human-gate.
 
 ## CI (comes with the M0 import, not before)
 
