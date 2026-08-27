@@ -28,9 +28,17 @@ _Avoid_: host (when meaning the software rather than the machine)
 A title a Host exposes for launch — a game, a launcher, a utility, or the desktop.
 _Avoid_: app, game (when including desktops/utilities)
 
+**Desktop**:
+The Host's interactive desktop, exposed as a Host Application of kind `desktop`; never a separate entity kind.
+_Avoid_: remote session, live desktop
+
 **Session**:
 One connection between one Client Device and one running Host Application; has a start and an end.
 _Avoid_: stream, connection (bare)
+
+**Player Slot**:
+One of up to four controller positions a Client Device presents to a Host within one Session; scoped to that Session, never shared across Clients.
+_Avoid_: player number (host-global), controller index
 
 ### Trust and availability
 
@@ -44,9 +52,14 @@ _Avoid_: online/offline (as session states)
 
 ### Configuration
 
+
 **Streaming Profile**:
 A named bundle of display, codec, and network settings, selected by Client Device, display, Host, and Host Application.
 _Avoid_: profile (bare), quality preset
+
+**Profile Pin**:
+A user's explicit binding of one Streaming Profile to a context, bypassing profile selection.
+_Avoid_: lock, default profile
 
 **Controller Map**:
 A bundle of button remaps, calibration, and response curves, scoped per controller and optionally per Host Application.
