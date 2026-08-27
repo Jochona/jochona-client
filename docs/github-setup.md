@@ -1,11 +1,11 @@
 # GitHub Setup — Jochona Client
 
-Owner: whoever holds the `gogolB` account for platform steps; everything marked CLI is reproducible by any teammate with `gh` auth.
+Owner: `gogolB`, owner of the `Jochona` GitHub org (Free plan, created 2026-08-27). Everything marked CLI is reproducible by any org member with `gh` auth.
 
 ## Decisions baked in
 
-- Repo lives at `gogolB/jochona-client`, **private for now**. Flip to public before: (a) SignPath OSS eligibility (requires a public repo), (b) heavy macOS CI minutes (see Runners), (c) any distribution. GPL triggers source obligations on distribution, not on hosting.
-- Org (`jochona`) comes later. GitHub does not allow org creation via API/token — it is a web-only step. Transferring the repo to the org later is one command and keeps everything.
+- Repo home: `Jochona/jochona-client`, **private for now** (transferred from `gogolB/jochona-client` 2026-08-27). Flip to public before: (a) SignPath OSS eligibility (requires a public repo), (b) heavy macOS CI minutes (see Runners), (c) any distribution. GPL triggers source obligations on distribution, not on hosting.
+- Org exists and is owned by the project — GitHub namespace `Jochona` verified collision-free (0 repos matched before creation; the `users/jochona` lookup resolves to the org itself).
 - Moonlight Qt comes in as a bare-mirror history import into our own repo, not a GitHub-native fork (ADR-0002).
 - Runners: GitHub-hosted only at first. Nothing to install.
 
@@ -23,13 +23,13 @@ gh api -X PUT repos/gogolB/jochona-client/environments/release   # gate for sign
 ```bash
 git clone --bare https://github.com/moonlight-stream/moonlight-qt.git jochona-import.git
 cd jochona-import.git
-git push --mirror git@github.com:gogolB/jochona-client.git   # refuses to mix histories; see below
+git push --mirror git@github.com:Jochona/jochona-client.git   # refuses to mix histories; see below
 ```
 
 The mirror push will be rejected because `main` already holds the docs commit. Resolve by putting docs on top of upstream history:
 
 ```bash
-git clone git@github.com:gogolB/jochona-client.git && cd jochona-client
+git clone git@github.com:Jochona/jochona-client.git && cd jochona-client
 git checkout -b docs-backup main
 # after the mirror is force-pushed to main by an admin, rebase docs back:
 git rebase --onto main docs-backup~1 docs-backup   # or simply cherry-pick the docs commit
@@ -60,7 +60,7 @@ Self-hosted runners: defer until actually needed (e.g., a Linux box or the Steam
 mkdir actions-runner && cd actions-runner
 curl -o runner.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
 tar xzf runner.tar.gz
-./config.sh --url https://github.com/gogolB/jochona-client --unattended --ephemeral   # paste the ephemeral token from the dialog
+./config.sh --url https://github.com/Jochona/jochona-client --unattended --ephemeral   # paste the ephemeral token from the dialog
 sudo ./svc.sh install && sudo ./svc.sh start
 ```
 
@@ -107,17 +107,18 @@ Consequences to accept consciously: no Flathub search/browse discovery, no Flath
 
 ## Team access
 
-Personal repo: add collaborators by username (push or admin). After the org transfer, use org teams instead:
+Org teams (the repo is in the org now): create teams, then grant repo access per team.
 
 ```bash
-gh api -X PUT repos/gogolB/jochona-client/collaborators/USERNAME -f permission=push
+gh api -X POST orgs/Jochona/teams -f name=dev -f privacy=closed
+gh api -X PUT repos/Jochona/jochona-client/teams/dev -f permission=push
 ```
 
-## Org migration (later, web + CLI)
+## Org migration — DONE 2026-08-27
 
-1. Web only: <https://github.com/organizations/plan> → create `jochona` org (Free plan). Check the name and confirm "Jochona" is clear for public use (backlog item 1) **before** creating the org.
-2. Transfer from inside the local clone: `gh repo transfer jochona` — it updates `origin` automatically; accept the transfer in the org's notifications.
-3. Environments and secrets travel with the repo; re-verify the `release` environment's protection rules and re-grant SignPath access for the new owner path.
+1. Org `Jochona` created on the web (Free plan, org creation cannot be done via API).
+2. Transferred from inside the local clone: `gh repo transfer Jochona` — `origin` updated automatically.
+3. Post-transfer verification: re-check the `release` environment and its protection rules survived (`gh api repos/Jochona/jochona-client/environments`), branch protection carried over, and grant SignPath access against the `Jochona/…` path when signing is set up.
 
 ## CI (comes with the M0 import, not before)
 
