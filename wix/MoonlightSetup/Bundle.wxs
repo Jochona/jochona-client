@@ -11,19 +11,23 @@
 
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
-  <Bundle Name="Moonlight Game Streaming Client"
+  <!-- Jochona: Manufacturer/UpgradeCode/InstallFolder/registry namespace renamed
+       from upstream Moonlight so Jochona coexists with an installed official
+       Moonlight client. HelpUrl/UpdateUrl still point at upstream Moonlight
+       docs/releases since Jochona has no docs site of its own yet. -->
+  <Bundle Name="Jochona Game Streaming Client"
           Version="!(bind.PackageVersion.Moonlight_x64)"
-          Manufacturer="Moonlight Game Streaming Project"
-          UpgradeCode="466fa35d-4be4-40ef-9ce5-afadc3b63bc5"
+          Manufacturer="Jochona"
+          UpgradeCode="6d5fc37b-237b-426f-acec-ccc47308fdf7"
           HelpUrl="https://github.com/moonlight-stream/moonlight-docs/wiki/Setup-Guide"
           UpdateUrl="https://github.com/moonlight-stream/moonlight-qt/releases"
           DisableModify="yes"
           IconSourceFile="..\..\app\moonlight.ico">
 
-    <bal:Condition Message="This version of Moonlight requires Windows 10 or later." Condition="VersionNT &gt;= v10.0" />
-    <bal:Condition Message="This version of Moonlight requires a 64-bit version of Windows." Condition="NativeMachine &lt;&gt; 332" />
+    <bal:Condition Message="This version of Jochona requires Windows 10 or later." Condition="VersionNT &gt;= v10.0" />
+    <bal:Condition Message="This version of Jochona requires a 64-bit version of Windows." Condition="NativeMachine &lt;&gt; 332" />
 
-    <Variable Name="InstallFolder" Type="formatted" Value="[ProgramFiles6432Folder]Moonlight Game Streaming" />
+    <Variable Name="InstallFolder" Type="formatted" Value="[ProgramFiles6432Folder]Jochona" />
 
     <!-- Define "Add desktop shortcut" -checkbox's state by defining a variable
          which has same name as the checkbox has. Value 1 means that checkbox
@@ -32,8 +36,8 @@
     <Variable Name="AddDesktopShortcutCheckbox" Type="numeric" Value="1" />
     <!-- Get checkbox's state from registry if present. The registry value
          "DesktopShortcutInstallState" is set in Product.wxs. -->
-    <util:RegistrySearch Variable="HasDesktopShortcutInstallStateRegKey" Root="HKCU" Key="Software\Moonlight Game Streaming Project" Value="DesktopShortcutInstallState" Result="exists" />
-    <util:RegistrySearch Variable="AddDesktopShortcutCheckbox" Root="HKCU" Key="Software\Moonlight Game Streaming Project" Value="DesktopShortcutInstallState" Condition="HasDesktopShortcutInstallStateRegKey" />
+    <util:RegistrySearch Variable="HasDesktopShortcutInstallStateRegKey" Root="HKCU" Key="Software\Jochona" Value="DesktopShortcutInstallState" Result="exists" />
+    <util:RegistrySearch Variable="AddDesktopShortcutCheckbox" Root="HKCU" Key="Software\Jochona" Value="DesktopShortcutInstallState" Condition="HasDesktopShortcutInstallStateRegKey" />
 
     <util:ProductSearch Id="VCREDIST_14_x64"
                         UpgradeCode="$(var.VCREDIST_X64_UPGRADE_CODE)"

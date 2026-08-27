@@ -428,9 +428,13 @@ int main(int argc, char *argv[])
     // Set these here to allow us to use the default QSettings constructor.
     // These also ensure that our cache directory is named correctly. As such,
     // it is critical that these be called before Path::initialize().
-    QCoreApplication::setOrganizationName("Moonlight Game Streaming Project");
-    QCoreApplication::setOrganizationDomain("moonlight-stream.com");
-    QCoreApplication::setApplicationName("Moonlight");
+    // Jochona: distinct org/app identity so QSettings, the cache directory,
+    // and macOS/Windows registry-backed preferences land under a
+    // Jochona-owned path, letting Jochona coexist with an installed
+    // official Moonlight client.
+    QCoreApplication::setOrganizationName("Jochona");
+    QCoreApplication::setOrganizationDomain("jochona.com");
+    QCoreApplication::setApplicationName("Jochona");
 
     if (QFile(QDir::currentPath() + "/portable.dat").exists()) {
         QSettings::setDefaultFormat(QSettings::IniFormat);

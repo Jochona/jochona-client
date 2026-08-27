@@ -3,8 +3,19 @@ CONFIG += c++17
 
 unix:!macx {
     TARGET = moonlight
+} else:macx {
+    # On macOS, this is the name displayed in the Finder and the global menu
+    # bar, and it becomes the .app bundle folder name.
+    # Jochona: distinct bundle/menu-bar name so Jochona.app can be installed
+    # and run alongside an official Moonlight.app.
+    TARGET = Jochona
 } else {
-    # On macOS, this is the name displayed in the global menu bar
+    # Jochona: the Windows executable keeps the upstream "Moonlight" target
+    # name for M0 (see QMAKE_TARGET_* below and wix/ for the Jochona-branded
+    # metadata that is independent of this filename). Renaming Moonlight.exe
+    # itself is deferred to a dedicated, build-verified follow-up since it
+    # cascades through scripts/build-arch.bat, scripts/generate-bundle.bat,
+    # and the WiX project/output filenames.
     TARGET = Moonlight
 }
 
@@ -533,22 +544,27 @@ unix:!macx: {
 
     target.path = $$PREFIX/$$BINDIR/
 
-    desktop.files = deploy/linux/com.moonlight_stream.Moonlight.desktop
+    # Jochona: renamed from com.moonlight_stream.Moonlight.desktop
+    desktop.files = deploy/linux/com.jochona.client.desktop
     desktop.path = $$PREFIX/$$DATADIR/applications/
 
     icons.files = res/moonlight.svg
     icons.path = $$PREFIX/$$DATADIR/icons/hicolor/scalable/apps/
 
-    appstream.files = deploy/linux/com.moonlight_stream.Moonlight.appdata.xml
+    # Jochona: renamed from com.moonlight_stream.Moonlight.appdata.xml
+    appstream.files = deploy/linux/com.jochona.client.appdata.xml
     appstream.path = $$PREFIX/$$DATADIR/metainfo/
 
     INSTALLS += target desktop icons appstream
 }
 win32 {
     RC_ICONS = moonlight.ico
-    QMAKE_TARGET_COMPANY = Moonlight Game Streaming Project
-    QMAKE_TARGET_DESCRIPTION = Moonlight Game Streaming Client
-    QMAKE_TARGET_PRODUCT = Moonlight
+    # Jochona: exe file metadata (Properties > Details, UAC prompts) carries
+    # Jochona identity even though TARGET keeps the upstream Moonlight.exe
+    # filename for M0 (see TARGET comment above).
+    QMAKE_TARGET_COMPANY = Jochona
+    QMAKE_TARGET_DESCRIPTION = Jochona Game Streaming Client
+    QMAKE_TARGET_PRODUCT = Jochona
 
     CONFIG -= embed_manifest_exe
     QMAKE_LFLAGS += /MANIFEST:embed /MANIFESTINPUT:$${PWD}/Moonlight.exe.manifest

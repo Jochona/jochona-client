@@ -5,15 +5,16 @@
 	<key>GCSupportsGameMode</key>
 	<true/>
 	<key>CFBundleExecutable</key>
-	<string>Moonlight</string>
+	<string>Jochona</string>
 	<key>LSSupportsGameMode</key>
 	<true/>
 	<key>CFBundleGetInfoString</key>
 	<string>Stream games and other applications from another PC</string>
 	<key>CFBundleIconFile</key>
 	<string>moonlight</string>
+	<!-- Jochona: reverse-DNS app id distinct from upstream com.moonlight-stream.Moonlight -->
 	<key>CFBundleIdentifier</key>
-	<string>com.moonlight-stream.Moonlight</string>
+	<string>com.jochona.client</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>CFBundlePackageType</key>
@@ -41,7 +42,7 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Moonlight uses the local network to connect to your gaming PC for streaming.</string>
+	<string>Jochona uses the local network to connect to your gaming PC for streaming.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_nvstream._tcp</string>
@@ -50,8 +51,11 @@
 	<string>VERSION</string>
 	<key>CFBundleShortVersionString</key>
 	<string>VERSION</string>
+	<!-- Jochona: CFBundleName drives the Finder/menu-bar name; keep in sync with CFBundleDisplayName -->
+	<key>CFBundleName</key>
+	<string>Jochona</string>
 	<key>CFBundleDisplayName</key>
-	<string>Moonlight</string>
+	<string>Jochona</string>
     <key>LSApplicationCategoryType</key>
 	<string>public.app-category.games</string>
 </dict>

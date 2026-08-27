@@ -370,7 +370,11 @@ ApplicationWindow {
 
                 Component.onCompleted: {
                     AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
-                    AutoUpdateChecker.start()
+                    // Jochona: disabled — upstream endpoint (moonlight-stream.org/updates/qt.json)
+                    // compares against Moonlight's version manifest and would produce false
+                    // "update available" prompts. Re-enable pointing at Jochona's GitHub
+                    // Releases (docs/github-setup.md update policy: check-and-notify).
+                    // AutoUpdateChecker.start()
                 }
 
                 Keys.onDownPressed: {
