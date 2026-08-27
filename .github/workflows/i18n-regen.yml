@@ -33,6 +33,5 @@ jobs:
           fi
           git config user.name "jochona-ci"
           git config user.email "ci@jochona.invalid"
-          git add app/languages/
           git commit -m "Regenerate translation sources (lupdate)"
-          git push
+          git push origin HEAD:${{ github.ref_name }}
