@@ -1,9 +1,9 @@
-# Lunaframe Client
+# Jochona Client
 
 ## Desktop Game Streaming Client Project Proposal
 
-**Project:** Lunaframe  
-**Deliverable:** Lunaframe Client  
+**Project:** Jochona  
+**Deliverable:** Jochona Client  
 **Document status:** Client-only scope  
 **Target platforms:** Windows, macOS, and Linux  
 **Primary host target:** Vibepollo on Windows  
@@ -15,11 +15,11 @@
 
 ## 1. Executive Summary
 
-Lunaframe Client will be a modern, controller-first desktop game-streaming and remote-access client for Windows, macOS, and Linux. It will preserve Moonlight's mature low-latency streaming core while replacing the surrounding application experience with a cohesive, polished interface comparable in usability to contemporary commercial remote-play products.
+Jochona Client will be a modern, controller-first desktop game-streaming and remote-access client for Windows, macOS, and Linux. It will preserve Moonlight's mature low-latency streaming core while replacing the surrounding application experience with a cohesive, polished interface comparable in usability to contemporary commercial remote-play products.
 
 The initial client will connect to existing Vibepollo, Apollo, and Sunshine hosts. It will support personal gaming VMs, home gaming systems, and hosts shared with trusted friends over Tailscale or another private network. It will not provision VMs, allocate GPUs, operate a central identity service, implement a Raspberry Pi control plane, or replace Vibepollo in this phase.
 
-The product goal is broader than “Moonlight with a new skin,” but narrower than an entire cloud-gaming platform. Lunaframe Client should provide an exceptional end-to-end experience from the client user's perspective:
+The product goal is broader than “Moonlight with a new skin,” but narrower than an entire cloud-gaming platform. Jochona Client should provide an exceptional end-to-end experience from the client user's perspective:
 
 1. Find or add an available host.
 2. Wake it directly or request wake through a configured external service.
@@ -47,7 +47,7 @@ The client must be fully usable with a controller while retaining first-class ke
 - LAN discovery, manual host entry, pairing, and trusted-host management.
 - Direct local Wake-on-LAN.
 - A client-side interface for optional external wake providers.
-- Tailscale-aware host connectivity without requiring a Lunaframe cloud service.
+- Tailscale-aware host connectivity without requiring a Jochona cloud service.
 - Unified application library across multiple paired hosts.
 - Per-host, per-client-device, per-display, and per-game profiles.
 - Session overlay, reconnection, suspend/resume, and diagnostics.
@@ -61,7 +61,7 @@ The client must be fully usable with a controller while retaining first-class ke
 - Stream Deck annunciator or administrator panel implementation.
 - Physical-server, hypervisor, VM, or GPU orchestration.
 - GPU scheduling or multi-user session allocation.
-- A central Lunaframe account, invitation, entitlement, or billing service.
+- A central Jochona account, invitation, entitlement, or billing service.
 - A mandatory cloud relay or discovery service.
 - A new host streaming service or a Vibepollo fork.
 - Changes to Vibepollo, Apollo, or Sunshine required solely to ship the first client release.
@@ -76,7 +76,7 @@ The client architecture should allow later integration with:
 - A Raspberry Pi Wake-on-LAN and infrastructure-status service.
 - A Stream Deck control panel.
 - VM and GPU session brokers.
-- A future Lunaframe Host or Vibepollo-derived host.
+- A future Jochona Host or Vibepollo-derived host.
 - Self-hosted identity and friend-access services.
 - Optional rendezvous or media relays where direct connectivity is impossible.
 
@@ -102,7 +102,7 @@ The principal client-side gaps are:
 - Inconsistent behavior when moving among handheld screens, laptops, monitors, docks, ultrawides, and 4K televisions.
 - Host-specific capabilities that are difficult to discover and expose coherently.
 
-Lunaframe Client should solve these problems without rewriting the proven transport and decoder stack prematurely.
+Jochona Client should solve these problems without rewriting the proven transport and decoder stack prematurely.
 
 ---
 
@@ -118,7 +118,7 @@ Every ordinary game-streaming workflow must work with a controller. Remote deskt
 
 ### 4.3 Direct by default
 
-Video, audio, and input should travel directly between Lunaframe Client and the selected host. Tailscale may provide network reachability, but Lunaframe should not require a central media relay.
+Video, audio, and input should travel directly between Jochona Client and the selected host. Tailscale may provide network reachability, but Jochona should not require a central media relay.
 
 ### 4.4 Capability-driven compatibility
 
@@ -130,7 +130,7 @@ A brief Wi-Fi interruption, controller reconnection, dock transition, or client 
 
 ### 4.6 Local ownership
 
-Host credentials, profiles, artwork overrides, and settings belong to the user. No Lunaframe account or telemetry service is required.
+Host credentials, profiles, artwork overrides, and settings belong to the user. No Jochona account or telemetry service is required.
 
 ---
 
@@ -138,15 +138,15 @@ Host credentials, profiles, artwork overrides, and settings belong to the user. 
 
 ### 5.1 Private gaming-cloud owner
 
-The user connects to multiple personal gaming VMs and physical PCs located at home or remotely. Hosts may use different GPUs, resolutions, capabilities, and network paths. Lunaframe remembers the correct profile for each client and host combination.
+The user connects to multiple personal gaming VMs and physical PCs located at home or remotely. Hosts may use different GPUs, resolutions, capabilities, and network paths. Jochona remembers the correct profile for each client and host combination.
 
 ### 5.2 Trusted friend
 
-A friend installs Lunaframe Client, receives private-network access and host pairing permission through mechanisms managed outside the client, and sees only the hosts and applications paired with that installation. Lunaframe provides a polished experience but does not own the underlying account or VM entitlement system in this phase.
+A friend installs Jochona Client, receives private-network access and host pairing permission through mechanisms managed outside the client, and sees only the hosts and applications paired with that installation. Jochona provides a polished experience but does not own the underlying account or VM entitlement system in this phase.
 
 ### 5.3 Controller-first living-room player
 
-The user launches Lunaframe on a television-connected device, wakes or selects a host, chooses a game, and controls the entire session without reaching for a keyboard.
+The user launches Jochona on a television-connected device, wakes or selects a host, chooses a game, and controls the entire session without reaching for a keyboard.
 
 ### 5.4 Handheld player
 
@@ -272,7 +272,7 @@ When an offline host is selected, the client will:
 
 ### External wake provider interface
 
-Remote Wake-on-LAN generally requires an always-on device on the destination LAN. Lunaframe Client will define a small adapter boundary for an optional external wake service, such as the user's planned Raspberry Pi service.
+Remote Wake-on-LAN generally requires an always-on device on the destination LAN. Jochona Client will define a small adapter boundary for an optional external wake service, such as the user's planned Raspberry Pi service.
 
 The initial client may support a configurable authenticated HTTPS endpoint or deep link, but implementation of that server is out of scope. Requirements for any adapter:
 
@@ -284,11 +284,11 @@ The initial client may support a configurable authenticated HTTPS endpoint or de
 - Separate wake, readiness, and connection states.
 - No unauthenticated public requests.
 
-The GL.iNet Comet remains an external emergency-management mechanism and is not a Lunaframe dependency.
+The GL.iNet Comet remains an external emergency-management mechanism and is not a Jochona dependency.
 
 ## 6.6 Tailscale-aware connectivity
 
-Lunaframe does not embed or administer Tailscale in the initial release. It should work cleanly when Tailscale is already installed and connected:
+Jochona does not embed or administer Tailscale in the initial release. It should work cleanly when Tailscale is already installed and connected:
 
 - Accept stable hostnames and private addresses.
 - Distinguish LAN and private-overlay routes where practical.
@@ -296,7 +296,7 @@ Lunaframe does not embed or administer Tailscale in the initial release. It shou
 - Preserve pairing when the network path changes.
 - Detect loss and restoration of reachability.
 - Offer useful diagnostics without modifying tailnet policy.
-- Never require friends to share a Lunaframe account.
+- Never require friends to share a Jochona account.
 
 Tailscale identity, node sharing, ACLs, and connectivity remain external administrative concerns.
 
@@ -340,7 +340,7 @@ The client should request the desired mode and allow Vibepollo or another capabl
 
 ## 6.9 Remote desktop experience
 
-Lunaframe should approach Parsec-like usability without attempting to reproduce Parsec's proprietary service.
+Jochona should approach Parsec-like usability without attempting to reproduce Parsec's proprietary service.
 
 Client-side requirements:
 
@@ -427,7 +427,7 @@ Microphone transport is desirable but requires host support. When negotiated, th
 
 ## 6.14 Diagnostics
 
-Lunaframe will expose raw metrics and plain-language interpretations:
+Jochona will expose raw metrics and plain-language interpretations:
 
 - Host encode latency.
 - Network latency, loss, and jitter.
@@ -480,7 +480,7 @@ Electron, Tauri, Flutter, or a browser-based shell are not recommended for the p
 ## 7.2 Repository structure
 
 ```text
-lunaframe-client/
+jochona-client/
   app/                  Startup and dependency composition
   core/                 Shared models, events, profiles, and session state
   streaming/            Moonlight session integration
@@ -540,7 +540,7 @@ Feature-level capability detection is required. A conceptual internal representa
 }
 ```
 
-Each optional feature must fail independently and fall back to baseline GameStream behavior where possible. New host-side work belongs in a separate project even if Lunaframe Client defines the corresponding extension contract.
+Each optional feature must fail independently and fall back to baseline GameStream behavior where possible. New host-side work belongs in a separate project even if Jochona Client defines the corresponding extension contract.
 
 ## 7.5 Session state machine
 
@@ -575,7 +575,7 @@ Platform parity is defined by user outcomes rather than identical implementation
 
 ## 9. Security and Privacy
 
-- No mandatory Lunaframe account or cloud dependency.
+- No mandatory Jochona account or cloud dependency.
 - Pairing credentials and wake-provider tokens stored in OS credential facilities.
 - Host identity changes surfaced clearly.
 - Themes are data-only and cannot execute code.
@@ -585,7 +585,7 @@ Platform parity is defined by user outcomes rather than identical implementation
 - Destructive actions require confirmation.
 - Logs redact credentials, tokens, private keys, clipboard contents, and sensitive identifiers.
 - Telemetry is absent by default. Any future telemetry must be opt-in and documented.
-- Tailscale provides connectivity, not implicit Lunaframe authorization.
+- Tailscale provides connectivity, not implicit Jochona authorization.
 
 ---
 
@@ -654,7 +654,7 @@ Changes must not regress:
 
 Deliverables:
 
-- Fork and rebrand Moonlight Qt as Lunaframe Client.
+- Fork and rebrand Moonlight Qt as Jochona Client.
 - Adopt separate application identifiers and configuration directories.
 - Build Windows, macOS, and Linux packages.
 - Pair with Vibepollo and stream one application.
@@ -664,7 +664,7 @@ Deliverables:
 Exit criteria:
 
 - All three platforms can add a host, pair, launch, stream, and disconnect.
-- Lunaframe can coexist with official Moonlight without overwriting its settings.
+- Jochona can coexist with official Moonlight without overwriting its settings.
 
 ## Milestone 1: Modern shell and themes
 
@@ -673,7 +673,7 @@ Deliverables:
 - New host, library, application, settings, and pairing screens.
 - Deterministic controller focus.
 - Controller glyph system.
-- Lunaframe visual identity and design tokens.
+- Jochona visual identity and design tokens.
 - Built-in themes and safe theme-package schema.
 - Favorites, recent applications, search, and host-state indicators.
 - Direct local Wake-on-LAN.
@@ -742,10 +742,10 @@ Potential deliverables:
 
 ## 13. Initial Engineering Backlog
 
-1. Confirm Lunaframe name availability before public release.
+1. Confirm Jochona name availability before public release.
 2. Fork Moonlight Qt and establish an upstream-sync strategy.
-3. Set `io.lunaframe.client` or the final application identifier.
-4. Separate Lunaframe configuration from official Moonlight.
+3. Set `io.jochona.client` or the final application identifier.
+4. Separate Jochona configuration from official Moonlight.
 5. Produce reproducible Windows, macOS, and Linux development builds.
 6. Add a Vibepollo compatibility smoke test.
 7. Record baseline latency, frame pacing, and controller behavior.
@@ -780,15 +780,15 @@ The first cycle intentionally excludes a host fork, Raspberry Pi service, Stream
 
 ## 15. Licensing and Upstream Relationship
 
-Moonlight Qt is licensed under GPL-3.0. A distributed derivative should remain GPL-3.0-compatible, retain required notices, and provide corresponding source. Lunaframe must use a distinct name, application identifier, visual identity, and release channel so users do not mistake it for an official Moonlight release.
+Moonlight Qt is licensed under GPL-3.0. A distributed derivative should remain GPL-3.0-compatible, retain required notices, and provide corresponding source. Jochona must use a distinct name, application identifier, visual identity, and release channel so users do not mistake it for an official Moonlight release.
 
-General bug fixes, platform fixes, tests, and isolated protocol improvements should be considered for upstream contribution. Lunaframe-specific UI, themes, profiles, and integrations may remain in the fork.
+General bug fixes, platform fixes, tests, and isolated protocol improvements should be considered for upstream contribution. Jochona-specific UI, themes, profiles, and integrations may remain in the fork.
 
 ---
 
 ## 16. Success Criteria
 
-Lunaframe Client succeeds when:
+Jochona Client succeeds when:
 
 - Windows, macOS, and Linux users receive comparable core functionality.
 - A controller-only user can perform every ordinary game-streaming workflow.
@@ -829,9 +829,9 @@ The initial visual exploration uses a luminous video frame, crescent-shaped orbi
 
 | Asset | Working filename | Intended use |
 | --- | --- | --- |
-| Application icon concept | `lunaframe-app-icon-concept-v1.png` | Launcher icon, repository avatar, and early builds. |
-| Wide hero concept | `lunaframe-steam-hero-concept-v1.png` | Steam/Steam Deck hero, repository banner, and landing page. |
-| Portrait grid concept | `lunaframe-steam-grid-concept-v1.png` | Steam library portrait capsule. |
+| Application icon concept | `jochona-app-icon-concept-v1.png` | Launcher icon, repository avatar, and early builds. |
+| Wide hero concept | `jochona-steam-hero-concept-v1.png` | Steam/Steam Deck hero, repository banner, and landing page. |
+| Portrait grid concept | `jochona-steam-grid-concept-v1.png` | Steam library portrait capsule. |
 
 These are concept assets rather than production masters. The selected mark should be redrawn as deterministic SVG and exported into exact Windows, macOS, Linux, Steam, and accessibility variants.
 

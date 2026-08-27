@@ -1,6 +1,6 @@
 # Import Moonlight Qt history into our own repository instead of using a GitHub-native fork
 
-GitHub-native forks cannot be private, cannot use Actions secrets, and cannot be detached from the fork network cleanly. We decided to copy moonlight-qt's full history into `lunaframe-client` via a bare-mirror push and add upstream as a named remote, syncing with regular merges.
+GitHub-native forks cannot be private, cannot use Actions secrets, and cannot be detached from the fork network cleanly. We decided to copy moonlight-qt's full history into `jochona-client` via a bare-mirror push and add upstream as a named remote, syncing with regular merges.
 
 ## Consequences
 

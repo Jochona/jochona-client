@@ -1,21 +1,21 @@
-# Lunaframe Client
+# Jochona Client
 
-Domain language for Lunaframe Client: a desktop game-streaming client that connects to third-party host software. Glossary only — behavior and design live in `proposal.md` and `docs/adr/`.
+Domain language for Jochona Client: a desktop game-streaming client that connects to third-party host software. Glossary only — behavior and design live in `proposal.md` and `docs/adr/`.
 
 ## Language
 
 ### Machines and software
 
-**Lunaframe Client**:
+**Jochona Client**:
 The desktop product itself — the software this repository builds.
-_Avoid_: the app, Moonlight, Lunaframe (bare, when meaning the software)
+_Avoid_: the app, Moonlight, Jochona (bare, when meaning the software)
 
 **Client Device**:
-One physical machine running one installation of Lunaframe Client; the unit that settings and profiles key on.
+One physical machine running one installation of Jochona Client; the unit that settings and profiles key on.
 _Avoid_: client, device (bare)
 
 **Host**:
-A machine that runs streaming software and exposes Host Applications to Lunaframe Client.
+A machine that runs streaming software and exposes Host Applications to Jochona Client.
 _Avoid_: server, PC, box
 
 **Host Software**:
@@ -82,5 +82,5 @@ _Avoid_: WoL server
 ## Banned usage
 
 - "profile" unqualified — always Streaming Profile or Controller Map.
-- "app" unqualified — always Lunaframe Client or Host Application.
-- "client" unqualified — always Lunaframe Client or Client Device.
+- "app" unqualified — always Jochona Client or Host Application.
+- "client" unqualified — always Jochona Client or Client Device.

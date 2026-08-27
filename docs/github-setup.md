@@ -1,11 +1,11 @@
-# GitHub Setup — Lunaframe Client
+# GitHub Setup — Jochona Client
 
 Owner: whoever holds the `gogolB` account for platform steps; everything marked CLI is reproducible by any teammate with `gh` auth.
 
 ## Decisions baked in
 
-- Repo lives at `gogolB/lunaframe-client`, **private for now**. Flip to public before: (a) SignPath OSS eligibility (requires a public repo), (b) heavy macOS CI minutes (see Runners), (c) any distribution. GPL triggers source obligations on distribution, not on hosting.
-- Org (`lunaframe`) comes later. GitHub does not allow org creation via API/token — it is a web-only step. Transferring the repo to the org later is one command and keeps everything.
+- Repo lives at `gogolB/jochona-client`, **private for now**. Flip to public before: (a) SignPath OSS eligibility (requires a public repo), (b) heavy macOS CI minutes (see Runners), (c) any distribution. GPL triggers source obligations on distribution, not on hosting.
+- Org (`jochona`) comes later. GitHub does not allow org creation via API/token — it is a web-only step. Transferring the repo to the org later is one command and keeps everything.
 - Moonlight Qt comes in as a bare-mirror history import into our own repo, not a GitHub-native fork (ADR-0002).
 - Runners: GitHub-hosted only at first. Nothing to install.
 
@@ -13,23 +13,23 @@ Owner: whoever holds the `gogolB` account for platform steps; everything marked 
 
 ```bash
 git init -b main && git add -A && git commit -m "Initial docs: proposal, glossary, ADRs"
-gh repo create gogolB/lunaframe-client --private --source . --remote origin --push
-gh api -X PUT repos/gogolB/lunaframe-client/environments/release   # gate for signing secrets
+gh repo create gogolB/jochona-client --private --source . --remote origin --push
+gh api -X PUT repos/gogolB/jochona-client/environments/release   # gate for signing secrets
 # branch protection: PR required before merge to main
 ```
 
 ## Import the upstream fork (Milestone 0, run when ready)
 
 ```bash
-git clone --bare https://github.com/moonlight-stream/moonlight-qt.git lunaframe-import.git
-cd lunaframe-import.git
-git push --mirror git@github.com:gogolB/lunaframe-client.git   # refuses to mix histories; see below
+git clone --bare https://github.com/moonlight-stream/moonlight-qt.git jochona-import.git
+cd jochona-import.git
+git push --mirror git@github.com:gogolB/jochona-client.git   # refuses to mix histories; see below
 ```
 
 The mirror push will be rejected because `main` already holds the docs commit. Resolve by putting docs on top of upstream history:
 
 ```bash
-git clone git@github.com:gogolB/lunaframe-client.git && cd lunaframe-client
+git clone git@github.com:gogolB/jochona-client.git && cd jochona-client
 git checkout -b docs-backup main
 # after the mirror is force-pushed to main by an admin, rebase docs back:
 git rebase --onto main docs-backup~1 docs-backup   # or simply cherry-pick the docs commit
@@ -60,7 +60,7 @@ Self-hosted runners: defer until actually needed (e.g., a Linux box or the Steam
 mkdir actions-runner && cd actions-runner
 curl -o runner.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
 tar xzf runner.tar.gz
-./config.sh --url https://github.com/gogolB/lunaframe-client --unattended --ephemeral   # paste the ephemeral token from the dialog
+./config.sh --url https://github.com/gogolB/jochona-client --unattended --ephemeral   # paste the ephemeral token from the dialog
 sudo ./svc.sh install && sudo ./svc.sh start
 ```
 
@@ -75,7 +75,7 @@ gh secret set SIGNPATH_API_TOKEN --env release --body "..."
 gh secret set APPLE_KEY_ID      --env release --body "..."
 gh secret set APPLE_ISSUER_ID   --env release --body "..."
 gh secret set APPLE_API_KEY_P8_B64 --env release < Authenticator.p8.b64
-gh secret set APPLE_CERT_P12_B64   --env release < LunaframeDeveloperID.p12.b64
+gh secret set APPLE_CERT_P12_B64   --env release < JochonaDeveloperID.p12.b64
 gh secret set APPLE_CERT_PASSWORD  --env release
 gh secret set APPLE_TEAM_ID     --env release --body "..."
 ```
@@ -83,32 +83,32 @@ gh secret set APPLE_TEAM_ID     --env release --body "..."
 ### Apple (you already have the Developer account)
 
 1. App Store Connect → Users and Access → Integrations → App Store Connect API → create key with **Developer** role. Record **Issuer ID** (page header) and **Key ID**; download the `.p8` once. `base64 -i AuthKey_XXXX.p8 > Authenticator.p8.b64`.
-2. Create a **Developer ID Application** certificate: on a dedicated Mac, Keychain Access → Certificate Assistant → save a CSR; Certificates, Identifiers & Profiles → Certificates → + → Developer ID → upload CSR; install, then export the identity as `.p12` with a strong password. `base64 -i cert.p12 > LunaframeDeveloperID.p12.b64`. Delete the `.p12` and CSR after uploading the secret.
+2. Create a **Developer ID Application** certificate: on a dedicated Mac, Keychain Access → Certificate Assistant → save a CSR; Certificates, Identifiers & Profiles → Certificates → + → Developer ID → upload CSR; install, then export the identity as `.p12` with a strong password. `base64 -i cert.p12 > JochonaDeveloperID.p12.b64`. Delete the `.p12` and CSR after uploading the secret.
 3. Nothing else on Apple's side is needed for notarization — `xcrun notarytool` consumes the API key from CI.
 
 ### SignPath (Windows code signing, free for OSS)
 
 1. <https://app.signpath.io> → sign in with GitHub → create organization.
 2. Requires: public repo + OSI-approved license (GPL-3.0 ✓). Do this after the visibility flip; the OSS agreement is signed once.
-3. Create project `lunaframe-client`, upload the signing policy (release builds only), create a **CI user** and copy its API token. Select "GitHub" as the artifact source and grant SignPath read access to the repo when prompted.
+3. Create project `jochona-client`, upload the signing policy (release builds only), create a **CI user** and copy its API token. Select "GitHub" as the artifact source and grant SignPath read access to the repo when prompted.
 4. CI uploads unsigned artifacts with `signpath-io/signpath-sign-files` (or the upload/download API); signed output comes back before packaging.
 
 ### Flathub (Linux)
 
-After the app identifier is final (`io.lunaframe.client` — pending name review, backlog item 1), open an app-request issue at <https://github.com/flathub/flathub/issues> with the manifest in a branch of your own repo. Flathub creates `flathub/io.lunaframe.Client`; builds run on their runners from your repo. No secrets needed on our side beyond a repo-scoped Flathub deploy key later.
+After the app identifier is final (`io.jochona.client` — pending name review, backlog item 1), open an app-request issue at <https://github.com/flathub/flathub/issues> with the manifest in a branch of your own repo. Flathub creates `flathub/io.jochona.Client`; builds run on their runners from your repo. No secrets needed on our side beyond a repo-scoped Flathub deploy key later.
 
 ## Team access
 
 Personal repo: add collaborators by username (push or admin). After the org transfer, use org teams instead:
 
 ```bash
-gh api -X PUT repos/gogolB/lunaframe-client/collaborators/USERNAME -f permission=push
+gh api -X PUT repos/gogolB/jochona-client/collaborators/USERNAME -f permission=push
 ```
 
 ## Org migration (later, web + CLI)
 
-1. Web only: <https://github.com/organizations/plan> → create `lunaframe` org (Free plan). Check the name and confirm "Lunaframe" is clear for public use (backlog item 1) **before** creating the org.
-2. Transfer from inside the local clone: `gh repo transfer lunaframe` — it updates `origin` automatically; accept the transfer in the org's notifications.
+1. Web only: <https://github.com/organizations/plan> → create `jochona` org (Free plan). Check the name and confirm "Jochona" is clear for public use (backlog item 1) **before** creating the org.
+2. Transfer from inside the local clone: `gh repo transfer jochona` — it updates `origin` automatically; accept the transfer in the org's notifications.
 3. Environments and secrets travel with the repo; re-verify the `release` environment's protection rules and re-grant SignPath access for the new owner path.
 
 ## CI (comes with the M0 import, not before)
