@@ -93,9 +93,17 @@ gh secret set APPLE_TEAM_ID     --env release --body "..."
 3. Create project `jochona-client`, upload the signing policy (release builds only), create a **CI user** and copy its API token. Select "GitHub" as the artifact source and grant SignPath read access to the repo when prompted.
 4. CI uploads unsigned artifacts with `signpath-io/signpath-sign-files` (or the upload/download API); signed output comes back before packaging.
 
-### Flathub (Linux)
+### Linux distribution (Flathub is BLOCKED — verified 2026-08-27)
 
-After the app identifier is final (`io.jochona.client` — pending name review, backlog item 1), open an app-request issue at <https://github.com/flathub/flathub/issues> with the manifest in a branch of your own repo. Flathub creates `flathub/io.jochona.Client`; builds run on their runners from your repo. No secrets needed on our side beyond a repo-scoped Flathub deploy key later.
+Flathub's [Requirements → Generative AI policy](https://docs.flathub.org/docs/for-app-authors/requirements) states: "Applications containing AI-generated or AI-assisted code, documentation, or any other content are not allowed," submission PRs "must not be generated, opened, or automated using AI tools or agents," and review text must not be LLM-generated. Exceptions exist only for "mature, well-maintained projects" — a repo this young will not qualify. Jochona's development process is AI-agent-heavy by choice; treat Flathub as **off the table by default**.
+
+v1 plan: ship Flatpak from our own infrastructure —
+
+1. CI builds a `.flatpakref` + `.flatpak` bundle per release, attached to GitHub Releases.
+2. Users install with `flatpak install https://github.com/Jochona/jochona-client/releases/latest/download/jochona-client.flatpakref` (documented on the release page and website).
+3. Runtime/deps from Flathub's `org.kde.Platform` runtimes (consumption side is unaffected by the policy).
+
+Consequences to accept consciously: no Flathub search/browse discovery, no Flathub-run rebuilds, we host our own repo file update flow. If policy or project maturity changes the calculus later, a future submission also requires the app ID to be final (`app.jochona.client` once the domain is bought — Flathub verifies domain control; the GitHub-fallback prefix would have been `io.github.*`, not `com.github.*`) and a documented human-authored release of the submitted artifacts.
 
 ## Team access
 
