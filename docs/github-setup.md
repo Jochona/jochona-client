@@ -21,34 +21,31 @@ gh api -X PUT repos/Jochona/jochona-client/environments/release
 gh repo delete gogolB/jochona-client --yes             # PENDING: needs `gh auth refresh -s delete_repo`
 ```
 
-## Import the upstream fork (Milestone 0, run when ready)
+## Upstream import — DONE 2026-08-27
 
-```bash
-git clone --bare https://github.com/moonlight-stream/moonlight-qt.git jochona-import.git
-cd jochona-import.git
-git push --mirror git@github.com:Jochona/jochona-client.git   # refuses to mix histories; see below
-```
-
-The mirror push will be rejected because `main` already holds the docs commit. Resolve by putting docs on top of upstream history:
-
-```bash
-git clone git@github.com:Jochona/jochona-client.git && cd jochona-client
-git checkout -b docs-backup main
-# after the mirror is force-pushed to main by an admin, rebase docs back:
-git rebase --onto main docs-backup~1 docs-backup   # or simply cherry-pick the docs commit
-```
-
-Alternative with no force-push: create the repo empty (delete and recreate without `--source`), push the mirror first, then cherry-pick the docs commit.
-
-Then wire upstream sync:
+Executed as a history-preserving merge (equivalent to the bare-mirror plan, no force-push):
 
 ```bash
 git remote add upstream https://github.com/moonlight-stream/moonlight-qt.git
-git remote set-url --push upstream DISABLED   # never push here by accident
-gh variable set UPSTREAM_REPO --body https://github.com/moonlight-stream/moonlight-qt.git
+git fetch --no-filter upstream master
+git merge upstream/master --allow-unrelated-histories   # merge 8d38cff: docs history + full upstream history
+git push origin main
+git remote set-url --push upstream DISABLED             # accidental pushes are impossible
 ```
 
-Sync cadence: merge `upstream/master` into `main` at least weekly; `moonlight-common-c` is a submodule — keep it pinned and bump deliberately.
+`main` now carries upstream `master` at tip `1da6ff43` beneath our commits. Sync cadence: merge `upstream/master` into `main` at least weekly; `moonlight-common-c` is a submodule — `git submodule update --init` after any bump and bump deliberately.
+
+### GitHub Actions: intentionally DISABLED (repo-level, verified `enabled=false`)
+
+Inherited workflows must not run until trimmed — verified triggers today: `build.yml` fires on **every push** (no branch filter) and PRs to `master`, running the win x64/ARM64 + macOS matrix; private Free-plan macOS minutes burn at 10x. Before re-enabling, edit `.github/workflows/`: gate pushes to `main` on PRs only (or paths-filter), drop upstream's release automation triggers, and keep `build-steamlink`/`build-appimage` manual-dispatch until the Linux target is actually ours to ship. Then re-enable:
+
+```bash
+gh api -X PUT repos/Jochona/jochona-client/actions/permissions -F enabled=true
+```
+
+## Domain — DONE 2026-08-27
+
+`jochona.com` purchased via Cloudflare; CNAME record set by owner. App id frozen as `com.jochona.client`. The future website (GitHub Pages) and the Flatpak OSTree repo share the same Pages infrastructure; Cloudflare Email Routing for `hello@jochona.com` is worth enabling before any public contact page.
 
 ## Runners
 
