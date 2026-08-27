@@ -75,9 +75,12 @@ _Avoid_: skin
 The user-confirmed grouping of Host Applications across Hosts that represent the same game; title normalization only suggests the grouping, a user confirms, merges, or splits it.
 _Avoid_: dedupe, merged app
 
+**Wake**:
+Bringing a powered-off Host to life so it can accept Sessions. Three shapes: **Direct Wake** — the Client Device itself sends the Wake-on-LAN magic packet; **Overlay Wake** — a network overlay that emulates LAN broadcast (ZeroTier-class) delivers it; **Relay Wake** — a Jochona-operated always-on Relay sends it on the Client Device's behalf. Only Direct Wake is supported today; Tailscale is deliberately not a Wake path (it does not carry layer-2 broadcast).
+_Avoid_: remote wake (ambiguous), WoL server
+
 **Wake Provider**:
-An explicitly user-configured external service that sends Wake-on-LAN packets on a Host's behalf; wake success, Host readiness, and connection are three separate outcomes.
-_Avoid_: WoL server
+A Wake mechanism other than the Client Device's own Direct Wake — Overlay Wake or Relay Wake. Configured explicitly per Host; wake success, Host readiness, and connection remain three separate outcomes.
 
 ## Banned usage
 

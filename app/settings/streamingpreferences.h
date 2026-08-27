@@ -130,6 +130,9 @@ public:
     Q_PROPERTY(bool playAudioOnHost MEMBER playAudioOnHost NOTIFY playAudioOnHostChanged)
     Q_PROPERTY(bool multiController MEMBER multiController NOTIFY multiControllerChanged)
     Q_PROPERTY(bool enableMdns MEMBER enableMdns NOTIFY enableMdnsChanged)
+    // Jochona: feature flag for the modern QML home screen (M1). Read once at
+    // startup to pick the initial view; toggling takes effect on next launch.
+    Q_PROPERTY(bool modernHomeScreen MEMBER modernHomeScreen NOTIFY modernHomeScreenChanged)
     Q_PROPERTY(bool quitAppAfter MEMBER quitAppAfter NOTIFY quitAppAfterChanged)
     Q_PROPERTY(bool absoluteMouseMode MEMBER absoluteMouseMode NOTIFY absoluteMouseModeChanged)
     Q_PROPERTY(bool absoluteTouchMode MEMBER absoluteTouchMode NOTIFY absoluteTouchModeChanged)
@@ -172,6 +175,7 @@ public:
     bool playAudioOnHost;
     bool multiController;
     bool enableMdns;
+    bool modernHomeScreen;
     bool quitAppAfter;
     bool absoluteMouseMode;
     bool absoluteTouchMode;
@@ -212,6 +216,7 @@ signals:
     void multiControllerChanged();
     void unsupportedFpsChanged();
     void enableMdnsChanged();
+    void modernHomeScreenChanged();
     void quitAppAfterChanged();
     void absoluteMouseModeChanged();
     void absoluteTouchModeChanged();

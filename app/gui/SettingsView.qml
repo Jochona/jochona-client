@@ -1781,6 +1781,20 @@ Flickable {
                         }
                     }
                 }
+                CheckBox {
+                    id: modernHomeScreen
+                    width: parent.width
+                    // Jochona: M1 feature flag — swaps the home screen for the
+                    // modern layout on next launch.
+                    text: qsTr("Use the modern home screen (requires restart)")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.modernHomeScreen
+                    onCheckedChanged: {
+                        if (StreamingPreferences.modernHomeScreen != checked) {
+                            StreamingPreferences.modernHomeScreen = checked
+                        }
+                    }
+                }
 
                 CheckBox {
                     id: detectNetworkBlocking

@@ -993,7 +993,11 @@ int main(int argc, char *argv[])
 
     switch (commandLineParserResult) {
     case GlobalCommandLineParser::NormalStartRequested:
-        initialView = "qrc:/gui/PcView.qml";
+        // Jochona: M1 feature flag — the modern home screen replaces PcView
+        // when enabled (ADR-0001 incremental shell replacement).
+        initialView = StreamingPreferences::get()->modernHomeScreen
+                          ? "qrc:/gui/HomeView.qml"
+                          : "qrc:/gui/PcView.qml";
         break;
     case GlobalCommandLineParser::StreamRequested:
         {

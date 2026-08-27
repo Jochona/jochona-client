@@ -48,7 +48,7 @@ The client must be fully usable with a controller while retaining first-class ke
 - Modern theming and personalization.
 - LAN discovery, manual host entry, pairing, and trusted-host management.
 - Wake-on-LAN: extension of the mechanism already shipped in Moonlight Qt (see 6.5).
-- A client-side interface for optional external wake providers.
+- Wake via Direct Wake-on-LAN only in v1; Overlay Wake (ZeroTier-class) and eventual Relay Wake deferred behind the provider interface (ADR-0004).
 - Tailscale-aware host connectivity without requiring a Jochona cloud service.
 - Unified application library across multiple paired hosts.
 - Per-host, per-client-device, per-display, and per-game profiles.
