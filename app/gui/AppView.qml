@@ -4,6 +4,7 @@ import QtQuick.Controls.Material 2.2
 
 import AppModel 1.0
 import ComputerManager 1.0
+import StreamingPreferences 1.0
 import SdlGamepadKeyNavigation 1.0
 
 CenteredGridView {
@@ -16,7 +17,8 @@ CenteredGridView {
     id: appGrid
     focus: true
     activeFocusOnTab: true
-    topMargin: 20
+    // Reserve the floating chrome title zone under the modern shell
+    topMargin: StreamingPreferences.modernHomeScreen ? 112 : 20
     bottomMargin: 5
     cellWidth: 230; cellHeight: 297;
 

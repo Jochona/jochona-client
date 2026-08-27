@@ -23,7 +23,8 @@ CenteredGridView {
     id: homeGrid
     focus: true
     activeFocusOnTab: true
-    topMargin: 24
+    // Clearance for the shell's floating title + ghost actions (ShellChrome)
+    topMargin: 112
     bottomMargin: 8
     // Single centered column of wide rows
     cellWidth: homeGrid.availableWidth > 0 ? Math.min(homeGrid.availableWidth, Tokens.listMaxWidth) : Tokens.listMaxWidth

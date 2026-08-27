@@ -7,6 +7,7 @@
         <file>gui/WelcomeView.qml</file>
         <file>gui/OnScreenKeyboard.qml</file>
         <file>gui/NavigableButton.qml</file>
+        <file>gui/ShellChrome.qml</file>
         <file>gui/ControllerHint.qml</file>
         <file>gui/AppView.qml</file>
         <file>gui/SettingsView.qml</file>

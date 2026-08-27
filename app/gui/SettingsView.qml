@@ -95,6 +95,9 @@ Flickable {
 
     Column {
         padding: 10
+        // Under the modern shell the floating title occupies the top zone
+        // (must follow `padding` — grouped assignment order decides last-write)
+        topPadding: StreamingPreferences.modernHomeScreen ? 112 : 10
         id: settingsColumn1
         width: settingsPage.width / 2
         spacing: 15
@@ -1312,6 +1315,7 @@ Flickable {
     Column {
         padding: 10
         rightPadding: 20
+        topPadding: StreamingPreferences.modernHomeScreen ? 112 : 10
         anchors.left: settingsColumn1.right
         id: settingsColumn2
         width: settingsPage.width / 2

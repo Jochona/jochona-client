@@ -31,7 +31,11 @@ ApplicationWindow {
             Material.background = "#303030"
         }
 
-        SdlGamepadKeyNavigation.enable()
+        // Jochona: SdlGamepadKeyNavigation.enable() is deferred to bootTimer below.
+        // It initializes the SDL game-controller subsystem, which runs HID device
+        // enumeration inside a nested CFRunLoop. Doing that here (before the
+        // window's first frame) can stall the first CoreAnimation commit on
+        // macOS and pinwheel the app at launch.
     }
 
     Component.onCompleted: {
@@ -56,10 +60,31 @@ ApplicationWindow {
                 wow64Dialog.open()
             }
 
-            // Hardware acceleration and unmapped gamepads are checked asynchronously
             SystemProperties.hasHardwareAccelerationChanged.connect(hasHardwareAccelerationChanged)
             SystemProperties.unmappedGamepadsChanged.connect(hasUnmappedGamepadsChanged)
-            SystemProperties.startAsyncLoad()
+        }
+
+        // Gamepad navigation and the deferred subsystem probe run after the
+        // first frame is presented (see comment in doEarlyInit). The probe
+        // thread warms the SDL game-controller subsystem off-thread, so
+        // enable() typically just takes the refcount shortcut by now.
+        bootTimer.start()
+    }
+
+    Timer {
+        id: bootTimer
+        interval: 250
+        repeat: true
+        onTriggered: {
+            // Wait for the off-thread gamepad probe (it owns the SDL GC
+            // subsystem init); enable() is then a fast refcount no-op and the
+            // UI thread never sits in HID enumeration.
+            if (SystemProperties.gamepadProbeComplete) {
+                stop()
+                SdlGamepadKeyNavigation.enable()
+                if (runConfigChecks)
+                    SystemProperties.startAsyncLoad()
+            }
         }
     }
 
@@ -249,9 +274,21 @@ ApplicationWindow {
         }
     }
 
+    // Legacy painted bar — kept for modernHomeScreen=false only. The modern
+    // shell collapses it to zero height and uses ShellChrome's floating
+    // overlay (large typographic title + ghost actions) instead.
+    ShellChrome {
+        id: shellChrome
+        stack: stackView
+        onBackRequested: goBack()
+        onAddPcRequested: addPcDialog.open()
+        onSettingsRequested: navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+    }
+
     header: ToolBar {
         id: toolBar
-        height: 60
+        height: StreamingPreferences.modernHomeScreen ? 0 : 60
+        visible: height > 0
         anchors.topMargin: 5
         anchors.bottomMargin: 5
 

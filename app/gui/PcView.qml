@@ -15,7 +15,8 @@ CenteredGridView {
     id: pcGrid
     focus: true
     activeFocusOnTab: true
-    topMargin: 20
+    // Reserve the floating chrome title zone under the modern shell
+    topMargin: StreamingPreferences.modernHomeScreen ? 112 : 20
     bottomMargin: 5
     cellWidth: 310; cellHeight: 330;
     objectName: qsTr("Computers")

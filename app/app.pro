@@ -614,6 +614,14 @@ macx {
 
     QMAKE_BUNDLE_DATA += APP_BUNDLE_RESOURCES APP_BUNDLE_PLIST
 
+    # LaunchServices caches bundle icons by (path, cdhash). Ad-hoc signed dev
+    # builds get a new cdhash on every relink; until the new bundle is
+    # re-registered, the Dock keeps serving the stale cached icon (this is why
+    # the icon appeared to "revert to Moonlight" after rebuilds). Force
+    # re-registration after every build so fresh Jochona.icns is picked up.
+    LSREGISTER = /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+    QMAKE_POST_LINK += touch $${OUT_PWD}/$${TARGET}.app && $$LSREGISTER -f $${OUT_PWD}/$${TARGET}.app
+
     !disable-prebuilts {
         APP_BUNDLE_FRAMEWORKS.files = $$files(../libs/mac/Frameworks/*.framework, true) $$files(../libs/mac/lib/*.dylib, true)
         APP_BUNDLE_FRAMEWORKS.path = Contents/Frameworks

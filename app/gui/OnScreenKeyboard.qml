@@ -281,6 +281,12 @@ FocusScope {
 
                         Accessible.role: Accessible.Button
                         Accessible.name: keyboard.keyLabel(key)
+                        Accessible.onPressAction: {
+                            keyboard.curRow = keyRow.rowIndex
+                            keyboard.curCol = index
+                            keyboard.directInput = false
+                            keyboard.pressCurrent()
+                        }
 
                         Label {
                             anchors.centerIn: parent

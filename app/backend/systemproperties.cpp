@@ -46,7 +46,28 @@ private:
 
 SystemProperties::SystemProperties()
 {
-    versionString = QString(VERSION_STR);
+    // Jochona: warm the SDL game-controller subsystem immediately, on a worker
+    // thread. Controller init runs HID enumeration inside a nested CFRunLoop;
+    // on macOS that can be asked to flush a CoreAnimation transaction
+    // mid-enumeration, which wedges the window's first frame (pinwheel at
+    // launch) when it happens on the UI thread during window creation. QML
+    // waits for gamepadProbeComplete before enabling controller navigation,
+    // and SdlGamepadKeyNavigation::enable() then just takes the refcount
+    // shortcut because the subsystem is already up.
+    QThread* gamepadProbeThread = QThread::create([this]() {
+        QString unmapped = SdlInputHandler::getUnmappedGamepads();
+        QMetaObject::invokeMethod(this, [this, unmapped]() {
+            unmappedGamepads = unmapped;
+            gamepadProbeComplete = true;
+            emit gamepadProbeCompleteChanged();
+            if (!unmapped.isEmpty()) {
+                emit unmappedGamepadsChanged();
+            }
+        }, Qt::QueuedConnection);
+    });
+    gamepadProbeThread->setObjectName("Gamepad Probe Thread");
+    connect(gamepadProbeThread, &QThread::finished, gamepadProbeThread, &QThread::deleteLater);
+    gamepadProbeThread->start();
     hasDesktopEnvironment = WMUtils::isRunningDesktopEnvironment();
     isRunningWayland = WMUtils::isRunningWayland();
     isRunningXWayland = isRunningWayland && QGuiApplication::platformName() == "xcb";
@@ -168,14 +189,6 @@ void SystemProperties::startAsyncLoad()
     if (systemPropertyQueryThread) {
         // Already started/completed
         return;
-    }
-
-    // This isn't actually asynchronous (due to the need to synchronize with
-    // SdlGamepadKeyNavigation), but we don't query it in the constructor
-    // because it's expensive.
-    unmappedGamepads = SdlInputHandler::getUnmappedGamepads();
-    if (!unmappedGamepads.isEmpty()) {
-        emit unmappedGamepadsChanged();
     }
 
     // We initialize the video subsystem and test window on the main thread

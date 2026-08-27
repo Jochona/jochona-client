@@ -31,6 +31,10 @@ public:
     Q_PROPERTY(bool hasHardwareAcceleration MEMBER hasHardwareAcceleration NOTIFY hasHardwareAccelerationChanged)
     Q_PROPERTY(bool rendererAlwaysFullScreen MEMBER rendererAlwaysFullScreen NOTIFY rendererAlwaysFullScreenChanged)
     Q_PROPERTY(QString unmappedGamepads MEMBER unmappedGamepads NOTIFY unmappedGamepadsChanged)
+    // Jochona: true once the off-main-thread game-controller probe has finished.
+    // QML waits for this before running SdlGamepadKeyNavigation::enable(), so
+    // the (potentially slow) HID enumeration never runs on the UI thread.
+    Q_PROPERTY(bool gamepadProbeComplete MEMBER gamepadProbeComplete NOTIFY gamepadProbeCompleteChanged)
     Q_PROPERTY(QSize maximumResolution MEMBER maximumResolution NOTIFY maximumResolutionChanged)
     Q_PROPERTY(bool supportsHdr MEMBER supportsHdr NOTIFY supportsHdrChanged)
 
@@ -45,6 +49,7 @@ public:
 
 signals:
     void unmappedGamepadsChanged();
+    void gamepadProbeCompleteChanged();
     void hasHardwareAccelerationChanged();
     void rendererAlwaysFullScreenChanged();
     void maximumResolutionChanged();
@@ -75,6 +80,7 @@ private:
     QSize maximumResolution;
     bool supportsHdr;
     QString unmappedGamepads;
+    bool gamepadProbeComplete = false;
 
     // Properties set by refreshDisplays()
     QList<QRect> monitorNativeResolutions;
