@@ -56,7 +56,6 @@ jobs:
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.11.1'
-          modules: 'qttools'
       - name: Extract UI strings
         working-directory: app
         run: lupdate app.pro
