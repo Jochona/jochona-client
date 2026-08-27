@@ -55,6 +55,7 @@
 #include "backend/thememanager.h"
 #include "backend/controllermanager.h"
 #include "backend/controllerprofilestore.h"
+#include "backend/adapters/hostadaptermanager.h"
 #include "core/credentialstore.h"
 #include "core/settingsdatabase.h"
 #include "streaming/session.h"
@@ -1097,6 +1098,8 @@ int main(int argc, char *argv[])
         engine.rootContext()->setContextProperty("credentialStore", credentialStore);
 
         engine.rootContext()->setContextProperty("themeManager", ThemeManager::get());
+
+        engine.rootContext()->setContextProperty("hostAdapters", HostAdapterManager::get());
 
         // Load the main.qml file
         engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));

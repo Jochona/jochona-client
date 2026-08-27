@@ -200,6 +200,9 @@ SOURCES += \
     backend/thememanager.cpp \
     backend/controllermanager.cpp \
     backend/controllerprofilestore.cpp \
+    backend/adapters/hostcapabilities.cpp \
+    backend/adapters/hostprober.cpp \
+    backend/adapters/hostadaptermanager.cpp \
     cli/commandlineparser.cpp \
     cli/listapps.cpp \
     cli/quitstream.cpp \
@@ -249,6 +252,9 @@ HEADERS += \
     backend/thememanager.h \
     backend/controllermanager.h \
     backend/controllerprofilestore.h \
+    backend/adapters/hostcapabilities.h \
+    backend/adapters/hostprober.h \
+    backend/adapters/hostadaptermanager.h \
     cli/commandlineparser.h \
     cli/listapps.h \
     cli/quitstream.h \
