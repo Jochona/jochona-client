@@ -2,9 +2,11 @@
 """Generate all derived brand assets from assets/brand/ masters.
 
 Masters (repo-committed originals, never edited):
-  app-icon.png    1254x1254 crescent + screen mark
-  hero-wide.png   1983x793  hero banner (GitHub social, itch, store headers)
-  banner-tall.png 1024x1536 vertical banner (store caps)
+  app-icon.png      1254x1254 glossy neon play glyph + crescent + orbit
+  hero-wide.png     1983x793  hero banner (GitHub social, itch, store headers)
+  banner-tall.png   1024x1536 vertical banner (store caps)
+  logo-mark.png     1254x1254 navy line mark, transparent (light backgrounds)
+  logo-mark-light.png same mark tinted lavender (dark backgrounds)
 
 Outputs (all regenerated, never hand-edited):
   app/Jochona.icns                          macOS bundle icon
