@@ -205,7 +205,7 @@ The controller manager will provide:
 - Device name, vendor, connection type, battery, and capabilities.
 - Live visualization of buttons, sticks, triggers, touchpads, and motion sensors. (Motion, adaptive-trigger, LED, and battery plumbing already exist end-to-end in moonlight-common-c; the manager adds visualization and configuration, and must reflect that host-side support varies.)
 - Reliable hot-plug and reconnect behavior.
-- Explicit Player Slot assignment and reordering. Player Slots are Session-scoped: this Client Device presents up to four controllers into the Host's pad pool; concurrent clients are governed by host policy and surfaced as the host's busy response. One active Session per Client Device.
+- Explicit Player Slot assignment and reordering. Player Slots are Session-scoped: the Client Device presents one pad per connected controller into the Host's pad pool, up to the protocol maximum of 16 (`MAX_GAMEPADS` in upstream `SdlInputHandler`); the four-player ordering UI is presentation, not a cap. Concurrent clients are governed by host policy and surfaced as the host's busy response. One active Session per Client Device.
 - Stick and trigger calibration.
 - Dead zones, anti-dead zones, sensitivity, and response curves.
 - Button remapping. Controller Maps apply client-side in the input pipeline before protocol send, so they work with every host; each map carries a raw-passthrough toggle that bypasses all transforms for latency comparison and debugging.
@@ -472,7 +472,7 @@ Channels and packaging:
 - Stable and preview/nightly channels.
 - Windows: SignPath-signed installers (free for qualifying open-source projects; requires the repository to be public), x86-64 with ARM64 retained — upstream CI already cross-builds both.
 - macOS: Developer ID-signed and notarized application and disk image (Apple Developer Program membership held).
-- Linux: Flatpak built and served from the project's own GitHub Releases (`.flatpakref` + bundle). **Flathub submission is not viable**: Flathub's generative-AI policy rejects applications containing AI-generated or AI-assisted code, documentation, or other content, and forbids AI-generated submission material. See `docs/github-setup.md`.
+- Linux: Flatpak built by CI and served from project infrastructure — an OSTree repository hosted on GitHub Pages as the update channel, with a `.flatpakref` and a `.flatpak` bundle attached to GitHub Releases (see `docs/github-setup.md`). **Flathub submission is not viable**: Flathub's generative-AI policy rejects applications containing AI-generated or AI-assisted code, documentation, or other content, and forbids AI-generated submission material.
 - No silent downgrade.
 
 Updates:
@@ -485,7 +485,7 @@ Localization readiness:
 
 Configuration migration:
 
-- Single SQLite database with a schema-migration runner; upgrades take a rollback-safe backup (file-copy + rename) before migrating.
+- Single SQLite database with a schema-migration runner; pre-migration backups use `VACUUM INTO`, which produces a consistent snapshot while WAL is active (a raw file copy can capture a database mid-checkpoint and is not WAL-safe). Rollback swaps the snapshot in on the next clean start.
 
 ---
 
@@ -500,7 +500,7 @@ Configuration migration:
 | Streaming protocol | `moonlight-common-c` | Mature GameStream implementation; kept near-upstream with deliberate bumps. |
 | Controller input | Existing SDL2 path initially behind a new abstraction | Preserve compatibility before considering SDL3. |
 | Video and audio | Existing Moonlight renderers, FFmpeg, libplacebo, and platform hardware APIs | Avoid destabilizing the most mature subsystem. |
-| Settings and profiles | One SQLite database with a schema-migration runner | Settings, profiles, library cache, and history in one file; rollback-safe backup is one atomic copy; secrets never live here. |
+| Settings and profiles | One SQLite database with a schema-migration runner | Settings, profiles, library cache, and history in one file; rollback is a `VACUUM INTO` snapshot swap; secrets never live here. |
 | Secrets | OS credential stores | Upstream stores pairing certificate and private key in plain QSettings — migrating them to Keychain/DPAPI/libsecret is new client work, along with provider tokens. |
 | Build system | Preserve upstream (qmake) initially; evaluate CMake after parity | Avoid coupling product work to a foundational migration. |
 

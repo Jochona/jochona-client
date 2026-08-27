@@ -37,7 +37,7 @@ One connection between one Client Device and one running Host Application; has a
 _Avoid_: stream, connection (bare)
 
 **Player Slot**:
-One of up to four controller positions a Client Device presents to a Host within one Session; scoped to that Session, never shared across Clients.
+One of up to sixteen protocol-level controller positions (upstream `MAX_GAMEPADS`) a Client Device presents to a Host within one Session, one pad per connected controller; scoped to that Session, never shared across Clients.
 _Avoid_: player number (host-global), controller index
 
 ### Trust and availability

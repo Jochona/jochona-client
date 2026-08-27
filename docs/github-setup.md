@@ -61,11 +61,15 @@ Self-hosted runners: defer until actually needed (e.g., a Linux box or the Steam
 
 ```bash
 mkdir actions-runner && cd actions-runner
-curl -o runner.tar.gz -L https://github.com/actions/runner/releases/download/v2.327.1/actions-runner-linux-x64-2.327.1.tar.gz
+# Use the download URL shown in the dialog — it always carries the current runner version
+# (latest as of 2026-08-27 is v2.337.0; the API is api.github.com/repos/actions/runner/releases/latest)
+curl -o runner.tar.gz -L <url-from-dialog>
 tar xzf runner.tar.gz
-./config.sh --url https://github.com/Jochona/jochona-client --unattended --ephemeral   # paste the ephemeral token from the dialog
+./config.sh --url https://github.com/Jochona/jochona-client --name steam-deck --labels steam-deck --unattended   # paste the registration token from the dialog
 sudo ./svc.sh install && sudo ./svc.sh start
 ```
+
+A persistent service runner must NOT use `--ephemeral`: an ephemeral runner unregisters itself after one job, which breaks the service. `--ephemeral` is only for autoscaling fleets without `svc.sh`.
 
 Label hardware runners (e.g., `steam-deck`) and target them explicitly from workflows so normal CI never schedules onto them.
 
@@ -100,15 +104,17 @@ gh secret set APPLE_TEAM_ID     --env release --body "..."
 
 Flathub's [Requirements → Generative AI policy](https://docs.flathub.org/docs/for-app-authors/requirements) states: "Applications containing AI-generated or AI-assisted code, documentation, or any other content are not allowed," submission PRs "must not be generated, opened, or automated using AI tools or agents," and review text must not be LLM-generated. Exceptions exist only for "mature, well-maintained projects" — a repo this young will not qualify. Jochona's development process is AI-agent-heavy by choice; treat Flathub as **off the table by default**.
 
-v1 plan: ship Flatpak from our own infrastructure —
+v1 architecture — a `.flatpakref` only works when a live OSTree repo sits behind it, so CI hosts one:
 
-1. CI builds a `.flatpakref` + `.flatpak` bundle per release, attached to GitHub Releases.
-2. Users install with `flatpak install https://github.com/Jochona/jochona-client/releases/latest/download/jochona-client.flatpakref` (documented on the release page and website).
-3. Runtime/deps from Flathub's `org.kde.Platform` runtimes (consumption side is unaffected by the policy).
+1. CI runs `flatpak-builder --repo=repo …` + `flatpak build-update-repo repo`, pushes the repo tree to a `flatpak-repo` branch, and GitHub Pages serves it at `https://jochona.github.io/flatpak-repo/`.
+2. Each release attaches `jochona-client.flatpakref` (pointing at the Pages repo URL) and a `.flatpak` bundle (manual `flatpak install --bundle` fallback).
+3. Users: `flatpak install https://jochona.github.io/flatpak-repo/app.jochona.client.flatpakref` — update channel is the Pages repo; `.flatpakref` itself is static.
+4. Repo signing: HTTPS delivery is the v1 integrity mechanism; optional detached GPG via `build-update-repo --gpg-sign` later.
+5. Runtime/deps from Flathub's `org.kde.Platform` runtimes (consumption side is unaffected by the policy).
 
 Consequences to accept consciously: no Flathub search/browse discovery, no Flathub-run rebuilds, we host our own repo file update flow. If policy or project maturity changes the calculus later, a future submission also requires the app ID to be final (`app.jochona.client` once the domain is bought — Flathub verifies domain control; the GitHub-fallback prefix would have been `io.github.*`, not `com.github.*`) and a documented human-authored release of the submitted artifacts.
 
-## Team access
+## Team access — commands verified 2026-08-27 (team created and deleted as dry-run)
 
 Org teams (the repo is in the org now): create teams, then grant repo access per team.
 
