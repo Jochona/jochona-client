@@ -23,7 +23,7 @@ import subprocess
 import sys
 import tempfile
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BRAND = os.path.join(ROOT, "assets", "brand")
@@ -77,7 +77,9 @@ def main():
     # --- WiX bootstrap logo (square, burned into installer UI) ---
     save(icon.resize((64, 64), Image.LANCZOS), "app/jochona-wix.png")
 
-    # --- GitHub social preview: center-crop hero to 1200x630 ---
+    # --- GitHub social preview: crop hero to 1200x630, typeset brand lockup ---
+    # The hero master stays text-free; the wordmark + tagline are composed here
+    # with the brand fonts so they can change without touching the artwork.
     hero = master("hero-wide.png").convert("RGB")
     target_ratio = 1200 / 630
     w, h = hero.size
@@ -87,7 +89,27 @@ def main():
     else:
         new_h = int(w / target_ratio)
         hero = hero.crop((0, (h - new_h) // 2, w, (h + new_h) // 2))
-    save(hero.resize((1200, 630), Image.LANCZOS), "docs/assets/github-social.png")
+    hero = hero.resize((1200, 630), Image.LANCZOS)
+
+    def font(weight, size):
+        path = os.path.join(ROOT, "app", "fonts", f"SpaceGrotesk-{weight}.ttf")
+        return ImageFont.truetype(path, size)
+
+    title_font, tag_font = font("Bold", 104), font("Medium", 36)
+    title, tagline = "Jochona", "Stream from anywhere."
+    tx, ty = 84, 84
+    # neon glow: blurred white text layers composited under the crisp glyphs
+    glow = Image.new("L", hero.size, 0)
+    ImageDraw.Draw(glow).text((tx, ty), title, font=title_font, fill=255)
+    ImageDraw.Draw(glow).text((tx + 2, ty + 122), tagline, font=tag_font, fill=200)
+    for radius, strength in ((24, 0.9), (10, 0.8)):
+        halo = glow.filter(ImageFilter.GaussianBlur(radius))
+        tint = Image.new("RGB", hero.size, (90, 170, 255))
+        hero = Image.composite(tint, hero, halo.point(lambda p: int(p * strength)))
+    draw = ImageDraw.Draw(hero)
+    draw.text((tx, ty), title, font=title_font, fill=(235, 244, 255))
+    draw.text((tx + 2, ty + 122), tagline, font=tag_font, fill=(199, 205, 242))
+    save(hero, "docs/assets/github-social.png")
 
 
 if __name__ == "__main__":
