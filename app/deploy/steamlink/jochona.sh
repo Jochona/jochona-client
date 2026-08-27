@@ -12,6 +12,6 @@ export SDL_ENABLE_STEAM_CONTROLLERS=1
 # Renice PE_Single_CPU which seems to host A/V stuff
 renice -10 -p $(pidof PE_Single_CPU)
 
-# Renice Moonlight itself to avoid preemption by background tasks
+# Renice Jochona itself to avoid preemption by background tasks
 # Write output to a logfile in /tmp
-exec nice -n -10 ./bin/moonlight > /tmp/moonlight.log 2>&1
+exec nice -n -10 ./bin/Jochona > /tmp/jochona.log 2>&1

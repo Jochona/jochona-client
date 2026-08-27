@@ -30,7 +30,7 @@
 	<update_contact>cameron@moonlight-stream.org</update_contact>
 	<launchable type="desktop-id">com.jochona.client.desktop</launchable>
 	<provides>
-		<binary>moonlight</binary>
+		<binary>Jochona</binary>
 	</provides>
 	<content_rating type="oars-1.1" />	
 

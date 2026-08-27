@@ -2,7 +2,10 @@ QT += core quick network quickcontrols2 svg
 CONFIG += c++17
 
 unix:!macx {
-    TARGET = moonlight
+    # Jochona: renamed from "moonlight"; the .desktop Exec and appdata
+    # <binary> entries reference this exact name, and linuxdeploy resolves
+    # the AppDir executable through them.
+    TARGET = Jochona
 } else:macx {
     # On macOS, this is the name displayed in the Finder and the global menu
     # bar, and it becomes the .app bundle folder name.
