@@ -185,7 +185,7 @@ Interaction requirements:
 - No unreachable, invisible, or ambiguous focus targets.
 - Controller-driven host pairing and on-screen text entry.
 - Full keyboard and mouse navigation.
-- Correct Xbox, PlayStation, and Nintendo glyphs.
+- Correct Xbox, PlayStation, Nintendo, and Steam Deck glyphs, built on the vendored CC0 Kenney Input Prompts pack (`assets/vendor/`).
 - Configurable confirm and cancel conventions.
 - Clear long-press and secondary-action prompts.
 - Adjustable repeat delay and speed.
@@ -497,6 +497,7 @@ jochona-client/
     macos/
     linux/
   qml/                   Shell, reusable controls, themes, and overlay
+  assets/                Vendored glyph packs and brand sources (see assets/vendor/README.md)
   tests/
   packaging/
 ```
