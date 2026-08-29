@@ -1,27 +1,45 @@
 #include "sdlgamepadkeynavigation.h"
 
 #include <QKeyEvent>
+#include <QCoreApplication>
 #include <QGuiApplication>
 #include <QWindow>
 
 #include "settings/mappingmanager.h"
 
 #define AXIS_NAVIGATION_REPEAT_DELAY 150
+SdlGamepadKeyNavigation* SdlGamepadKeyNavigation::s_Instance = nullptr;
 
-SdlGamepadKeyNavigation::SdlGamepadKeyNavigation(StreamingPreferences* prefs)
+SdlGamepadKeyNavigation* SdlGamepadKeyNavigation::get()
+{
+    return s_Instance;
+}
+
+
+SdlGamepadKeyNavigation::SdlGamepadKeyNavigation(
+        StreamingPreferences* prefs)
     : m_Prefs(prefs),
       m_Enabled(false),
       m_UiNavMode(false),
+      m_StreamOverlayMode(false),
       m_FirstPoll(false),
       m_HasFocus(false),
-      m_LastAxisNavigationEventTime(0)
+      m_InputMode(QStringLiteral("pointer")),
+      m_SendingControllerKey(false),
+      m_LastAxisNavigationEventTime(0),
+      m_ControllerFamily(QStringLiteral("xbox"))
 {
+    s_Instance = this;
     m_PollingTimer = new QTimer(this);
-    connect(m_PollingTimer, &QTimer::timeout, this, &SdlGamepadKeyNavigation::onPollingTimerFired);
+    connect(m_PollingTimer, &QTimer::timeout,
+            this, &SdlGamepadKeyNavigation::onPollingTimerFired);
+    QCoreApplication::instance()->installEventFilter(this);
 }
 
 SdlGamepadKeyNavigation::~SdlGamepadKeyNavigation()
 {
+    if (s_Instance == this) s_Instance = nullptr;
+    QCoreApplication::instance()->removeEventFilter(this);
     disable();
 }
 
@@ -65,6 +83,9 @@ void SdlGamepadKeyNavigation::enable()
             SDL_GameController* gc = SDL_GameControllerOpen(i);
             if (gc != nullptr) {
                 m_Gamepads.append(gc);
+                if (m_Gamepads.count() == 1) {
+                    updateControllerFamily(gc);
+                }
             }
         }
     }
@@ -115,7 +136,12 @@ void SdlGamepadKeyNavigation::onPollingTimerFired()
     }
 
     // Peep events rather than polling to avoid calling SDL_PumpEvents()
-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1) {
+    const Uint32 firstEvent = m_StreamOverlayMode
+        ? SDL_CONTROLLERAXISMOTION : SDL_FIRSTEVENT;
+    const Uint32 lastEvent = m_StreamOverlayMode
+        ? SDL_CONTROLLERDEVICEREMAPPED : SDL_LASTEVENT;
+    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT,
+                          firstEvent, lastEvent) == 1) {
         switch (event.type) {
         case SDL_QUIT:
             // SDL may send us a quit event since we initialize
@@ -207,6 +233,9 @@ void SdlGamepadKeyNavigation::onPollingTimerFired()
                 // before we've processed the add event.
                 if (!m_Gamepads.contains(gc)) {
                     m_Gamepads.append(gc);
+                    if (m_Gamepads.count() == 1) {
+                        updateControllerFamily(gc);
+                    }
                 }
                 else {
                     // We already have this game controller open
@@ -262,13 +291,79 @@ void SdlGamepadKeyNavigation::onPollingTimerFired()
     }
 }
 
-void SdlGamepadKeyNavigation::sendKey(QEvent::Type type, Qt::Key key, Qt::KeyboardModifiers modifiers)
+void SdlGamepadKeyNavigation::sendKey(QEvent::Type type, Qt::Key key,
+                                      Qt::KeyboardModifiers modifiers)
 {
     QGuiApplication* app = static_cast<QGuiApplication*>(QGuiApplication::instance());
     QWindow* focusWindow = app->focusWindow();
+    if (focusWindow == nullptr
+            && !qEnvironmentVariableIsEmpty(
+                "JOCHONA_UI_GAMEPAD_WALK")) {
+        for (QWindow* candidate : app->allWindows()) {
+            if (candidate->isVisible()) {
+                focusWindow = candidate;
+                break;
+            }
+        }
+    }
+    if (!qEnvironmentVariableIsEmpty("JOCHONA_UI_GAMEPAD_WALK")) {
+        qInfo() << "Jochona: gamepad dispatch"
+                << key << "focusWindow" << focusWindow;
+    }
     if (focusWindow != nullptr) {
-        QKeyEvent keyPressEvent(type, key, modifiers);
-        app->sendEvent(focusWindow, &keyPressEvent);
+        setInputMode(QStringLiteral("controller"));
+        QKeyEvent keyEvent(type, key, modifiers);
+        m_SendingControllerKey = true;
+        app->sendEvent(focusWindow, &keyEvent);
+        m_SendingControllerKey = false;
+    }
+}
+
+void SdlGamepadKeyNavigation::setInputMode(const QString& mode)
+{
+    if (m_InputMode == mode) {
+        return;
+    }
+    m_InputMode = mode;
+    emit inputModeChanged();
+}
+
+bool SdlGamepadKeyNavigation::eventFilter(QObject* watched, QEvent* event)
+{
+    Q_UNUSED(watched);
+    if (event->type() == QEvent::KeyPress && !m_SendingControllerKey) {
+        setInputMode(QStringLiteral("keyboard"));
+    }
+    else if (event->type() == QEvent::MouseButtonPress
+             || event->type() == QEvent::Wheel
+             || event->type() == QEvent::TouchBegin) {
+        setInputMode(QStringLiteral("pointer"));
+    }
+    return false;
+}
+
+void SdlGamepadKeyNavigation::updateControllerFamily(SDL_GameController* controller)
+{
+    QString name = QString::fromUtf8(SDL_GameControllerName(controller)).toLower();
+    QString family = QStringLiteral("xbox");
+    if (name.contains(QStringLiteral("dualsense"))
+            || name.contains(QStringLiteral("dualshock"))
+            || name.contains(QStringLiteral("playstation"))
+            || name.contains(QStringLiteral("ps4"))
+            || name.contains(QStringLiteral("ps5"))) {
+        family = QStringLiteral("playstation");
+    }
+    else if (name.contains(QStringLiteral("nintendo"))
+             || name.contains(QStringLiteral("switch"))) {
+        family = QStringLiteral("nintendo");
+    }
+    else if (name.contains(QStringLiteral("steam"))) {
+        family = QStringLiteral("steam");
+    }
+
+    if (m_ControllerFamily != family) {
+        m_ControllerFamily = family;
+        emit controllerFamilyChanged();
     }
 }
 
@@ -289,6 +384,11 @@ void SdlGamepadKeyNavigation::updateTimerState()
 void SdlGamepadKeyNavigation::setUiNavMode(bool uiNavMode)
 {
     m_UiNavMode = uiNavMode;
+}
+
+void SdlGamepadKeyNavigation::setStreamOverlayMode(bool enabled)
+{
+    m_StreamOverlayMode = enabled;
 }
 
 int SdlGamepadKeyNavigation::getConnectedGamepads()

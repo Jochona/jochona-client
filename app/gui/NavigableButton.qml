@@ -3,67 +3,115 @@ import QtQuick.Controls 2.2
 
 import "style"
 
-// Jochona: controller-first CTA button for the modern screens (M2).
-// Follows the shipped focus language (HomeView rows): resting card surface,
-// focused = brighter fill + 2px borderFocus ring. `primary` fills with the
-// accent so one action per screen reads as the default. Return/Enter (gamepad
-// A) activates; left/right walk the focus chain like NavigableToolButton.
+// Night Route action primitive. It carries one literal action, exposes native
+// accessibility semantics, and uses the same route trace as every focusable
+// destination. Pills are reserved for compact choice chips.
 Button {
     id: control
 
     property bool primary: false
+    property bool compact: false
+    property bool destructive: false
+    property string description: ""
+    property string accessibleName: text
 
+    focusPolicy: Qt.StrongFocus
     activeFocusOnTab: true
+    hoverEnabled: true
+
+    implicitHeight: Math.max(compact ? Tokens.dp(44) : Tokens.actionHeight,
+                             contentItem.implicitHeight + topPadding + bottomPadding)
+    implicitWidth: Math.max(compact ? Tokens.dp(104) : Tokens.dp(148),
+                            contentItem.implicitWidth + leftPadding + rightPadding)
+    leftPadding: compact ? Tokens.dp(18) : Tokens.dp(24)
+    rightPadding: leftPadding
+    topPadding: Tokens.dp(10)
+    bottomPadding: Tokens.dp(10)
 
     Keys.onReturnPressed: clicked()
     Keys.onEnterPressed: clicked()
 
     Keys.onRightPressed: {
-        nextItemInFocusChain(true).forceActiveFocus(Qt.TabFocus)
+        var next = nextItemInFocusChain(true)
+        if (next)
+            next.forceActiveFocus(Qt.TabFocus)
     }
-
     Keys.onLeftPressed: {
-        nextItemInFocusChain(false).forceActiveFocus(Qt.TabFocus)
+        var previous = nextItemInFocusChain(false)
+        if (previous)
+            previous.forceActiveFocus(Qt.TabFocus)
     }
 
-    leftPadding: 26
-    rightPadding: 26
-    topPadding: 13
-    bottomPadding: 13
+    Accessible.role: Accessible.Button
+    Accessible.name: accessibleName.length > 0 ? accessibleName : text
+    Accessible.description: description
+    Accessible.onPressAction: clicked()
 
-    contentItem: Label {
-        text: control.text
-        font.pointSize: Tokens.sizeBody
-        font.family: Tokens.familyBody
-        font.weight: Font.DemiBold
-        // The lit (focused/hovered) primary fill is bright, so its label
-        // flips dark — derived from the fill itself, keeping 4.5:1 in any
-        // theme without a new literal.
-        color: control.primary && (control.activeFocus || control.hovered)
-               ? Qt.darker(Tokens.accentFocus, 3.4)
-               : Tokens.textPrimary
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+    contentItem: Item {
+        implicitWidth: Math.max(actionLabel.implicitWidth,
+                                descriptionLabel.visible
+                                ? descriptionLabel.implicitWidth : 0)
+        implicitHeight: actionLabel.implicitHeight
+                        + (descriptionLabel.visible
+                           ? contentColumn.spacing
+                             + descriptionLabel.implicitHeight : 0)
 
-        Behavior on color {
-            ColorAnimation { duration: Tokens.motion(Tokens.durationFast) }
+        Column {
+            id: contentColumn
+            anchors.fill: parent
+            spacing: descriptionLabel.visible ? Tokens.dp(3) : 0
+
+            Label {
+                id: actionLabel
+                width: parent.width
+                text: control.text
+                font.pixelSize: control.compact ? Tokens.tChip : Tokens.tMeta
+                font.family: Tokens.familyBody
+                font.weight: Font.DemiBold
+                color: control.primary && (control.activeFocus || control.down)
+                       ? Tokens.focusInk : control.destructive
+                         ? Tokens.statusOffline : Tokens.textPrimary
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+
+            Label {
+                id: descriptionLabel
+                width: parent.width
+                visible: control.description.length > 0 && !control.compact
+                text: control.description
+                font.pixelSize: Tokens.tMicro
+                font.family: Tokens.familyBody
+                color: Tokens.textSecondary
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+            }
         }
     }
 
     background: Rectangle {
-        radius: height / 2
+        radius: control.compact ? height / 2 : Tokens.radiusControl
         color: control.primary
-               ? (control.activeFocus || control.hovered ? Tokens.accentFocus : Tokens.accent)
-               : (control.activeFocus || control.hovered ? Tokens.surfaceFocus : Tokens.surface)
-        border.width: control.activeFocus ? 2 : 1
-        border.color: control.activeFocus
-                      ? (control.primary ? Tokens.textPrimary : Tokens.borderFocus)
-                      : (control.primary ? Tokens.accentFocus : Tokens.border)
-        opacity: control.enabled ? 1.0 : 0.45
+               ? (control.activeFocus || control.down
+                  ? Tokens.accentFocus : Tokens.surfaceFocus)
+               : (control.down || control.highlighted || control.checked
+                  ? Tokens.surfaceFocus
+                  : control.hovered ? Qt.lighter(Tokens.surface, 1.08)
+                                    : Tokens.surface)
+        border.width: control.activeFocus ? 0 : Tokens.routeStroke
+        border.color: control.primary || control.highlighted || control.checked
+                      ? Tokens.link : Tokens.border
+        opacity: control.enabled ? 1.0 : 0.42
 
         Behavior on color {
             ColorAnimation { duration: Tokens.motion(Tokens.durationFast) }
+        }
+
+        MoonGlow {
+            active: control.activeFocus
+            radius: parent.radius
+            allowLift: false
         }
     }
 }

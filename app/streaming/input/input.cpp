@@ -9,7 +9,11 @@
 #include <QDir>
 #include <QGuiApplication>
 
-SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, int streamHeight)
+SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs,
+                                 int streamWidth,
+                                 int streamHeight,
+                                 const QString& libraryEntryId,
+                                 const QString& hostApplicationKey)
     : m_MultiController(prefs.multiController),
       m_GamepadMouse(prefs.gamepadMouse),
       m_SwapMouseButtons(prefs.swapMouseButtons),
@@ -35,6 +39,8 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
       m_DragButton(0),
       m_NumFingersDown(0)
 {
+    m_LibraryEntryId = libraryEntryId;
+    m_HostApplicationKey = hostApplicationKey;
     // System keys are always captured when running without a DE
     if (!WMUtils::isRunningDesktopEnvironment()) {
         m_CaptureSystemKeysMode = StreamingPreferences::CSK_ALWAYS;
@@ -134,6 +140,18 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
     m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].keyCode = SDLK_k;
     m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].scanCode = SDL_SCANCODE_K;
     m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].enabled = WMUtils::isRunningDesktopEnvironment();
+
+    m_SpecialKeyCombos[KeyComboReconnectDisplay].keyCombo =
+        KeyComboReconnectDisplay;
+    m_SpecialKeyCombos[KeyComboReconnectDisplay].keyCode = SDLK_r;
+    m_SpecialKeyCombos[KeyComboReconnectDisplay].scanCode = SDL_SCANCODE_R;
+    m_SpecialKeyCombos[KeyComboReconnectDisplay].enabled = true;
+
+    m_SpecialKeyCombos[KeyComboSessionSettings].keyCombo =
+        KeyComboSessionSettings;
+    m_SpecialKeyCombos[KeyComboSessionSettings].keyCode = SDLK_o;
+    m_SpecialKeyCombos[KeyComboSessionSettings].scanCode = SDL_SCANCODE_O;
+    m_SpecialKeyCombos[KeyComboSessionSettings].enabled = true;
 
     m_OldIgnoreDevices = SDL_GetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES);
     m_OldIgnoreDevicesExcept = SDL_GetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT);

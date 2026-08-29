@@ -1,0 +1,3 @@
+# Host Identity requires unique ID and pinned certificate
+
+A Host record is located by its Host-provided unique ID and authenticated by its pinned certificate. An unexpected change to either enters Trust state Identity Changed and hard-blocks Sessions until deliberate re-pair; after showing the old/new identity facts, Jochona may offer to migrate Library links and Settings Patches. We rejected address/name matching and automatic rebind because network location is not identity and would defeat certificate pinning; we rejected certificate-only continuity because legitimate certificate rotation must be recoverable without discarding the Host record.

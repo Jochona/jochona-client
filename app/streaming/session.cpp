@@ -1,7 +1,10 @@
 #include "session.h"
 #include "settings/streamingpreferences.h"
+#include "settings/effectivesettingsresolver.h"
 #include "streaming/streamutils.h"
 #include "backend/richpresencemanager.h"
+#include "library/librarymanager.h"
+#include "backend/adapters/hostadaptermanager.h"
 
 #include <Limelight.h>
 #include "SDL_compat.h"
@@ -28,17 +31,22 @@
 #define SDL_CODE_GAMECONTROLLER_SET_MOTION_EVENT_STATE 103
 #define SDL_CODE_GAMECONTROLLER_SET_CONTROLLER_LED 104
 #define SDL_CODE_GAMECONTROLLER_SET_ADAPTIVE_TRIGGERS 105
+#define SDL_CODE_DISPLAY_CONTEXT_CHANGED 106
 
 #include <openssl/rand.h>
 
 #include <QtEndian>
 #include <QCoreApplication>
 #include <QThreadPool>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSvgRenderer>
 #include <QPainter>
 #include <QImage>
 #include <QGuiApplication>
 #include <QCursor>
+#include <cmath>
 #include <QScreen>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
@@ -575,15 +583,25 @@ bool Session::populateDecoderProperties(SDL_Window* window)
 }
 
 Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *preferences)
-    : m_Preferences(preferences ? preferences : StreamingPreferences::get()),
-      m_IsFullScreen(m_Preferences->windowMode != StreamingPreferences::WM_WINDOWED || !WMUtils::isRunningDesktopEnvironment()),
+    : m_OwnedPreferences(preferences != nullptr
+                         ? preferences->clone()
+                         : StreamingPreferences::get()->clone()),
+      m_Preferences(m_OwnedPreferences.get()),
+      m_IsFullScreen(m_Preferences->windowMode != StreamingPreferences::WM_WINDOWED
+                     || !WMUtils::isRunningDesktopEnvironment()),
       m_Computer(computer),
       m_App(app),
       m_Window(nullptr),
       m_VideoDecoder(nullptr),
       m_DecoderLock(SDL_CreateMutex()),
       m_AudioMuted(false),
+      m_SessionVolumeDb(qBound(-60.0,
+                               m_Preferences->sessionVolumeDb,
+                               0.0)),
+      m_AudioVolumeGain(static_cast<float>(
+          std::pow(10.0, m_SessionVolumeDb.load() / 20.0))),
       m_QtWindow(nullptr),
+      m_SessionSettingsOpen(false),
       m_UnexpectedTermination(true), // Failure prior to streaming is unexpected
       m_InputHandler(nullptr),
       m_MouseEmulationRefCount(0),
@@ -604,6 +622,194 @@ Session::~Session()
     // Use Session::exec() or DeferredSessionCleanupTask instead.
 
     SDL_DestroyMutex(m_DecoderLock);
+}
+
+double Session::sessionVolumeDb() const
+{
+    return m_SessionVolumeDb.load(std::memory_order_relaxed);
+}
+
+QString Session::hostUuid() const
+{
+    return m_Computer != nullptr ? m_Computer->uuid : QString();
+}
+
+void Session::setSessionVolumeDb(double db)
+{
+    db = qBound(-60.0, db, 0.0);
+    if (qFuzzyCompare(m_SessionVolumeDb.load(std::memory_order_relaxed) + 1.0,
+                      db + 1.0)) {
+        return;
+    }
+    m_SessionVolumeDb.store(db, std::memory_order_relaxed);
+    m_AudioVolumeGain.store(
+        static_cast<float>(std::pow(10.0, db / 20.0)),
+        std::memory_order_relaxed);
+    m_Preferences->sessionVolumeDb = db;
+    emit sessionVolumeDbChanged();
+}
+
+Session* Session::createReconnectSession()
+{
+    const QString libraryEntryId =
+        LibraryManager::get()->libraryEntryFor(m_Computer->uuid, m_App.id);
+    QVariantMap context{
+        {QStringLiteral("hostUuid"), m_Computer->uuid},
+        {QStringLiteral("appId"), m_App.id},
+        {QStringLiteral("libraryEntryId"), libraryEntryId},
+    };
+    if (!m_ReconnectSessionPatch.isEmpty()) {
+        context.insert(QStringLiteral("sessionPatch"),
+                       m_ReconnectSessionPatch);
+    }
+    StreamingPreferences* resolved =
+        EffectiveSettingsResolver::get()->createPreferences(context);
+    resolved->sessionVolumeDb = sessionVolumeDb();
+    Session* replacement = new Session(m_Computer, m_App, resolved);
+    delete resolved;
+    return replacement;
+}
+
+void Session::notifyDisplayContextChanged(const QString& displayName)
+{
+    if (s_ActiveSession != this || m_Window == nullptr) return;
+    const QByteArray text =
+        tr("Display changed to %1.\n"
+           "Press Ctrl+Alt+Shift+R or Back+L1+R1+Y to reconnect.")
+            .arg(displayName.isEmpty() ? tr("another display")
+                                       : displayName)
+            .toUtf8();
+    SDL_Event event = {};
+    event.type = SDL_USEREVENT;
+    event.user.code = SDL_CODE_DISPLAY_CONTEXT_CHANGED;
+    event.user.data1 = SDL_strdup(text.constData());
+    if (SDL_PushEvent(&event) < 0) SDL_free(event.user.data1);
+}
+
+void Session::requestDisplayReconnect()
+{
+    emit displayReconnectRequested();
+    interrupt();
+}
+
+QString Session::libraryEntryId() const
+{
+    return m_Computer != nullptr
+        ? LibraryManager::get()->libraryEntryFor(
+              m_Computer->uuid, m_App.id)
+        : QString();
+}
+
+QVariantMap Session::currentSettings() const
+{
+    return {
+        {QStringLiteral("width"), m_Preferences->width},
+        {QStringLiteral("height"), m_Preferences->height},
+        {QStringLiteral("fps"), m_Preferences->fps},
+        {QStringLiteral("bitrateKbps"), m_Preferences->bitrateKbps},
+        {QStringLiteral("videocfg"),
+         static_cast<int>(m_Preferences->videoCodecConfig)},
+        {QStringLiteral("hdr"), m_Preferences->enableHdr},
+        {QStringLiteral("audiocfg"),
+         static_cast<int>(m_Preferences->audioConfig)},
+        {QStringLiteral("audiodevice"), m_Preferences->audioDevice},
+        {QStringLiteral("virtualdisplay"), m_Preferences->useVirtualDisplay},
+        {QStringLiteral("sessionVolumeDb"), sessionVolumeDb()},
+        {QStringLiteral("performanceOverlay"),
+         m_Preferences->showPerformanceOverlay},
+    };
+}
+
+bool Session::performanceOverlayEnabled() const
+{
+    return m_Preferences->showPerformanceOverlay;
+}
+
+bool Session::hostVolumeAvailable() const
+{
+    return m_Computer != nullptr
+        && HostAdapterManager::get()->capabilities(m_Computer->uuid)
+               .hasCapability(HostCapabilities::VolumeControl);
+}
+
+void Session::setPerformanceOverlayEnabled(bool enabled)
+{
+    if (m_Preferences->showPerformanceOverlay == enabled) return;
+    m_Preferences->showPerformanceOverlay = enabled;
+    m_OverlayManager.setOverlayState(Overlay::OverlayDebug, enabled);
+    emit currentSettingsChanged();
+}
+
+void Session::requestSessionSettings()
+{
+    if (s_ActiveSession != this || m_Window == nullptr
+            || m_SessionSettingsOpen.exchange(true)) {
+        return;
+    }
+    m_InputHandler->notifyFocusLost();
+    SDL_HideWindow(m_Window);
+    emit sessionSettingsRequested();
+}
+
+void Session::closeSessionSettings()
+{
+    if (!m_SessionSettingsOpen.exchange(false) || m_Window == nullptr) {
+        return;
+    }
+    SDL_ShowWindow(m_Window);
+    SDL_RaiseWindow(m_Window);
+    m_InputHandler->notifyFocusGained();
+    m_InputHandler->rescanGamepads();
+}
+
+void Session::applySessionSettings(const QVariantMap& restartPatch,
+                                   const QString& saveScope)
+{
+    static const QSet<QString> allowed{
+        QStringLiteral("width"), QStringLiteral("height"),
+        QStringLiteral("fps"), QStringLiteral("bitrateKbps"),
+        QStringLiteral("codec"), QStringLiteral("hdr"),
+        QStringLiteral("audiocfg"), QStringLiteral("audiodevice"),
+        QStringLiteral("virtualdisplay"),
+        QStringLiteral("sessionvolumedb"),
+    };
+    QVariantMap sanitized;
+    for (auto it = restartPatch.constBegin();
+         it != restartPatch.constEnd(); ++it) {
+        if (allowed.contains(it.key())) {
+            sanitized.insert(it.key(), it.value());
+        }
+    }
+    m_ReconnectSessionPatch = sanitized;
+
+    if (saveScope != QStringLiteral("session")) {
+        QString key;
+        if (saveScope == QStringLiteral("host_client_pair")) {
+            key = EffectiveSettingsResolver::get()->clientDeviceId()
+                + QLatin1Char('|') + hostUuid();
+        } else if (saveScope == QStringLiteral("library_entry")) {
+            key = libraryEntryId();
+        } else if (saveScope == QStringLiteral("host_application")) {
+            key = hostUuid() + QLatin1Char('|') + QString::number(m_App.id);
+        }
+        if (!key.isEmpty()) {
+            const QVariantMap bundle =
+                EffectiveSettingsResolver::get()->patch(saveScope, key);
+            QVariantMap values =
+                bundle.value(QStringLiteral("values")).toMap();
+            for (auto it = sanitized.constBegin();
+                 it != sanitized.constEnd(); ++it) {
+                values.insert(it.key(), it.value());
+            }
+            EffectiveSettingsResolver::get()->setPatch(
+                saveScope, key, values,
+                bundle.value(QStringLiteral("pins")).toMap(),
+                bundle.value(QStringLiteral("floors")).toMap());
+        }
+    }
+    closeSessionSettings();
+    emit displayReconnectRequested();
+    interrupt();
 }
 
 bool Session::initialize(QQuickWindow* qtWindow)
@@ -1618,6 +1824,46 @@ bool Session::startConnectionAsync()
     }
 
     QString rtspSessionUrl;
+    const HostCapabilities hostCapabilities =
+        HostAdapterManager::get()->capabilities(m_Computer->uuid);
+    QString jochonaTuple;
+    if (hostCapabilities.manifestStatus
+            == HostCapabilities::ManifestStatus::Compatible) {
+        if (!hostCapabilities.permissionNames.contains(
+                    QLatin1String("session.launch"))) {
+            emit displayLaunchError(
+                tr("This paired Client is not allowed to launch Sessions "
+                   "on this Jochona Host."));
+            return false;
+        }
+        if (m_Preferences->useVirtualDisplay
+                && !hostCapabilities.hasCapability(
+                    HostCapabilities::VirtualDisplayDriverReady)) {
+            emit displayLaunchError(
+                tr("Virtual Display is selected, but this Host reports that "
+                   "its display adapter is unavailable."));
+            return false;
+        }
+        jochonaTuple = hostCapabilities.selectEncoderTuple(
+            m_StreamConfig.width,
+            m_StreamConfig.height,
+            m_StreamConfig.fps,
+            m_SupportedVideoFormats,
+            m_Preferences->enableHdr,
+            m_Preferences->useVirtualDisplay);
+        if (jochonaTuple.isEmpty()) {
+            emit displayLaunchError(
+                tr("This Host has no probe-verified encoder path for "
+                   "%1×%2 at %3 fps%4 on the selected display type.")
+                    .arg(m_StreamConfig.width)
+                    .arg(m_StreamConfig.height)
+                    .arg(m_StreamConfig.fps)
+                    .arg(m_Preferences->enableHdr
+                             ? tr(" with HDR") : QString()));
+            return false;
+        }
+    }
+
 
     try {
         NvHTTP http(m_Computer);
@@ -1628,8 +1874,47 @@ bool Session::startConnectionAsync()
                       m_Preferences->playAudioOnHost,
                       m_InputHandler->getAttachedGamepadMask(),
                       !m_Preferences->multiController,
+                      m_Preferences->useVirtualDisplay,
+                      jochonaTuple,
                       rtspSessionUrl);
     } catch (const GfeHttpResponseException& e) {
+        if (e.getStatusCode() == 409 && !e.responseBody().isEmpty()) {
+            QJsonParseError parseError {};
+            const QJsonDocument document =
+                QJsonDocument::fromJson(e.responseBody(), &parseError);
+            if (parseError.error == QJsonParseError::NoError
+                    && document.isObject()) {
+                const QJsonObject error = document.object();
+                const QString code =
+                    error.value(QStringLiteral("error")).toString();
+                if (code == QLatin1String("encoder_tuple_unavailable")) {
+                    QStringList alternatives;
+                    for (const QJsonValue& value :
+                         error.value(QStringLiteral("alternatives")).toArray()) {
+                        alternatives.append(value.toString());
+                    }
+                    QString message = tr("The Host could not initialize the "
+                                         "requested encoder path.");
+                    const QString detail =
+                        error.value(QStringLiteral("detail")).toString();
+                    if (!detail.isEmpty()) {
+                        message += QLatin1String("\n\n") + detail;
+                    }
+                    if (!alternatives.isEmpty()) {
+                        message += tr("\n\nVerified alternatives:\n%1")
+                            .arg(alternatives.join(QLatin1Char('\n')));
+                    }
+                    emit displayLaunchError(message);
+                    return false;
+                }
+                if (code == QLatin1String("host_busy")) {
+                    emit displayLaunchError(
+                        tr("This Host is already running its maximum number "
+                           "of Sessions."));
+                    return false;
+                }
+            }
+        }
         emit displayLaunchError(tr("Host returned error: %1").arg(e.toQString()));
         return false;
     } catch (const QtNetworkReplyException& e) {
@@ -1767,7 +2052,15 @@ void Session::start()
 
     // Initialize the gamepad code with our preferences
     // NB: m_InputHandler must be initialize before starting the connection.
-    m_InputHandler = new SdlInputHandler(*m_Preferences, m_StreamConfig.width, m_StreamConfig.height);
+    const QString hostApplicationKey =
+        m_Computer->uuid + QLatin1Char('|') + QString::number(m_App.id);
+    const QString libraryEntryId =
+        LibraryManager::get()->libraryEntryFor(m_Computer->uuid, m_App.id);
+    m_InputHandler = new SdlInputHandler(*m_Preferences,
+                                         m_StreamConfig.width,
+                                         m_StreamConfig.height,
+                                         libraryEntryId,
+                                         hostApplicationKey);
 
     // Kick off the async connection thread then return to the caller to pump the event loop
     auto thread = new AsyncConnectionStartThread(this);
@@ -1973,6 +2266,19 @@ void Session::exec()
     // because we want to suspend all Qt processing until the stream is over.
     SDL_Event event;
     for (;;) {
+        if (m_SessionSettingsOpen.load(std::memory_order_relaxed)) {
+            // The native stream window is hidden while the Qt Session
+            // settings surface owns input. Keep network/video alive, pump
+            // Qt, and reserve SDL_QUIT for stream termination.
+            if (SDL_PeepEvents(&event, 1, SDL_GETEVENT,
+                               SDL_QUIT, SDL_QUIT) == 1) {
+                goto DispatchDeferredCleanup;
+            }
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 8);
+            SDL_Delay(4);
+            presence.runCallbacks();
+            continue;
+        }
 #if SDL_VERSION_ATLEAST(2, 0, 18) && !defined(STEAM_LINK)
         // SDL 2.0.18 has a proper wait event implementation that uses platform
         // support to block on events rather than polling on Windows, macOS, X11,
@@ -2045,6 +2351,17 @@ void Session::exec()
                 m_InputHandler->setAdaptiveTriggers((uint16_t)(uintptr_t)event.user.data1,
                                                     (DualSenseOutputReport *)event.user.data2);
                 break;
+            case SDL_CODE_DISPLAY_CONTEXT_CHANGED: {
+                const char* text =
+                    static_cast<const char*>(event.user.data1);
+                m_OverlayManager.updateOverlayText(
+                    Overlay::OverlayStatusUpdate,
+                    text != nullptr ? text : "");
+                m_OverlayManager.setOverlayState(
+                    Overlay::OverlayStatusUpdate, true);
+                SDL_free(event.user.data1);
+                break;
+            }
             default:
                 SDL_assert(false);
             }

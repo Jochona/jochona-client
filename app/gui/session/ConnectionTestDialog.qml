@@ -1,91 +1,99 @@
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
-//
-// SPDX-License-Identifier: GPL-3.0-only
-//
-import QtQuick 2.0
+// Full-screen Night Route connection diagnostics. It can run live from a rig
+// or display the completed result retained by a failed session.
+import QtQuick 2.15
+import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.3
+import EffectiveSettings 1.0
 
-import "/gui/style"
+import ".."
+import "../style"
 
-// Jochona M3 (session resilience, proposal §6.8): controller-navigable
-// replacement for the plain-text "Test Network" result dialog (see
-// HomeView.qml/PcView.qml's testConnectionDialog). Renders a per-port
-// checklist with plain-language guidance instead of one paragraph, so a
-// blocked port maps directly to what needs forwarding.
-//
-// Wire exactly like the dialog it replaces:
-//   computerModel.testConnectionForComputer(index)
-//   computerModel.connectionTestCompleted.connect(dialog.connectionTestComplete)
-//   dialog.open()
-// and connect dialog.retryRequested() back to testConnectionForComputer()
-// if the host wants the "Test Again" button to work.
 Item {
     id: root
     anchors.fill: parent
     z: 1000
     visible: false
 
-    // Optional: item to restore focus to when the dialog closes.
     property Item returnFocusItem: null
-
-    // -1 = inconclusive (test servers unreachable) or not run yet.
-    // Otherwise a bitmask of BLOCKED ports; 0 means every tested port passed.
+    property Item capturedFocusItem: null
     property int result: -1
     property bool testing: false
+    property bool retryAvailable: true
+    property string pairKey: ""
+    property bool pairPatchApplied: false
+
+    function applyConservativePairPatch() {
+        var bundle = EffectiveSettings.patch("host_client_pair", pairKey)
+        var values = bundle.values || ({})
+        values.width = 1920
+        values.height = 1080
+        values.fps = 60
+        values.bitrateKbps = 20000
+        values.codec = "auto"
+        pairPatchApplied = EffectiveSettings.setPatch(
+            "host_client_pair", pairKey, values,
+            bundle.pins || ({}), bundle.floors || ({}))
+    }
 
     signal retryRequested()
 
-    // Port catalog mirrors moonlight-common-c's Limelight.h ML_PORT_FLAG_*
-    // values (LiGetPortFromPortFlagIndex()/LiGetProtocolFromPortFlagIndex()
-    // assign UDP to flag indices 8+, TCP below). Keep in sync with that
-    // header; ML_PORT_FLAG_ALL is what DeferredTestConnectionTask tests.
     readonly property var portCatalog: [
-        { flag: 0x0001, proto: qsTr("TCP"), port: 47984, purpose: qsTr("Discovery & legacy pairing"),
-          guidance: qsTr("Forward or unblock TCP port 47984. Older GameStream hosts use it for discovery and pairing.") },
-        { flag: 0x0002, proto: qsTr("TCP"), port: 47989, purpose: qsTr("Pairing & app list"),
-          guidance: qsTr("Forward or unblock TCP port 47989. Jochona uses it to pair with your host and load its app list.") },
-        { flag: 0x0004, proto: qsTr("TCP"), port: 48010, purpose: qsTr("Stream handshake"),
-          guidance: qsTr("Forward or unblock TCP port 48010. It negotiates the stream before playback starts.") },
-        { flag: 0x0100, proto: qsTr("UDP"), port: 47998, purpose: qsTr("Video stream"),
-          guidance: qsTr("Forward or unblock UDP port 47998. This carries the video feed from your host.") },
-        { flag: 0x0200, proto: qsTr("UDP"), port: 47999, purpose: qsTr("Controller & input"),
-          guidance: qsTr("Forward or unblock UDP port 47999. This carries your controller, mouse, and keyboard input.") },
-        { flag: 0x0400, proto: qsTr("UDP"), port: 48000, purpose: qsTr("Audio stream"),
-          guidance: qsTr("Forward or unblock UDP port 48000. This carries the audio feed from your host.") },
-        { flag: 0x0800, proto: qsTr("UDP"), port: 48010, purpose: qsTr("Mic & handshake ping"),
-          guidance: qsTr("Forward or unblock UDP port 48010. Newer hosts use it to finish the handshake and, on Sunshine, to carry microphone audio.") }
+        { flag: 0x0001, proto: qsTr("TCP"), port: 47984,
+          purpose: qsTr("Discovery and legacy pairing"),
+          guidance: qsTr("Allow TCP 47984 for older GameStream discovery and pairing.") },
+        { flag: 0x0002, proto: qsTr("TCP"), port: 47989,
+          purpose: qsTr("Pairing and library"),
+          guidance: qsTr("Allow TCP 47989 so Jochona can pair and read the library.") },
+        { flag: 0x0004, proto: qsTr("TCP"), port: 48010,
+          purpose: qsTr("Stream handshake"),
+          guidance: qsTr("Allow TCP 48010 to negotiate the stream.") },
+        { flag: 0x0100, proto: qsTr("UDP"), port: 47998,
+          purpose: qsTr("Video"),
+          guidance: qsTr("Allow UDP 47998 for video from the rig.") },
+        { flag: 0x0200, proto: qsTr("UDP"), port: 47999,
+          purpose: qsTr("Controller and input"),
+          guidance: qsTr("Allow UDP 47999 for controller, mouse, and keyboard input.") },
+        { flag: 0x0400, proto: qsTr("UDP"), port: 48000,
+          purpose: qsTr("Audio"),
+          guidance: qsTr("Allow UDP 48000 for audio from the rig.") },
+        { flag: 0x0800, proto: qsTr("UDP"), port: 48010,
+          purpose: qsTr("Microphone and handshake"),
+          guidance: qsTr("Allow UDP 48010 for the final handshake and supported microphones.") }
     ]
 
     readonly property int blockedCount: {
         var count = 0
         if (result > 0) {
             for (var i = 0; i < portCatalog.length; i++) {
-                if ((result & portCatalog[i].flag) !== 0) {
+                if ((result & portCatalog[i].flag) !== 0)
                     count += 1
-                }
             }
         }
         return count
     }
 
     function open() {
+        var win = root.Window.window
+        capturedFocusItem = returnFocusItem !== null
+                            ? returnFocusItem
+                            : win !== null ? win.activeFocusItem : null
         testing = true
         result = -1
+        pairPatchApplied = false
         visible = true
         forceActiveFocus()
-        closeButton.forceActiveFocus(Qt.TabFocus)
+        closeButton.forceActiveFocus()
     }
 
     function close() {
         visible = false
-        if (returnFocusItem) {
-            returnFocusItem.forceActiveFocus()
-        }
+        var restore = capturedFocusItem
+        Qt.callLater(function() {
+            if (restore !== null && restore.parent !== null)
+                restore.forceActiveFocus()
+        })
     }
 
-    // Drop-in handler for ComputerModel::connectionTestCompleted(result,
-    // blockedPorts). blockedPorts is accepted for signature compatibility
-    // with the signal this replaces; the per-port state below is derived
-    // from `result` directly so it can never disagree with the guidance text.
     function connectionTestComplete(testResult, blockedPorts) {
         testing = false
         result = testResult
@@ -96,227 +104,199 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Tokens.surface
-        opacity: 0.85
-
-        MouseArea {
-            // Swallow clicks to the scrim; only the Close action dismisses.
-            anchors.fill: parent
-        }
+        color: Tokens.night
     }
 
-    // Controller-focusable CTA, matching SessionStatusOverlay's ActionButton.
-    component ActionButton: Rectangle {
-        id: btn
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: Tokens.gutter
+        spacing: Tokens.gutter
 
-        property alias text: label.text
-        property bool primary: false
-
-        signal activated()
-
-        width: Math.max(200, label.implicitWidth + 56)
-        height: Tokens.rowHeight
-        radius: height / 2
-        color: primary
-               ? (activeFocus || hoverArea.containsMouse ? Tokens.accentFocus : Tokens.accent)
-               : (activeFocus || hoverArea.containsMouse ? Tokens.surfaceFocus : Tokens.surface)
-        border.width: activeFocus ? 2 : 1
-        border.color: activeFocus
-                      ? (primary ? Tokens.textPrimary : Tokens.borderFocus)
-                      : (primary ? Tokens.accentFocus : Tokens.border)
-
-        activeFocusOnTab: true
-
-        Behavior on color {
-            ColorAnimation { duration: Tokens.motion(Tokens.durationFast) }
-        }
-
-        Text {
-            id: label
-            anchors.centerIn: parent
-            font.family: Tokens.familyBody
-            font.pointSize: Tokens.sizeBody
-            font.weight: Font.DemiBold
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Connection details")
+            font.family: Tokens.familyDisplay
+            font.pixelSize: Tokens.tTitle
+            font.weight: Font.Medium
             color: Tokens.textPrimary
+            Accessible.role: Accessible.Heading
         }
 
-        MouseArea {
-            id: hoverArea
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: btn.activated()
-        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Tokens.gutterTight
 
-        Keys.onReturnPressed: btn.activated()
-        Keys.onEnterPressed: btn.activated()
-    }
+            BusyIndicator {
+                visible: root.testing
+                running: visible
+                width: Tokens.dp(38)
+                height: width
+            }
 
-    component Spinner: Item {
-        id: spinner
-        width: 48
-        height: 48
-
-        Repeater {
-            model: 8
-            delegate: Rectangle {
-                width: 6
-                height: 6
-                radius: 3
-                color: Tokens.accent
-                x: spinner.width / 2 - width / 2 + Math.cos(index / 8 * 2 * Math.PI) * (spinner.width / 2 - width)
-                y: spinner.height / 2 - height / 2 + Math.sin(index / 8 * 2 * Math.PI) * (spinner.height / 2 - height)
-                opacity: 0.25
-
-                SequentialAnimation on opacity {
-                    running: spinner.visible && Tokens.motion(1) > 0
-                    loops: Animation.Infinite
-                    PauseAnimation { duration: index * 80 }
-                    NumberAnimation { to: 1.0; duration: 220 }
-                    NumberAnimation { to: 0.25; duration: 480 }
+            Label {
+                Layout.fillWidth: true
+                text: {
+                    if (root.testing)
+                        return qsTr("Testing the required connection paths…")
+                    if (root.result === -1)
+                        return qsTr("The test could not reach Jochona’s test "
+                                    + "servers. Check the Internet connection "
+                                    + "or review the paths below.")
+                    if (root.result === 0)
+                        return qsTr("The tested network paths are open.")
+                    return qsTr("%1 of %2 required paths are blocked.")
+                           .arg(root.blockedCount).arg(root.portCatalog.length)
                 }
+                font.family: Tokens.familyBody
+                font.pixelSize: Tokens.tMeta
+                color: Tokens.textSecondary
+                wrapMode: Text.WordWrap
             }
         }
-    }
 
-    Rectangle {
-        id: card
-        anchors.centerIn: parent
-        width: Math.min(root.width - Tokens.gutter * 4, 640)
-        height: Math.min(root.height - Tokens.gutter * 4, contentColumn.implicitHeight + Tokens.gutter * 2)
-        radius: Tokens.radiusCard
-        color: Tokens.surfaceFocus
-        border.width: 1
-        border.color: Tokens.border
-
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: Tokens.gutter
-            contentWidth: width
-            contentHeight: contentColumn.implicitHeight
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
             clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             Column {
-                id: contentColumn
                 width: parent.width
-                spacing: Tokens.gutter
-
-                Text {
-                    width: parent.width
-                    wrapMode: Text.Wrap
-                    color: Tokens.textPrimary
-                    font.family: Tokens.familyDisplay
-                    font.pointSize: Tokens.sizeTitle
-                    font.bold: true
-                    text: qsTr("Connection Test")
-                }
-
-                Spinner {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: root.testing
-                }
-
-                Text {
-                    width: parent.width
-                    wrapMode: Text.Wrap
-                    color: Tokens.textPrimary
-                    font.family: Tokens.familyBody
-                    font.pointSize: Tokens.sizeBody
-                    text: {
-                        if (root.testing) {
-                            return qsTr("Testing your network connection to determine if any required ports are blocked. This may take a few seconds…")
-                        }
-                        if (root.result === -1) {
-                            return qsTr("The test could not be completed because none of Jochona's connection-testing servers were reachable. Check your Internet connection and try again.")
-                        }
-                        if (root.result === 0) {
-                            return qsTr("This network does not appear to be blocking Jochona. If you still can't connect, check your PC's firewall settings.")
-                        }
-                        return qsTr("Your network is blocking %1 of the %2 ports Jochona needs. Streaming may fail or be unreliable until they're forwarded or unblocked.").arg(root.blockedCount).arg(root.portCatalog.length)
-                    }
-                }
+                spacing: Tokens.gutterTight
 
                 Repeater {
-                    model: (!root.testing && root.result !== -1) ? root.portCatalog : []
+                    model: !root.testing && root.result !== -1
+                           ? root.portCatalog : []
 
                     delegate: Rectangle {
-                        id: portRow
-                        width: contentColumn.width
-                        height: portLayout.implicitHeight + Tokens.gutter
-                        radius: Tokens.radiusCard / 2
-                        color: Tokens.surface
-                        border.width: 1
-                        border.color: Tokens.border
+                        id: pathRow
+                        required property var modelData
+                        width: parent.width
+                        height: pathContent.implicitHeight + Tokens.gutter
+                        radius: Tokens.radiusControl
+                        color: blocked ? Tokens.surfaceFocus : Tokens.surface
+                        border.width: Tokens.routeStroke
+                        border.color: blocked
+                                      ? Tokens.statusOffline : Tokens.border
 
-                        readonly property bool blocked: (root.result & modelData.flag) !== 0
+                        readonly property bool blocked:
+                            (root.result & modelData.flag) !== 0
 
-                        Row {
-                            id: portLayout
+                        RowLayout {
+                            id: pathContent
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            anchors.margins: Tokens.gutter / 2
-                            spacing: Tokens.gutter / 2
+                            anchors.margins: Tokens.gutterTight
+                            spacing: Tokens.gutterTight
 
                             Rectangle {
-                                width: 14
-                                height: 14
-                                radius: 7
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: portRow.blocked ? Tokens.statusOffline : Tokens.statusOnline
+                                Layout.preferredWidth: Tokens.dp(9)
+                                Layout.preferredHeight: width
+                                Layout.alignment: Qt.AlignVCenter
+                                radius: width / 2
+                                color: pathRow.blocked
+                                       ? Tokens.statusOffline : Tokens.statusOnline
                             }
 
-                            Column {
-                                width: portLayout.width - 14 - portLayout.spacing
-                                spacing: 2
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: Tokens.dp(4)
 
-                                Text {
-                                    width: parent.width
-                                    elide: Text.ElideRight
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: qsTr("%1 %2 — %3")
+                                          .arg(modelData.proto)
+                                          .arg(modelData.port)
+                                          .arg(modelData.purpose)
+                                    font.family: Tokens.familyBody
+                                    font.pixelSize: Tokens.tMeta
+                                    font.weight: Font.DemiBold
                                     color: Tokens.textPrimary
-                                    font.family: Tokens.familyBody
-                                    font.bold: true
-                                    font.pointSize: Tokens.sizeBody
-                                    text: qsTr("%1 %2 — %3").arg(modelData.proto).arg(modelData.port).arg(modelData.purpose)
+                                    elide: Text.ElideRight
                                 }
 
-                                Text {
-                                    width: parent.width
-                                    wrapMode: Text.Wrap
-                                    visible: portRow.blocked
-                                    color: Tokens.textSecondary
-                                    font.family: Tokens.familyBody
-                                    font.pointSize: Tokens.sizeMicro
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: pathRow.blocked
                                     text: modelData.guidance
+                                    font.family: Tokens.familyBody
+                                    font.pixelSize: Tokens.tMicro
+                                    color: Tokens.textSecondary
+                                    wrapMode: Text.WordWrap
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
 
-                Row {
-                    width: parent.width
-                    spacing: Tokens.gutter
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: recommendation.implicitHeight
+                                    + Tokens.gutter * 2
+            visible: !root.testing && root.pairKey.length > 0
+            radius: Tokens.radiusControl
+            color: Tokens.surface
+            border.color: Tokens.border
+            border.width: Tokens.routeStroke
 
-                    ActionButton {
-                        id: closeButton
-                        primary: true
-                        text: Glyphs.glyph(Glyphs.family, "b") + "  " + qsTr("Close")
-                        onActivated: root.close()
-                        Keys.onRightPressed: if (retryButton.visible) retryButton.forceActiveFocus(Qt.TabFocus)
-                    }
-
-                    ActionButton {
-                        id: retryButton
-                        visible: !root.testing
-                        text: Glyphs.glyph(Glyphs.family, "a") + "  " + qsTr("Test Again")
-                        onActivated: {
-                            root.testing = true
-                            root.result = -1
-                            root.retryRequested()
-                        }
-                        Keys.onLeftPressed: closeButton.forceActiveFocus(Qt.TabFocus)
-                    }
+            ColumnLayout {
+                id: recommendation
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: Tokens.gutter
+                spacing: Tokens.gutterTight
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr("Optional Pair patch")
+                    font.family: Tokens.familyDisplay
+                    font.pixelSize: Tokens.tCard
+                    color: Tokens.textPrimary
                 }
+                Label {
+                    Layout.fillWidth: true
+                    text: qsTr("This port test cannot measure throughput. "
+                               + "For a remote or unstable route, Jochona can "
+                               + "propose 1080p60 at 20 Mbps with an automatic "
+                               + "codec for only this Device ↔ Rig Pair.")
+                    color: Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+                NavigableButton {
+                    text: root.pairPatchApplied
+                          ? qsTr("Pair patch applied")
+                          : qsTr("Apply conservative Pair patch")
+                    enabled: !root.pairPatchApplied
+                    onClicked: root.applyConservativePairPatch()
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Tokens.gutterTight
+
+            Item { Layout.fillWidth: true }
+
+            NavigableButton {
+                id: retryButton
+                visible: root.retryAvailable && !root.testing
+                text: qsTr("Test again")
+                onClicked: {
+                    root.testing = true
+                    root.result = -1
+                    root.retryRequested()
+                }
+            }
+
+            NavigableButton {
+                id: closeButton
+                text: qsTr("Done")
+                primary: true
+                onClicked: root.close()
             }
         }
     }

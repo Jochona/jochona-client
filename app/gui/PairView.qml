@@ -222,13 +222,13 @@ FocusScope {
     component StatusRow: Row {
         property alias word: statusLabel.text
         property alias dotColor: statusDot.color
-        spacing: 8
+        spacing: Tokens.dp(8)
 
         Rectangle {
             id: statusDot
-            width: 10
-            height: 10
-            radius: 5
+            width: Tokens.dp(9)
+            height: width
+            radius: width / 2
             anchors.verticalCenter: parent.verticalCenter
         }
 
@@ -267,14 +267,14 @@ FocusScope {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: Tokens.gutter
-            spacing: 10
+            spacing: Tokens.gutterTight
 
             Image {
                 source: panel.iconSource
-                sourceSize.width: 44
-                sourceSize.height: 44
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
+                sourceSize.width: Tokens.dp(44)
+                sourceSize.height: Tokens.dp(44)
+                Layout.preferredWidth: Tokens.dp(44)
+                Layout.preferredHeight: Tokens.dp(44)
             }
 
             Label {
@@ -324,10 +324,14 @@ FocusScope {
         // Index of the cell awaiting input (-1 when not entering).
         property int activeIndex: -1
         property bool linked: false
-        property int cellWidth: 84
-        property int cellHeight: 112
+        property int cellWidth: Tokens.dp(Tokens.handheld ? 68 : 84)
+        property int cellHeight: Tokens.dp(Tokens.handheld ? 92 : 112)
 
-        spacing: 14
+        spacing: Tokens.gutterTight
+        Accessible.role: Accessible.StaticText
+        Accessible.name: digits.length > 0
+                         ? qsTr("Pairing code %1").arg(digits)
+                         : qsTr("Pairing code entry")
 
         Repeater {
             model: cells.slots
@@ -340,10 +344,11 @@ FocusScope {
                 height: cells.cellHeight
                 radius: Tokens.radiusCard
                 color: Tokens.surface
-                border.width: active || cells.linked ? 2 : 1
+                border.width: active || cells.linked
+                              ? Tokens.focusStroke : Tokens.routeStroke
                 border.color: cells.linked ? Tokens.statusOnline
-                            : active       ? Tokens.accentFocus
-                            : filled       ? Tokens.accent
+                            : active       ? Tokens.borderFocus
+                            : filled       ? Tokens.link
                                            : Tokens.border
 
                 Behavior on border.color {
@@ -353,7 +358,7 @@ FocusScope {
                 Label {
                     anchors.centerIn: parent
                     text: filled ? cells.digits[index] : "–"
-                    font.pointSize: 52
+                    font.pixelSize: Tokens.textPx(52)
                     font.family: Tokens.familyDisplay
                     font.bold: true
                     color: filled ? Tokens.textPrimary : Tokens.textSecondary
@@ -363,12 +368,12 @@ FocusScope {
                 Rectangle {
                     visible: active
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 16
+                    anchors.bottomMargin: Tokens.dp(16)
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: parent.width - 44
-                    height: 3
-                    radius: 1.5
-                    color: Tokens.accentFocus
+                    width: parent.width - Tokens.dp(44)
+                    height: Math.max(Tokens.routeStroke * 2, Tokens.dp(2))
+                    radius: height / 2
+                    color: Tokens.moon
                 }
             }
         }
@@ -378,7 +383,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.darker(Tokens.surface, 1.6)
+        color: Tokens.night
     }
 
     ColumnLayout {

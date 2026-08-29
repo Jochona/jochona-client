@@ -138,7 +138,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: Qt.darker(Tokens.surface, 1.6)
+        color: Tokens.night
     }
 
     ColumnLayout {
@@ -167,16 +167,16 @@ FocusScope {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    width: Math.min(640, parent.width)
-                    spacing: 14
+                    width: Math.min(Tokens.dp(640), parent.width)
+                    spacing: Tokens.gutterTight
 
                     Image {
                         source: "qrc:/res/jochona-512.png"
-                        sourceSize.width: 96
-                        sourceSize.height: 96
+                        sourceSize.width: Tokens.dp(96)
+                        sourceSize.height: Tokens.dp(96)
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 96
-                        Layout.preferredHeight: 96
+                        Layout.preferredWidth: Tokens.dp(96)
+                        Layout.preferredHeight: Tokens.dp(96)
                     }
 
                     Label {
@@ -272,10 +272,10 @@ FocusScope {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredWidth: cellWidth
                         Layout.fillHeight: true
-                        Layout.topMargin: 10
+                        Layout.topMargin: Tokens.gutterTight
                         clip: true
                         minMargin: 0
-                        cellWidth: Math.min(760, stepArea.width)
+                        cellWidth: Math.min(Tokens.dp(760), stepArea.width)
                         cellHeight: Tokens.rowHeight
 
                         model: welcomeView.hostsModel
@@ -298,25 +298,37 @@ FocusScope {
                             height: hostGrid.cellHeight
                             highlighted: hostGrid.activeFocus && hostGrid.currentItem === this
 
+                            Accessible.role: Accessible.Button
+                            Accessible.name: model.name
+                            Accessible.description: welcomeView.statusWord(
+                                                        model.online,
+                                                        model.paired,
+                                                        model.statusUnknown)
+                            Accessible.onPressAction: choose()
+
                             Rectangle {
                                 anchors.fill: parent
-                                anchors.margins: 4
+                                anchors.margins: Tokens.dp(4)
                                 radius: Tokens.radiusCard
-                                color: hostRow.highlighted ? Tokens.surfaceFocus : Tokens.surface
-                                border.width: hostRow.highlighted ? 2 : 1
-                                border.color: hostRow.highlighted ? Tokens.borderFocus : Tokens.border
+                                color: hostRow.highlighted ? Tokens.surfaceFocus
+                                                           : Tokens.surface
+                                border.width: hostRow.highlighted
+                                              ? Tokens.focusStroke
+                                              : Tokens.routeStroke
+                                border.color: hostRow.highlighted
+                                              ? Tokens.borderFocus : Tokens.border
                             }
 
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: Tokens.gutter
-                                anchors.rightMargin: 16
-                                spacing: 18
+                                anchors.rightMargin: Tokens.gutterTight
+                                spacing: Tokens.gutterTight
 
                                 Rectangle {
-                                    width: 12
-                                    height: 12
-                                    radius: 6
+                                    width: Tokens.dp(10)
+                                    height: width
+                                    radius: width / 2
                                     color: welcomeView.statusColor(model.online, model.paired, model.statusUnknown)
                                     Layout.alignment: Qt.AlignVCenter
                                 }
@@ -468,8 +480,8 @@ FocusScope {
 
                 ColumnLayout {
                     anchors.centerIn: parent
-                    width: Math.min(860, parent.width)
-                    spacing: 12
+                    width: Math.min(Tokens.dp(860), parent.width)
+                    spacing: Tokens.gutterTight
 
                     Label {
                         text: qsTr("Add your PC by address")

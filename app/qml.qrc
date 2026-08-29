@@ -1,26 +1,28 @@
 <RCC>
     <qresource prefix="/">
         <file>gui/main.qml</file>
-        <file>gui/PcView.qml</file>
         <file>gui/HomeView.qml</file>
         <file>gui/PairView.qml</file>
         <file>gui/WelcomeView.qml</file>
         <file>gui/OnScreenKeyboard.qml</file>
+        <file>gui/TextEntryView.qml</file>
         <file>gui/NavigableButton.qml</file>
-        <file>gui/ShellChrome.qml</file>
+        <file>gui/SettingsSection.qml</file>
         <file>gui/ControllerHint.qml</file>
+        <file>gui/NavRail.qml</file>
+        <file>gui/Hero.qml</file>
+        <file>gui/Shelf.qml</file>
+        <file>gui/HostCard.qml</file>
+        <file>gui/AppTile.qml</file>
+        <file>gui/MoonGlow.qml</file>
+        <file>gui/QuickSheet.qml</file>
         <file>gui/AppView.qml</file>
         <file>gui/SettingsView.qml</file>
         <file>gui/StreamSegue.qml</file>
-        <file>gui/GamepadMapper.qml</file>
         <file>gui/QuitSegue.qml</file>
-        <file>gui/NavigableToolButton.qml</file>
-        <file>gui/NavigableItemDelegate.qml</file>
-        <file>gui/NavigableMenuItem.qml</file>
         <file>gui/CliQuitStreamSegue.qml</file>
         <file>gui/CliStartStreamSegue.qml</file>
         <file>gui/AutoResizingComboBox.qml</file>
-        <file>gui/NavigableMenu.qml</file>
         <file>gui/ErrorMessageDialog.qml</file>
         <file>gui/NavigableMessageDialog.qml</file>
         <file>gui/NavigableDialog.qml</file>
@@ -30,9 +32,22 @@
         <file>gui/style/Tokens.qml</file>
         <file>gui/style/ThemeEngine.qml</file>
         <file>gui/style/Glyphs.qml</file>
+        <file>gui/style/RecentApps.qml</file>
         <file>gui/controller/ControllerManagerView.qml</file>
         <file>gui/session/qmldir</file>
         <file>gui/session/SessionStatusOverlay.qml</file>
         <file>gui/session/ConnectionTestDialog.qml</file>
+        <file>gui/session/SessionSettingsOverlay.qml</file>
+    </qresource>
+    <qresource prefix="/res/brand">
+        <file alias="logo-mark.png">../assets/brand/logo-mark.png</file>
+        <file alias="logo-mark-light.png">../assets/brand/logo-mark-light.png</file>
+        <file alias="hero-wide.png">../assets/brand/hero-wide.png</file>
+    </qresource>
+    <qresource prefix="/res/controllers">
+        <file alias="xbox.svg">../assets/brand/controllers/xbox.svg</file>
+        <file alias="playstation.svg">../assets/brand/controllers/playstation.svg</file>
+        <file alias="switch.svg">../assets/brand/controllers/switch.svg</file>
+        <file alias="steam.svg">../assets/brand/controllers/steam.svg</file>
     </qresource>
 </RCC>

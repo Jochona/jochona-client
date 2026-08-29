@@ -57,9 +57,8 @@ public:
     Q_INVOKABLE QVariantMap
     controllerSnapshot(int deviceIndex) const;
 
-    // M2 slot-assignment stubs: slots are advisory ordering metadata today
-    // (persisted only in memory). Wiring a slot to the actual streaming
-    // input path is moonlight-common-c/session territory, out of scope here.
+    // Player Slot Order is persisted by Controller Map identity and consumed
+    // by the streaming input path when controllers arrive.
     Q_INVOKABLE QVariantList
     controllerSlots() const;
 
@@ -116,7 +115,7 @@ private:
     QString
     detectFamily(SDL_GameController* gc) const;
 
-    // Stable-ish identity key for ControllerProfileStore. Prefers
+    // Stable-ish identity key for ControllerMapStore. Prefers
     // SDL_GameControllerPath() (SDL >= 2.24, tracks the physical device
     // path); older SDL builds fall back to "name:GUID", which is stable
     // per controller model but not per physical unit.

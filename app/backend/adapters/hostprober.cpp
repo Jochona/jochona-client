@@ -71,18 +71,58 @@ HostProber::run()
     caps.family = HostCapabilities::Family::Sunshine;
     caps.confidence = HostCapabilities::Confidence::Partial;
 
+    // Jochona's authenticated manifest is authoritative and must be probed
+    // before Apollo/Sunshine route heuristics. A present but malformed or
+    // unknown-major manifest disables only extensions; baseline GameStream
+    // remains usable.
+    QUrl jochonaUrl = m_BaseUrl;
+    jochonaUrl.setPath(QStringLiteral("/jochona/v1/capabilities"));
+    const ProbeResult jochona = get(nam, jochonaUrl, PROBE_TIMEOUT_MS);
+    if (jochona.present) {
+        caps.family = HostCapabilities::Family::Jochona;
+        caps.confidence = HostCapabilities::Confidence::Confirmed;
+        if (jochona.ok) {
+            QJsonParseError parseError {};
+            const QJsonDocument document =
+                QJsonDocument::fromJson(jochona.body, &parseError);
+            if (parseError.error == QJsonParseError::NoError
+                    && document.isObject()) {
+                QString manifestError;
+                caps.applyJochonaManifest(
+                    document.object(), m_Uuid, &manifestError);
+            } else {
+                caps.manifestStatus =
+                    HostCapabilities::ManifestStatus::Invalid;
+            }
+        } else {
+            caps.manifestStatus = HostCapabilities::ManifestStatus::Invalid;
+        }
+        emit capabilitiesReady(m_Uuid, caps);
+        return;
+    }
+
+    if (!jochona.responded || jochona.statusCode != 404) {
+        // /serverinfo succeeded, but failure to answer this probe is not
+        // evidence that an authenticated Jochona manifest disappeared.
+        emit capabilitiesReady(m_Uuid, caps);
+        return;
+    }
+
     // Baseline Sunshine has no /state, no clipboard, and no bitrate
     // endpoints; a 404 here short-circuits every Apollo-only probe below.
     QUrl stateUrl = m_BaseUrl;
     stateUrl.setPath(QStringLiteral("/state"));
     const ProbeResult state = get(nam, stateUrl, PROBE_TIMEOUT_MS);
     if (!state.present) {
-        caps.confidence = HostCapabilities::Confidence::Confirmed;
+        if (state.statusCode == 404) {
+            caps.confidence = HostCapabilities::Confidence::Confirmed;
+        }
         emit capabilitiesReady(m_Uuid, caps);
         return;
     }
 
     caps.family = HostCapabilities::Family::Apollo;
+    bool probeComplete = true;
     caps.capabilities |= HostCapabilities::RunningAppState;
 
     QUrl abrUrl = m_BaseUrl;
@@ -109,6 +149,12 @@ HostProber::run()
                 }
             }
         }
+        else {
+            probeComplete = false;
+        }
+    }
+    else if (abr.statusCode != 404) {
+        probeComplete = false;
     }
 
     struct ActionProbe
@@ -141,6 +187,9 @@ HostProber::run()
 
         const ProbeResult result = head(nam, url, PROBE_TIMEOUT_MS);
         if (!result.present) {
+            if (result.statusCode != 404) {
+                probeComplete = false;
+            }
             continue;
         }
 
@@ -153,7 +202,9 @@ HostProber::run()
         caps.capabilities |= probe.capability;
     }
 
-    caps.confidence = HostCapabilities::Confidence::Confirmed;
+    caps.confidence = probeComplete
+        ? HostCapabilities::Confidence::Confirmed
+        : HostCapabilities::Confidence::Partial;
     emit capabilitiesReady(m_Uuid, caps);
 }
 
@@ -247,6 +298,7 @@ HostProber::request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, 
     disconnect(sslErrorsConnection);
 
     result.statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    result.responded = result.statusCode != 0;
 
     if (reply->error() == QNetworkReply::NoError) {
         result.body = reply->readAll();

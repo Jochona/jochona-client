@@ -1,0 +1,3 @@
+# SQLite is authoritative for client state
+
+Jochona will use one schema-migrated SQLite database for Settings Baselines, Streaming Profiles, Settings Patches, Controller Maps, Host and Library records, capabilities, Local History, and UI state; secrets remain only in the operating-system Credential Vault. Existing QSettings and controller JSON are imported transactionally after a backup, verified, and then never read or dual-written again; untouched legacy files remain only as rollback evidence. We rejected permanent hybrid storage because it would make Effective Settings provenance, migrations, backups, and cross-scope consistency depend on coordinating three authorities.

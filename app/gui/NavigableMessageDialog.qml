@@ -1,78 +1,109 @@
-import QtQuick 2.0
+// Message-dialog compatibility on the Night Route context-panel primitive.
+// Safe/cancel actions receive initial focus; copy names actions at call sites.
+import QtQuick 2.15
 import QtQuick.Controls 2.2
-import QtQuick.Layouts 1.2
 
-NavigableDialog {
+import "style"
+
+QuickSheet {
     id: dialog
 
-    property alias text: dialogLabel.dialogText
-    property alias showSpinner: dialogSpinner.visible
-    property alias imageSrc: dialogImage.source
+    property string text: ""
+    property bool showSpinner: false
+    property url imageSrc: ""
+    property string helpText: ""
+    property string helpUrl: ""
+    property string helpTextSeparator: " "
+    property int standardButtons: Dialog.Ok
+    property string okText: qsTr("Done")
+    property string yesText: qsTr("Continue")
+    property string noText: qsTr("Cancel")
+    property string cancelText: qsTr("Cancel")
 
-    property string helpText
-    property string helpUrl : "https://github.com/moonlight-stream/moonlight-docs/wiki/Troubleshooting"
-    property string helpTextSeparator : " "
+    initialFocusItem: noButton.visible ? noButton
+                      : cancelButton.visible ? cancelButton
+                      : okButton.visible ? okButton : yesButton
 
-    onOpened: {
-        // Force keyboard focus on the label so keyboard navigation works
-        if (dialogButtonBox.count > 0) {
-            dialogButtonBox.itemAt(dialogButtonBox.count - 1).forceActiveFocus(Qt.TabFocus)
-        }
-    }
-
-    RowLayout {
-        spacing: 10
+    Row {
+        width: parent.width
+        spacing: Tokens.gutterTight
 
         BusyIndicator {
-            id: dialogSpinner
-            visible: false
+            visible: dialog.showSpinner
             running: visible
+            width: Tokens.dp(38)
+            height: width
+            anchors.verticalCenter: parent.verticalCenter
         }
 
         Image {
-            id: dialogImage
-            source: (standardButtons & Dialog.Yes) ?
-                        "qrc:/res/baseline-help_outline-24px.svg" :
-                        "qrc:/res/baseline-error_outline-24px.svg"
-            sourceSize {
-                // The icon should be square so use the height as the width too
-                width: 50
-                height: 50
-            }
-            visible: !showSpinner
+            visible: !dialog.showSpinner && dialog.imageSrc.toString().length > 0
+            source: dialog.imageSrc
+            sourceSize.width: Tokens.dp(42)
+            sourceSize.height: Tokens.dp(42)
+            anchors.verticalCenter: parent.verticalCenter
         }
 
         Label {
-            property string dialogText
-
-            id: dialogLabel
-            text: dialogText + ((helpText && (standardButtons & Dialog.Help)) ? (helpTextSeparator + helpText) : "")
-            wrapMode: Text.Wrap
-            elide: Label.ElideRight
-
-            // Cap the width so the dialog doesn't grow horizontally forever. This
-            // will cause word wrap to kick in.
-            Layout.maximumWidth: 400
-            Layout.maximumHeight: 400
+            width: parent.width
+                   - (dialog.showSpinner
+                      || dialog.imageSrc.toString().length > 0
+                      ? Tokens.dp(52) : 0)
+            text: dialog.text
+                  + (dialog.helpText.length > 0
+                     && (dialog.standardButtons & Dialog.Help)
+                     ? dialog.helpTextSeparator + dialog.helpText : "")
+            font.family: Tokens.familyBody
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textPrimary
+            wrapMode: Text.WordWrap
         }
     }
 
-    footer: DialogButtonBox {
-        id: dialogButtonBox
-        standardButtons: dialog.standardButtons
+    Flow {
+        width: parent.width
+        spacing: Tokens.gutterTight
 
-        delegate: Button {
-            flat: true
-
-            Keys.onReturnPressed: clicked()
-            Keys.onEnterPressed: clicked()
-            Keys.onRightPressed: nextItemInFocusChain(true).forceActiveFocus(Qt.TabFocus)
-            Keys.onLeftPressed: nextItemInFocusChain(false).forceActiveFocus(Qt.TabFocus)
+        NavigableButton {
+            id: helpButton
+            visible: (dialog.standardButtons & Dialog.Help) !== 0
+                     && dialog.helpUrl.length > 0
+            text: qsTr("Open help")
+            onClicked: {
+                Qt.openUrlExternally(dialog.helpUrl)
+                dialog.close()
+            }
         }
 
-        onHelpRequested: {
-            Qt.openUrlExternally(helpUrl)
-            close()
+        NavigableButton {
+            id: yesButton
+            visible: (dialog.standardButtons & Dialog.Yes) !== 0
+            text: dialog.yesText
+            onClicked: dialog.accept()
+        }
+
+        NavigableButton {
+            id: okButton
+            visible: (dialog.standardButtons & Dialog.Ok) !== 0
+            text: dialog.okText
+            primary: true
+            onClicked: dialog.accept()
+        }
+
+        NavigableButton {
+            id: noButton
+            visible: (dialog.standardButtons & Dialog.No) !== 0
+            text: dialog.noText
+            primary: visible
+            onClicked: dialog.reject()
+        }
+
+        NavigableButton {
+            id: cancelButton
+            visible: (dialog.standardButtons & Dialog.Cancel) !== 0
+            text: dialog.cancelText
+            primary: visible && !noButton.visible
+            onClicked: dialog.reject()
         }
     }
 }

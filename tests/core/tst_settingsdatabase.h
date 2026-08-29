@@ -12,4 +12,8 @@ private slots:
     void backupSnapshotIsCreatedBeforeMigration();
     void refusesSchemaNewerThanKnown();
     void settingRoundTrip();
+    void milestoneTwoRepositoriesRoundTrip();
+    void legacyImportsAreOneTimeTransactions();
+    void localHistoryRetentionPrunesRows();
+    void beaconRepositoryEnforcesIdentityAndRoutes();
 };

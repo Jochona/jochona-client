@@ -1,8 +1,15 @@
 #include "systemproperties.h"
 #include "utils.h"
+#include "core/settingsdatabase.h"
+#include "settings/effectivesettingsresolver.h"
 
 #include <QGuiApplication>
 #include <QLibraryInfo>
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFile>
+#include <QScreen>
+#include <QTimer>
 
 #include "streaming/session.h"
 #include "streaming/streamutils.h"
@@ -10,7 +17,235 @@
 #ifdef Q_OS_WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#include <dxgi1_6.h>
 #endif
+
+#ifdef Q_OS_DARWIN
+#include <ApplicationServices/ApplicationServices.h>
+#include <objc/message.h>
+#include <objc/runtime.h>
+#endif
+
+namespace {
+struct NativeDisplayInfo
+{
+    QString fingerprint;
+    bool hdrCapable = false;
+};
+
+QString stableHash(const QString& value)
+{
+    return QString::fromLatin1(
+        QCryptographicHash::hash(value.toUtf8(),
+                                 QCryptographicHash::Sha256).toHex());
+}
+
+#ifdef Q_OS_DARWIN
+bool macDisplaySupportsHdr(CGDirectDisplayID displayId,
+                           int screenIndex)
+{
+    using SendId = id (*)(id, SEL);
+    using SendIdArg = id (*)(id, SEL, id);
+    using SendIdCString = id (*)(id, SEL, const char*);
+    using SendCount = unsigned long (*)(id, SEL);
+    using SendAt = id (*)(id, SEL, unsigned long);
+    using SendUInt = unsigned int (*)(id, SEL);
+    using SendDouble = double (*)(id, SEL);
+
+    id screenClass = reinterpret_cast<id>(objc_getClass("NSScreen"));
+    if (screenClass == nullptr) return false;
+    const SEL screensSelector = sel_registerName("screens");
+    id screens = reinterpret_cast<SendId>(objc_msgSend)(
+        screenClass, screensSelector);
+    if (screens == nullptr) return false;
+    id stringClass = reinterpret_cast<id>(objc_getClass("NSString"));
+    id screenNumberKey =
+        reinterpret_cast<SendIdCString>(objc_msgSend)(
+            stringClass,
+            sel_registerName("stringWithUTF8String:"),
+            "NSScreenNumber");
+    const unsigned long count =
+        reinterpret_cast<SendCount>(objc_msgSend)(
+            screens, sel_registerName("count"));
+    const SEL edrSelector = sel_registerName(
+        "maximumPotentialExtendedDynamicRangeColorComponentValue");
+    for (unsigned long i = 0; i < count; ++i) {
+        id screen = reinterpret_cast<SendAt>(objc_msgSend)(
+            screens, sel_registerName("objectAtIndex:"), i);
+        id description = reinterpret_cast<SendId>(objc_msgSend)(
+            screen, sel_registerName("deviceDescription"));
+        id number = reinterpret_cast<SendIdArg>(objc_msgSend)(
+            description, sel_registerName("objectForKey:"),
+            screenNumberKey);
+        const unsigned int screenDisplayId =
+            reinterpret_cast<SendUInt>(objc_msgSend)(
+                number, sel_registerName("unsignedIntValue"));
+        if ((displayId != 0 && screenDisplayId != displayId)
+                || (displayId == 0
+                    && static_cast<int>(i) != screenIndex)) {
+            continue;
+        }
+        return reinterpret_cast<SendDouble>(objc_msgSend)(
+                   screen, edrSelector) > 1.0;
+    }
+    return false;
+}
+#endif
+
+#ifdef Q_OS_LINUX
+bool edidSupportsHdr(const QByteArray& edid)
+{
+    if (edid.size() < 256) return false;
+    const auto byte = [&edid](int offset) {
+        return static_cast<quint8>(edid.at(offset));
+    };
+    const int extensionCount = byte(126);
+    for (int extension = 0; extension < extensionCount; ++extension) {
+        const int base = 128 * (extension + 1);
+        if (base + 127 >= edid.size() || byte(base) != 0x02) continue;
+        const int dataEnd = byte(base + 2) == 0
+            ? base + 127 : base + byte(base + 2);
+        for (int offset = base + 4;
+             offset < dataEnd && offset < base + 127;) {
+            const quint8 header = byte(offset);
+            const int tag = header >> 5;
+            const int length = header & 0x1f;
+            if (tag == 7 && length > 0
+                    && byte(offset + 1) == 0x06) {
+                return true;
+            }
+            offset += length + 1;
+        }
+    }
+    return false;
+}
+#endif
+
+NativeDisplayInfo nativeDisplayInfo(int displayIndex,
+                                    const QString& name,
+                                    const QRect& bounds)
+{
+    NativeDisplayInfo info;
+    QString identity = name;
+    if (QScreen* screen =
+            QGuiApplication::screens().value(displayIndex, nullptr)) {
+        identity += QLatin1Char('|') + screen->manufacturer()
+            + QLatin1Char('|') + screen->model()
+            + QLatin1Char('|') + screen->serialNumber();
+    }
+
+#ifdef Q_OS_DARWIN
+    CGDirectDisplayID displays[32] = {};
+    uint32_t displayCount = 0;
+    CGDirectDisplayID matched = 0;
+    if (CGGetActiveDisplayList(32, displays, &displayCount)
+            == kCGErrorSuccess) {
+        for (uint32_t i = 0; i < displayCount; ++i) {
+            const CGRect nativeBounds = CGDisplayBounds(displays[i]);
+            if (qRound(nativeBounds.origin.x) == bounds.x()
+                    && qRound(nativeBounds.origin.y) == bounds.y()
+                    && qRound(nativeBounds.size.width) == bounds.width()
+                    && qRound(nativeBounds.size.height) == bounds.height()) {
+                matched = displays[i];
+                break;
+            }
+        }
+        if (matched == 0
+                && displayIndex >= 0
+                && static_cast<uint32_t>(displayIndex) < displayCount) {
+            matched = displays[displayIndex];
+        }
+        if (matched != 0) {
+            identity = QStringLiteral("mac:%1:%2:%3|%4")
+                .arg(CGDisplayVendorNumber(matched))
+                .arg(CGDisplayModelNumber(matched))
+                .arg(CGDisplaySerialNumber(matched))
+                .arg(identity);
+        }
+    }
+    info.hdrCapable = macDisplaySupportsHdr(matched, displayIndex);
+#elif defined(Q_OS_WIN32)
+    IDXGIFactory1* factory = nullptr;
+    if (SUCCEEDED(CreateDXGIFactory1(
+            __uuidof(IDXGIFactory1),
+            reinterpret_cast<void**>(&factory)))) {
+        IDXGIAdapter1* adapter = nullptr;
+        for (UINT adapterIndex = 0;
+             factory->EnumAdapters1(adapterIndex, &adapter)
+                 != DXGI_ERROR_NOT_FOUND;
+             ++adapterIndex) {
+            IDXGIOutput* output = nullptr;
+            for (UINT outputIndex = 0;
+                 adapter->EnumOutputs(outputIndex, &output)
+                     != DXGI_ERROR_NOT_FOUND;
+                 ++outputIndex) {
+                DXGI_OUTPUT_DESC description = {};
+                output->GetDesc(&description);
+                const RECT& rect = description.DesktopCoordinates;
+                if (rect.left == bounds.left()
+                        && rect.top == bounds.top()
+                        && rect.right - rect.left == bounds.width()
+                        && rect.bottom - rect.top == bounds.height()) {
+                    identity = QStringLiteral("win:")
+                        + QString::fromWCharArray(description.DeviceName);
+                    IDXGIOutput6* output6 = nullptr;
+                    if (SUCCEEDED(output->QueryInterface(
+                            __uuidof(IDXGIOutput6),
+                            reinterpret_cast<void**>(&output6)))) {
+                        DXGI_OUTPUT_DESC1 description1 = {};
+                        if (SUCCEEDED(output6->GetDesc1(&description1))) {
+                            info.hdrCapable =
+                                description1.ColorSpace
+                                    == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
+                                && description1.BitsPerColor >= 10;
+                        }
+                        output6->Release();
+                    }
+                }
+                output->Release();
+                output = nullptr;
+            }
+            adapter->Release();
+            adapter = nullptr;
+        }
+        factory->Release();
+    }
+#elif defined(Q_OS_LINUX)
+    const QString screenName =
+        QGuiApplication::screens().value(displayIndex)
+            ? QGuiApplication::screens().value(displayIndex)->name()
+            : name;
+    QDir drm(QStringLiteral("/sys/class/drm"));
+    const QStringList connectors = drm.entryList(
+        QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString& connector : connectors) {
+        if (!connector.endsWith(QLatin1Char('-') + screenName,
+                                Qt::CaseInsensitive)) {
+            continue;
+        }
+        QFile status(drm.filePath(connector + QStringLiteral("/status")));
+        if (!status.open(QIODevice::ReadOnly)
+                || status.readAll().trimmed() != "connected") {
+            continue;
+        }
+        QFile edidFile(drm.filePath(connector + QStringLiteral("/edid")));
+        if (!edidFile.open(QIODevice::ReadOnly)) continue;
+        const QByteArray edid = edidFile.readAll();
+        if (!edid.isEmpty()) {
+            identity = QStringLiteral("linux-edid:")
+                + QString::fromLatin1(
+                    QCryptographicHash::hash(
+                        edid, QCryptographicHash::Sha256).toHex());
+            info.hdrCapable = edidSupportsHdr(edid);
+        }
+        break;
+    }
+#endif
+
+    info.fingerprint = stableHash(identity);
+    return info;
+}
+}
 
 class SystemPropertyQueryThread : public QThread
 {
@@ -130,6 +365,16 @@ SystemProperties::SystemProperties()
     rendererAlwaysFullScreen = false;
     supportsHdr = true;
     maximumResolution = QSize(0, 0);
+
+    auto refreshAfterDisplayChange = [this](QScreen*) {
+        QTimer::singleShot(250, this, &SystemProperties::refreshDisplays);
+    };
+    connect(qGuiApp, &QGuiApplication::screenAdded,
+            this, refreshAfterDisplayChange);
+    connect(qGuiApp, &QGuiApplication::screenRemoved,
+            this, refreshAfterDisplayChange);
+    connect(qGuiApp, &QGuiApplication::primaryScreenChanged,
+            this, refreshAfterDisplayChange);
 }
 
 SystemProperties::~SystemProperties()
@@ -184,12 +429,43 @@ int SystemProperties::getRefreshRate(int displayIndex)
     return monitorRefreshRates.value(displayIndex);
 }
 
+QVariantMap SystemProperties::getDisplayContext(int displayIndex) const
+{
+    return displayContexts.value(displayIndex).toMap();
+}
+
+void SystemProperties::refreshAudioOutputs()
+{
+    const bool alreadyInitialized = SDL_WasInit(SDL_INIT_AUDIO);
+    if (!alreadyInitialized && SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Unable to enumerate audio outputs: %s",
+                    SDL_GetError());
+        return;
+    }
+    QStringList outputs;
+    const int count = SDL_GetNumAudioDevices(0);
+    for (int index = 0; index < count; ++index) {
+        const char* name = SDL_GetAudioDeviceName(index, 0);
+        if (name != nullptr && name[0] != '\0') {
+            outputs.append(QString::fromUtf8(name));
+        }
+    }
+    outputs.removeDuplicates();
+    if (!alreadyInitialized) SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    if (audioOutputDevices != outputs) {
+        audioOutputDevices = outputs;
+        emit audioOutputDevicesChanged();
+    }
+}
+
 void SystemProperties::startAsyncLoad()
 {
     if (systemPropertyQueryThread) {
         // Already started/completed
         return;
     }
+    refreshAudioOutputs();
 
     // We initialize the video subsystem and test window on the main thread
     // because some platforms (macOS) do not support window creation on
@@ -237,56 +513,169 @@ void SystemProperties::refreshDisplays()
         return;
     }
 
+    struct PendingDisplay
+    {
+        int sdlIndex;
+        QString name;
+        QRect bounds;
+        QRect nativeResolution;
+        QRect safeResolution;
+        int refreshRate;
+        NativeDisplayInfo native;
+    };
+    QList<PendingDisplay> pending;
     monitorNativeResolutions.clear();
     monitorSafeAreaResolutions.clear();
     monitorRefreshRates.clear();
 
-    SDL_DisplayMode bestMode;
-    for (int displayIndex = 0; displayIndex < SDL_GetNumVideoDisplays(); displayIndex++) {
-        SDL_DisplayMode desktopMode;
-        SDL_Rect safeArea;
+    const QList<QScreen*> qtScreens = QGuiApplication::screens();
+    for (int displayIndex = 0;
+         displayIndex < qtScreens.size(); ++displayIndex) {
+        QScreen* qtScreen = qtScreens.at(displayIndex);
+        SDL_DisplayMode desktopMode = {};
+        SDL_Rect safeArea = {};
+        StreamUtils::getNativeDesktopMode(
+            displayIndex, &desktopMode, &safeArea);
+        if (desktopMode.w <= 0 || desktopMode.h <= 0) {
+            const qreal scale = qtScreen->devicePixelRatio();
+            desktopMode.w = qRound(qtScreen->geometry().width() * scale);
+            desktopMode.h = qRound(qtScreen->geometry().height() * scale);
+            desktopMode.refresh_rate =
+                qRound(qtScreen->refreshRate());
+            safeArea = {0, 0, desktopMode.w, desktopMode.h};
+        }
+        if (desktopMode.w > 8192 || desktopMode.h > 8192) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Skipping resolution over 8K: %dx%d",
+                        desktopMode.w, desktopMode.h);
+            continue;
+        }
 
-        if (StreamUtils::getNativeDesktopMode(displayIndex, &desktopMode, &safeArea)) {
-            if (desktopMode.w <= 8192 && desktopMode.h <= 8192) {
-                // Keep these lists compact because their QML consumers iterate until
-                // the first empty entry. Inserting by SDL display index is invalid if
-                // an earlier display was skipped (for example, a >8K virtual display).
-                monitorNativeResolutions.append(QRect(0, 0, desktopMode.w, desktopMode.h));
-                monitorSafeAreaResolutions.append(QRect(0, 0, safeArea.w, safeArea.h));
+        SDL_DisplayMode bestMode = desktopMode;
+        const int modeCount = SDL_GetNumDisplayModes(displayIndex);
+        for (int modeIndex = 0; modeIndex < modeCount; ++modeIndex) {
+            SDL_DisplayMode mode = {};
+            if (SDL_GetDisplayMode(displayIndex, modeIndex, &mode) == 0
+                    && mode.w == desktopMode.w
+                    && mode.h == desktopMode.h
+                    && mode.refresh_rate > bestMode.refresh_rate) {
+                bestMode = mode;
             }
-            else {
-                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                            "Skipping resolution over 8K: %dx%d",
-                            desktopMode.w, desktopMode.h);
-            }
+        }
+        int refreshRate = bestMode.refresh_rate;
+        if (refreshRate >= 58 && refreshRate <= 62) refreshRate = 60;
+        else if (refreshRate >= 28 && refreshRate <= 32) refreshRate = 30;
+        if (refreshRate <= 0) {
+            refreshRate = qRound(qtScreen->refreshRate());
+        }
 
-            // Start at desktop mode and work our way up
-            bestMode = desktopMode;
-            int numDisplayModes = SDL_GetNumDisplayModes(displayIndex);
-            for (int i = 0; i < numDisplayModes; i++) {
-                SDL_DisplayMode mode;
-                if (SDL_GetDisplayMode(displayIndex, i, &mode) == 0) {
-                    if (mode.w == desktopMode.w && mode.h == desktopMode.h) {
-                        if (mode.refresh_rate > bestMode.refresh_rate) {
-                            bestMode = mode;
-                        }
-                    }
-                }
-            }
+        SDL_Rect displayBounds = {};
+        QRect bounds = qtScreen->geometry();
+        if (SDL_GetDisplayBounds(displayIndex, &displayBounds) == 0
+                && displayBounds.w > 0 && displayBounds.h > 0) {
+            bounds = QRect(displayBounds.x, displayBounds.y,
+                           displayBounds.w, displayBounds.h);
+        }
+        const QString name = qtScreen->name().isEmpty()
+            ? tr("Display %1").arg(displayIndex + 1)
+            : qtScreen->name();
+        PendingDisplay display{
+            displayIndex,
+            name,
+            bounds,
+            QRect(0, 0, desktopMode.w, desktopMode.h),
+            QRect(0, 0, safeArea.w, safeArea.h),
+            refreshRate,
+            nativeDisplayInfo(displayIndex, name, bounds),
+        };
+        pending.append(display);
+        monitorNativeResolutions.append(display.nativeResolution);
+        monitorSafeAreaResolutions.append(display.safeResolution);
+        monitorRefreshRates.append(refreshRate);
+    }
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
 
-            // Try to normalize values around our our standard refresh rates.
-            // Some displays/OSes report values that are slightly off.
-            if (bestMode.refresh_rate >= 58 && bestMode.refresh_rate <= 62) {
-                monitorRefreshRates.append(60);
+    QStringList fingerprints;
+    for (const PendingDisplay& display : std::as_const(pending)) {
+        fingerprints.append(display.native.fingerprint);
+    }
+    fingerprints.sort();
+    const QString dockState =
+        QStringLiteral("%1:%2")
+            .arg(pending.size() > 1
+                     ? QStringLiteral("docked")
+                     : QStringLiteral("single"),
+                 stableHash(fingerprints.join(QLatin1Char('|'))));
+
+    SettingsDatabase* database = SettingsDatabase::get();
+    const QString deviceId =
+        EffectiveSettingsResolver::get()->clientDeviceId();
+    QVariantList nextContexts;
+    QScreen* activeScreen = QGuiApplication::focusWindow()
+        ? QGuiApplication::focusWindow()->screen()
+        : QGuiApplication::primaryScreen();
+    const int activeQtIndex =
+        QGuiApplication::screens().indexOf(activeScreen);
+    QString nextActiveContextId;
+    bool nextActiveHdr = false;
+
+    for (const PendingDisplay& display : std::as_const(pending)) {
+        const QString contextId = stableHash(
+            deviceId + QLatin1Char('|')
+            + display.native.fingerprint + QLatin1Char('|') + dockState);
+        const QVariantMap metadata{
+            {QStringLiteral("width"), display.nativeResolution.width()},
+            {QStringLiteral("height"), display.nativeResolution.height()},
+            {QStringLiteral("refreshHz"), display.refreshRate},
+            {QStringLiteral("hdrCapable"), display.native.hdrCapable},
+        };
+        if (database != nullptr && database->isOpen()) {
+            if (!database->upsertDisplayContext(
+                    contextId, deviceId, display.name,
+                    display.native.fingerprint, dockState, metadata)) {
+                qWarning() << "Failed to persist Display Context"
+                           << contextId << database->lastError();
             }
-            else if (bestMode.refresh_rate >= 28 && bestMode.refresh_rate <= 32) {
-                monitorRefreshRates.append(30);
-            }
-            else {
-                monitorRefreshRates.append(bestMode.refresh_rate);
-            }
+        }
+        QVariantMap context = metadata;
+        context.insert(QStringLiteral("id"), contextId);
+        context.insert(QStringLiteral("name"), display.name);
+        context.insert(QStringLiteral("fingerprint"),
+                       display.native.fingerprint);
+        context.insert(QStringLiteral("dockState"), dockState);
+        context.insert(QStringLiteral("bounds"), display.bounds);
+        nextContexts.append(context);
+
+        const bool isActive =
+            display.sdlIndex == activeQtIndex
+            || (activeScreen != nullptr
+                && display.name == activeScreen->name());
+        if (isActive || nextActiveContextId.isEmpty()) {
+            nextActiveContextId = contextId;
+            nextActiveHdr = display.native.hdrCapable;
         }
     }
 
-    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    const QString previousContextId = activeDisplayContextId;
+    if (displayContexts != nextContexts) {
+        displayContexts = nextContexts;
+        emit displayContextsChanged();
+    }
+    if (activeDisplayContextId != nextActiveContextId) {
+        activeDisplayContextId = nextActiveContextId;
+        emit activeDisplayContextIdChanged();
+    }
+    if (activeDisplaySupportsHdr != nextActiveHdr) {
+        activeDisplaySupportsHdr = nextActiveHdr;
+        emit activeDisplaySupportsHdrChanged();
+    }
+    if (database != nullptr && database->isOpen()) {
+        database->setSetting(QStringLiteral("display.active_context_id"),
+                             activeDisplayContextId);
+    }
+    if (!previousContextId.isEmpty()
+            && previousContextId != activeDisplayContextId) {
+        emit displayTopologyChanged(previousContextId,
+                                    activeDisplayContextId);
+    }
 }

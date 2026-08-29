@@ -10,6 +10,8 @@
 #include "video/decoder.h"
 #include "audio/renderers/renderer.h"
 #include "video/overlaymanager.h"
+#include <memory>
+#include <atomic>
 
 class SupportedVideoFormatList : public QList<int>
 {
@@ -105,14 +107,38 @@ public:
     Q_INVOKABLE void start();
     Q_INVOKABLE void interrupt();
     Q_PROPERTY(QStringList launchWarnings MEMBER m_LaunchWarnings NOTIFY launchWarningsChanged);
+    Q_PROPERTY(double sessionVolumeDb READ sessionVolumeDb
+               WRITE setSessionVolumeDb NOTIFY sessionVolumeDbChanged)
+    double sessionVolumeDb() const;
+    Q_INVOKABLE void setSessionVolumeDb(double db);
+    Q_PROPERTY(QString hostUuid READ hostUuid CONSTANT)
+    Q_PROPERTY(int appId READ appId CONSTANT)
+    QString hostUuid() const;
+    int appId() const { return m_App.id; }
+    Q_PROPERTY(QString libraryEntryId READ libraryEntryId CONSTANT)
+    Q_PROPERTY(QVariantMap currentSettings READ currentSettings
+               NOTIFY currentSettingsChanged)
+    Q_PROPERTY(bool performanceOverlayEnabled READ performanceOverlayEnabled
+               WRITE setPerformanceOverlayEnabled
+               NOTIFY currentSettingsChanged)
+    Q_PROPERTY(bool hostVolumeAvailable READ hostVolumeAvailable CONSTANT)
+    QString libraryEntryId() const;
+    QVariantMap currentSettings() const;
+    bool performanceOverlayEnabled() const;
+    bool hostVolumeAvailable() const;
+    Q_INVOKABLE void setPerformanceOverlayEnabled(bool enabled);
+    void requestSessionSettings();
+    Q_INVOKABLE void closeSessionSettings();
+    Q_INVOKABLE void applySessionSettings(
+            const QVariantMap& restartPatch,
+            const QString& saveScope);
 
-    // Jochona M3 (session resilience): builds a fresh Session for the same
-    // host/app, mirroring AppModel::createSessionForApp() and
-    // ComputerModel::createSessionForCurrentGame(). Session is single-use
-    // (LiStopConnection() + decoder teardown happen once exec() returns), so
-    // a "reconnect" always means constructing a new Session; this re-enters
-    // that existing construction path instead of duplicating it in QML.
-    Q_INVOKABLE Session* createReconnectSession() { return new Session(m_Computer, m_App, m_Preferences); }
+    // A reconnect is a fresh Session resolved against the current Client
+    // Device and Display Context. Session is single-use.
+    Q_INVOKABLE Session* createReconnectSession();
+    Q_INVOKABLE void notifyDisplayContextChanged(
+            const QString& displayName);
+    void requestDisplayReconnect();
 
     static
     void getDecoderInfo(SDL_Window* window,
@@ -157,6 +183,10 @@ signals:
     void readyForDeletion();
 
     void launchWarningsChanged();
+    void sessionVolumeDbChanged();
+    void displayReconnectRequested();
+    void sessionSettingsRequested();
+    void currentSettingsChanged();
 
 private:
     void exec();
@@ -258,6 +288,7 @@ private:
     static
     int drSubmitDecodeUnit(PDECODE_UNIT du);
 
+    std::unique_ptr<StreamingPreferences> m_OwnedPreferences;
     StreamingPreferences* m_Preferences;
     bool m_IsFullScreen;
     SupportedVideoFormatList m_SupportedVideoFormats; // Sorted in order of descending priority
@@ -271,8 +302,12 @@ private:
     SDL_mutex* m_DecoderLock;
     bool m_AudioDisabled;
     bool m_AudioMuted;
+    std::atomic<double> m_SessionVolumeDb;
+    std::atomic<float> m_AudioVolumeGain;
     Uint32 m_FullScreenFlag;
     QQuickWindow* m_QtWindow;
+    std::atomic<bool> m_SessionSettingsOpen;
+    QVariantMap m_ReconnectSessionPatch;
     bool m_UnexpectedTermination;
     SdlInputHandler* m_InputHandler;
     int m_MouseEmulationRefCount;

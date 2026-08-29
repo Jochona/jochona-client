@@ -3,40 +3,49 @@ import QtQuick.Controls 2.2
 
 import "style"
 
-// Jochona: one controller-legend chip — a drawn face-button badge plus the
-// action it performs on this screen ("A Select", "B Back"). Self-contained
-// so pairing-era screens don't depend on the glyph font packs.
+// Input-adaptive action hint. Existing call sites may still set `button: "A"`;
+// the logical name resolves to the active controller family's authored glyph.
 Row {
-    // Face-button letters are hardware labels, not translatable copy.
-    property string button: "A"
-    property alias label: actionLabel.text
+    id: hint
 
-    spacing: 7
+    property string button: "A"
+    property string logicalButton: button.toLowerCase()
+    property alias label: actionLabel.text
+    readonly property string glyphValue: Glyphs.glyph(Glyphs.family, logicalButton)
+
+    spacing: Tokens.dp(8)
+    visible: Tokens.inputMode !== "pointer"
+
+    Accessible.role: Accessible.StaticText
+    Accessible.name: button + " " + actionLabel.text
 
     Rectangle {
-        width: 22
-        height: 22
-        radius: 11
-        color: "transparent"
-        border.width: 1
-        border.color: Tokens.textSecondary
+        width: Tokens.dp(28)
+        height: width
+        radius: width / 2
+        color: Tokens.surface
+        border.width: Tokens.routeStroke
+        border.color: Tokens.border
         anchors.verticalCenter: parent.verticalCenter
 
         Label {
             anchors.centerIn: parent
-            text: button
-            font.pointSize: Tokens.sizeMicro
-            font.family: Tokens.familyBody
-            font.bold: true
-            color: Tokens.textSecondary
+            text: hint.glyphValue.length > 0 ? hint.glyphValue : hint.button
+            font.pixelSize: hint.glyphValue.length > 0 ? Tokens.dp(18) : Tokens.tMicro
+            font.family: hint.glyphValue.length > 0
+                         ? Glyphs.fontFamily(Glyphs.family)
+                         : Tokens.familyBody
+            font.bold: hint.glyphValue.length === 0
+            color: Tokens.textPrimary
         }
     }
 
     Label {
         id: actionLabel
         anchors.verticalCenter: parent.verticalCenter
-        font.pointSize: Tokens.sizeMicro
+        font.pixelSize: Tokens.tMicro
         font.family: Tokens.familyBody
+        font.weight: Font.Medium
         color: Tokens.textSecondary
     }
 }

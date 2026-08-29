@@ -1,25 +1,25 @@
-import QtQuick 2.9
+import QtQuick 2.15
 import QtQuick.Controls 2.2
 
+import "style"
+
 GridView {
-    property int minMargin: 10
-    property real availableWidth: (parent.width - 2 * minMargin)
-    property int itemsPerRow: availableWidth / cellWidth
-    property real horizontalMargin: itemsPerRow < count && availableWidth >= cellWidth ?
-                                        (availableWidth % cellWidth) / 2 : minMargin
+    property int minMargin: Tokens.gutterTight
+    property real availableWidth: Math.max(0, parent.width - 2 * minMargin)
+    property int itemsPerRow: Math.max(1, Math.floor(
+                                          availableWidth
+                                          / Math.max(1, cellWidth)))
+    property real horizontalMargin:
+        itemsPerRow < count && availableWidth >= cellWidth
+        ? (availableWidth - itemsPerRow * cellWidth) / 2 : minMargin
 
     function updateMargins() {
         leftMargin = horizontalMargin
         rightMargin = horizontalMargin
     }
 
-    onHorizontalMarginChanged: {
-        updateMargins()
-    }
+    onHorizontalMarginChanged: updateMargins()
+    Component.onCompleted: updateMargins()
 
-    Component.onCompleted: {
-        updateMargins()
-    }
-
-    boundsBehavior: Flickable.OvershootBounds
+    boundsBehavior: Flickable.StopAtBounds
 }

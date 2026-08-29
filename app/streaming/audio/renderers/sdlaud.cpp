@@ -2,9 +2,11 @@
 
 #include <Limelight.h>
 
-SdlAudioRenderer::SdlAudioRenderer()
-    : m_AudioDevice(0),
-      m_AudioBuffer(nullptr)
+SdlAudioRenderer::SdlAudioRenderer(const QString& requestedDevice)
+    : m_AudioDevice(0)
+    , m_AudioBuffer(nullptr)
+    , m_RequestedDevice(requestedDevice)
+    , m_UsedFallbackDevice(false)
 {
     SDL_assert(!SDL_WasInit(SDL_INIT_AUDIO));
 
@@ -37,7 +39,20 @@ bool SdlAudioRenderer::prepareForPlayback(const OPUS_MULTISTREAM_CONFIGURATION* 
                   opusConfig->channelCount *
                   getAudioBufferSampleSize();
 
-    m_AudioDevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+    const QByteArray requestedUtf8 = m_RequestedDevice.toUtf8();
+    const char* requestedName =
+        requestedUtf8.isEmpty() ? nullptr : requestedUtf8.constData();
+    m_AudioDevice =
+        SDL_OpenAudioDevice(requestedName, 0, &want, &have, 0);
+    if (m_AudioDevice == 0 && requestedName != nullptr) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                    "Audio device '%s' is unavailable; falling back to the system default: %s",
+                    requestedName,
+                    SDL_GetError());
+        m_UsedFallbackDevice = true;
+        m_AudioDevice =
+            SDL_OpenAudioDevice(nullptr, 0, &want, &have, 0);
+    }
     if (m_AudioDevice == 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "Failed to open audio device: %s",

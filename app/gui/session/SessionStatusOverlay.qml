@@ -1,62 +1,45 @@
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
-//
-// SPDX-License-Identifier: GPL-3.0-only
-//
-import QtQuick 2.0
+// Night Route connection and recovery surface. It owns the visible lifecycle
+// before/after the native stream window, with one route and explicit recovery.
+import QtQuick 2.15
+import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.3
 
 import Session 1.0
 
-import "/gui/style"
+import ".."
+import "../style"
 
-// Jochona M3 (session resilience, proposal §6.8; controller-first §5.3):
-// controller-navigable overlay that reflects Session's connection lifecycle
-// in the visible Qt window. Once Session::connectionStarted() fires, the
-// video takes over an entirely separate native SDL window and the Qt window
-// is hidden (see StreamSegue.qml), so this overlay only ever needs to cover
-// connecting / reconnecting / failed — never live gameplay.
-//
-// Host screens bind `session` to a live Session and react to the three
-// signals below to actually do something:
-//   - reconnectRequested(): Session is single-use (LiStopConnection() and
-//     decoder teardown already happened by the time it fires), so the host
-//     must call session.createReconnectSession(), initialize()+start() the
-//     result, and assign it back to `session`. Reassigning to a *different*
-//     Session object automatically resets this overlay to "attempting".
-//   - quitRequested(): host should tear down and navigate away.
-//   - runConnectionTestRequested(): host should run
-//     ComputerModel::testConnectionForComputer() and show ConnectionTestDialog.
 Item {
     id: root
     anchors.fill: parent
 
-    // --- Public API ---
-
     property Session session: null
-
-    // Auto-retry budget for a dropped/failed connection before we stop
-    // retrying silently and hand control back to the user.
+    property string hostLabel: qsTr("Rig")
+    property string destinationLabel: qsTr("Game")
     property int maxAutoReconnectAttempts: 3
     property int autoReconnectDelayMs: 2000
 
-    // "disconnected" | "attempting" | "connected" | "reconnecting" | "failed"
+    // disconnected | attempting | connected | reconnecting | failed
     state: "disconnected"
-
-    readonly property bool active: state === "attempting" || state === "reconnecting" || state === "failed"
+    readonly property bool active: state === "attempting"
+                                   || state === "reconnecting"
+                                   || state === "failed"
     visible: active
+    focus: visible
+    z: 100
 
     property string stageText: ""
     property int errorCode: 0
     property string failingPorts: ""
     property int reconnectAttempt: 0
     property int portTestResult: -1
+    property string failureTitle: ""
+    property string failureDetail: ""
 
     signal reconnectRequested()
     signal quitRequested()
-    signal runConnectionTestRequested()
+    signal detailsRequested()
 
-    // Resets the auto-retry budget before asking the host to reconnect;
-    // use this for the user-facing Reconnect button so a manual retry
-    // always gets a fresh set of automatic attempts if it fails again.
     function manualReconnect() {
         reconnectAttempt = 0
         reconnectRequested()
@@ -72,39 +55,44 @@ Item {
         }
     }
 
-    // Jochona M3 guidance table — mirrors moonlight-common-c's Limelight.h
-    // ML_ERROR_* termination codes. Keep in sync with that header.
     function guidance(code) {
+        if (failureTitle.length > 0) {
+            return { title: failureTitle, detail: failureDetail }
+        }
         switch (code) {
-        case -100: // ML_ERROR_NO_VIDEO_TRAFFIC
+        case -100:
             return {
-                title: qsTr("No video from the host"),
-                detail: qsTr("Your router or firewall is likely blocking the video stream. Check port forwarding, then run a guided connection test below.")
+                title: qsTr("No video arrived from the rig"),
+                detail: qsTr("A router or firewall is probably blocking the "
+                             + "video path. Open connection details, then try again.")
             }
-        case -101: // ML_ERROR_NO_VIDEO_FRAME
+        case -101:
             return {
-                title: qsTr("Connection is too unstable to stream"),
-                detail: qsTr("Try lowering your video bitrate, or move to a faster, more stable network connection.")
+                title: qsTr("The connection is too unstable"),
+                detail: qsTr("Lower the bitrate or move to a faster, steadier network.")
             }
-        case -102: // ML_ERROR_UNEXPECTED_EARLY_TERMINATION
+        case -102:
             return {
-                title: qsTr("The stream stopped right after starting"),
-                detail: qsTr("This is usually caused by the host PC. Try restarting the host, or check for other software using its GPU.")
+                title: qsTr("The stream stopped during startup"),
+                detail: qsTr("Restart the host service or close software using "
+                             + "the rig’s GPU, then try again.")
             }
-        case -103: // ML_ERROR_PROTECTED_CONTENT
+        case -103:
             return {
-                title: qsTr("Blocked by protected content"),
-                detail: qsTr("Close any DRM-protected media (streaming apps, Blu-ray players, etc.) on the host PC, then try again.")
+                title: qsTr("Protected content blocked the stream"),
+                detail: qsTr("Close DRM-protected media on the rig, then try again.")
             }
-        case -104: // ML_ERROR_FRAME_CONVERSION
+        case -104:
             return {
-                title: qsTr("The host reported a video encoding error"),
-                detail: qsTr("Try disabling HDR, lowering the streaming resolution, or changing the host PC's display resolution.")
+                title: qsTr("The rig could not encode this video mode"),
+                detail: qsTr("Disable HDR, lower the resolution, or change the "
+                             + "rig’s display mode.")
             }
         default:
             return {
                 title: qsTr("Connection failed"),
-                detail: qsTr("Error code %1.").arg(code)
+                detail: qsTr("Jochona received error code %1. Open connection "
+                             + "details or try again.").arg(code)
             }
         }
     }
@@ -112,17 +100,25 @@ Item {
     onSessionChanged: {
         if (session) {
             state = "attempting"
-            stageText = qsTr("Connecting…")
+            stageText = qsTr("Connecting")
             errorCode = 0
             failingPorts = ""
+            failureTitle = ""
+            failureDetail = ""
             portTestResult = -1
         } else {
             state = "disconnected"
         }
     }
 
-    Keys.onEscapePressed: if (state === "failed" || state === "reconnecting") root.quitRequested()
-    Keys.onBackPressed: if (state === "failed" || state === "reconnecting") root.quitRequested()
+    Keys.onEscapePressed: {
+        if (state === "failed" || state === "reconnecting")
+            root.quitRequested()
+    }
+    Keys.onBackPressed: {
+        if (state === "failed" || state === "reconnecting")
+            root.quitRequested()
+    }
 
     Timer {
         id: autoReconnectTimer
@@ -137,227 +133,186 @@ Item {
             root.state = "attempting"
             root.stageText = stage
         }
-
         function onConnectionStarted() {
-            // The SDL video window is about to take over; nothing left for
-            // this overlay to show until/unless the connection drops again.
             root.state = "connected"
         }
-
         function onStageFailed(stage, code, ports) {
             root.errorCode = code
             root.failingPorts = ports
             root.stageText = stage
             root.attemptAutoReconnect()
         }
-
         function onConnectionTerminated(code, ports) {
             root.errorCode = code
             root.failingPorts = ports
-
-            if (code === 0) { // ML_ERROR_GRACEFUL_TERMINATION
+            if (code === 0) {
                 root.reconnectAttempt = 0
                 root.state = "disconnected"
             } else {
                 root.attemptAutoReconnect()
             }
         }
-
-        function onSessionFinished(portTestResult) {
-            root.portTestResult = portTestResult
+        function onSessionFinished(result) {
+            root.portTestResult = result
         }
-
         function onQuitStarting() {
             root.state = "disconnected"
         }
     }
 
-    // Full-window scrim behind the status card.
     Rectangle {
         anchors.fill: parent
-        color: Tokens.surface
-        opacity: 0.92
+        color: Tokens.night
     }
 
-    // Small fading-dots spinner; QtQuick-only (no Controls BusyIndicator).
-    component Spinner: Item {
-        id: spinner
-        width: 64
-        height: 64
-
-        Repeater {
-            model: 8
-            delegate: Rectangle {
-                width: 8
-                height: 8
-                radius: 4
-                color: Tokens.accent
-                x: spinner.width / 2 - width / 2 + Math.cos(index / 8 * 2 * Math.PI) * (spinner.width / 2 - width)
-                y: spinner.height / 2 - height / 2 + Math.sin(index / 8 * 2 * Math.PI) * (spinner.height / 2 - height)
-                opacity: 0.25
-
-                SequentialAnimation on opacity {
-                    running: spinner.visible && Tokens.motion(1) > 0
-                    loops: Animation.Infinite
-                    PauseAnimation { duration: index * 80 }
-                    NumberAnimation { to: 1.0; duration: 220 }
-                    NumberAnimation { to: 0.25; duration: 480 }
-                }
-            }
-        }
-    }
-
-    // Controller-focusable CTA. 96dp-tall focus target per Tokens.rowHeight;
-    // visual language mirrors NavigableButton without depending on
-    // QtQuick.Controls.
-    component ActionButton: Rectangle {
-        id: btn
-
-        property alias text: label.text
-        property bool primary: false
-
-        signal activated()
-
-        width: Math.max(220, label.implicitWidth + 64)
-        height: Tokens.rowHeight
-        radius: height / 2
-        color: primary
-               ? (activeFocus || hoverArea.containsMouse ? Tokens.accentFocus : Tokens.accent)
-               : (activeFocus || hoverArea.containsMouse ? Tokens.surfaceFocus : Tokens.surface)
-        border.width: activeFocus ? 2 : 1
-        border.color: activeFocus
-                      ? (primary ? Tokens.textPrimary : Tokens.borderFocus)
-                      : (primary ? Tokens.accentFocus : Tokens.border)
-
-        activeFocusOnTab: true
-
-        Behavior on color {
-            ColorAnimation { duration: Tokens.motion(Tokens.durationFast) }
-        }
-
-        Text {
-            id: label
-            anchors.centerIn: parent
-            font.family: Tokens.familyBody
-            font.pointSize: Tokens.sizeBody
-            font.weight: Font.DemiBold
-            color: Tokens.textPrimary
-        }
-
-        MouseArea {
-            id: hoverArea
-            anchors.fill: parent
-            hoverEnabled: true
-            onClicked: btn.activated()
-        }
-
-        Keys.onReturnPressed: btn.activated()
-        Keys.onEnterPressed: btn.activated()
-    }
-
-    Column {
-        id: content
-        anchors.centerIn: parent
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: Tokens.gutter
         spacing: Tokens.gutter
-        width: Math.min(root.width - Tokens.gutter * 4, 560)
 
-        Spinner {
-            anchors.horizontalCenter: parent.horizontalCenter
-            visible: root.state === "attempting" || root.state === "reconnecting"
-        }
+        Item { Layout.fillHeight: true }
 
-        Text {
-            width: parent.width
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            color: Tokens.textPrimary
-            font.family: Tokens.familyDisplay
-            font.pointSize: Tokens.sizeTitle
-            font.bold: true
+        Label {
+            Layout.fillWidth: true
             text: {
-                switch (root.state) {
-                case "attempting":
-                    return root.stageText.length > 0 ? qsTr("Starting %1…").arg(root.stageText) : qsTr("Connecting…")
-                case "reconnecting":
-                    return qsTr("Reconnecting… (attempt %1 of %2)").arg(root.reconnectAttempt).arg(root.maxAutoReconnectAttempts)
-                case "failed":
+                if (root.state === "attempting")
+                    return root.stageText.length > 0
+                           ? qsTr("Starting %1…").arg(root.stageText)
+                           : qsTr("Connecting…")
+                if (root.state === "reconnecting")
+                    return qsTr("Reconnecting — attempt %1 of %2")
+                           .arg(root.reconnectAttempt)
+                           .arg(root.maxAutoReconnectAttempts)
+                if (root.state === "failed")
                     return root.guidance(root.errorCode).title
-                default:
-                    return ""
-                }
+                return ""
             }
-        }
-
-        Text {
-            width: parent.width
+            font.family: Tokens.familyDisplay
+            font.pixelSize: Tokens.tTitle
+            font.weight: Font.Medium
+            color: Tokens.textPrimary
             horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            visible: text.length > 0
-            color: Tokens.textSecondary
-            font.family: Tokens.familyBody
-            font.pointSize: Tokens.sizeBody
-            text: {
-                if (root.state !== "failed") {
-                    return ""
-                }
-                var detail = root.guidance(root.errorCode).detail
-                if (root.failingPorts.length > 0) {
-                    detail += "\n\n" + qsTr("Ports involved: %1").arg(root.failingPorts)
-                }
-                if (root.portTestResult > 0) {
-                    detail += "\n\n" + qsTr("This PC's Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.")
-                }
-                return detail
-            }
+            wrapMode: Text.WordWrap
+            Accessible.role: Accessible.Heading
         }
 
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Tokens.gutter
+        Label {
+            Layout.fillWidth: true
+            Layout.maximumWidth: Tokens.dp(760)
+            Layout.alignment: Qt.AlignHCenter
             visible: root.state === "failed"
+            text: root.guidance(root.errorCode).detail
+            font.family: Tokens.familyBody
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+        }
 
-            ActionButton {
-                id: reconnectButton
-                primary: true
-                text: Glyphs.glyph(Glyphs.family, "a") + "  " + qsTr("Reconnect")
-                onActivated: root.manualReconnect()
-                Keys.onRightPressed: if (testButton.visible) testButton.forceActiveFocus(Qt.TabFocus); else quitButton.forceActiveFocus(Qt.TabFocus)
+        Item {
+            id: connectionRoute
+            Layout.fillWidth: true
+            Layout.maximumWidth: Tokens.dp(820)
+            Layout.preferredHeight: Tokens.dp(104)
+            Layout.alignment: Qt.AlignHCenter
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: parent.width / 6
+                anchors.rightMargin: parent.width / 6
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenterOffset: -Tokens.dp(16)
+                height: Tokens.routeStroke
+                color: root.state === "failed" ? Tokens.statusOffline : Tokens.link
             }
 
-            ActionButton {
-                id: testButton
-                visible: root.failingPorts.length > 0
-                text: Glyphs.glyph(Glyphs.family, "x") + "  " + qsTr("Guided Connection Test")
-                onActivated: root.runConnectionTestRequested()
-                Keys.onLeftPressed: reconnectButton.forceActiveFocus(Qt.TabFocus)
-                Keys.onRightPressed: quitButton.forceActiveFocus(Qt.TabFocus)
-            }
+            Row {
+                anchors.fill: parent
 
-            ActionButton {
-                id: quitButton
-                text: Glyphs.glyph(Glyphs.family, "b") + "  " + qsTr("Quit")
-                onActivated: root.quitRequested()
-                Keys.onLeftPressed: if (testButton.visible) testButton.forceActiveFocus(Qt.TabFocus); else reconnectButton.forceActiveFocus(Qt.TabFocus)
+                Repeater {
+                    model: [qsTr("This device"), root.hostLabel,
+                            root.destinationLabel]
+
+                    delegate: Item {
+                        required property var modelData
+                        required property int index
+                        width: connectionRoute.width / 3
+                        height: connectionRoute.height
+
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: -Tokens.dp(16)
+                            width: Tokens.dp(index === 1 ? 14 : 9)
+                            height: width
+                            radius: width / 2
+                            color: root.state === "failed" && index >= 1
+                                   ? Tokens.statusOffline
+                                   : index === 1 ? Tokens.moon : Tokens.link
+                        }
+
+                        Label {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.verticalCenter
+                            text: modelData
+                            font.family: Tokens.familyBody
+                            font.pixelSize: Tokens.tMicro
+                            color: Tokens.textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
             }
         }
 
-        Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            visible: root.state === "reconnecting"
+        BusyIndicator {
+            Layout.alignment: Qt.AlignHCenter
+            visible: root.state === "attempting" || root.state === "reconnecting"
+            running: visible
+            width: Tokens.dp(48)
+            height: width
+        }
 
-            ActionButton {
-                text: Glyphs.glyph(Glyphs.family, "b") + "  " + qsTr("Cancel")
-                onActivated: {
+        Flow {
+            Layout.fillWidth: true
+            Layout.maximumWidth: Tokens.dp(900)
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Tokens.gutterTight
+            visible: root.state === "failed" || root.state === "reconnecting"
+
+            NavigableButton {
+                id: reconnectButton
+                visible: root.state === "failed"
+                text: qsTr("Reconnect")
+                primary: true
+                onClicked: root.manualReconnect()
+            }
+
+            NavigableButton {
+                visible: root.state === "failed"
+                text: qsTr("Connection details")
+                onClicked: root.detailsRequested()
+            }
+
+            NavigableButton {
+                text: root.state === "reconnecting"
+                      ? qsTr("Cancel reconnect") : qsTr("End session")
+                destructive: true
+                onClicked: {
                     autoReconnectTimer.stop()
                     root.quitRequested()
                 }
             }
         }
+
+        Item { Layout.fillHeight: true }
     }
 
     onStateChanged: {
-        if (state === "failed") {
-            reconnectButton.forceActiveFocus(Qt.TabFocus)
-        }
+        if (state === "failed")
+            Qt.callLater(function() { reconnectButton.forceActiveFocus() })
     }
 }

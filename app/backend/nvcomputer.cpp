@@ -7,6 +7,51 @@
 #include <QNetworkInterface>
 #include <QNetworkProxy>
 
+namespace {
+bool isTrustedWakeRoute(const QString& route)
+{
+    QHostAddress hostAddress;
+    if (!hostAddress.setAddress(route) || hostAddress.isLoopback()) {
+        return false;
+    }
+    const QStringList virtualMarkers = {
+        QStringLiteral("tailscale"), QStringLiteral("tailnet"),
+        QStringLiteral("utun"), QStringLiteral("wireguard"),
+        QStringLiteral("zerotier"), QStringLiteral("hamachi"),
+        QStringLiteral("vpn"), QStringLiteral(" tun"),
+        QStringLiteral("tap"),
+    };
+    for (const QNetworkInterface& interface
+         : QNetworkInterface::allInterfaces()) {
+        if (!(interface.flags() & QNetworkInterface::IsUp)
+                || interface.flags() & QNetworkInterface::IsLoopBack) {
+            continue;
+        }
+        const QString identity =
+            (interface.name() + QLatin1Char(' ')
+             + interface.humanReadableName()).toLower();
+        bool virtualInterface = false;
+        for (const QString& marker : virtualMarkers) {
+            if (identity.contains(marker)) {
+                virtualInterface = true;
+                break;
+            }
+        }
+        if (virtualInterface) continue;
+        for (const QNetworkAddressEntry& entry
+             : interface.addressEntries()) {
+            if (entry.ip().protocol() == hostAddress.protocol()
+                    && entry.prefixLength() >= 0
+                    && hostAddress.isInSubnet(entry.ip(),
+                                              entry.prefixLength())) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+}
+
 #define SER_NAME "hostname"
 #define SER_UUID "uuid"
 #define SER_MAC "mac"
@@ -151,12 +196,19 @@ NvComputer::NvComputer(NvHTTP& http, QString serverInfo)
     }
 
     this->uuid = NvHTTP::getXmlString(serverInfo, "uniqueid");
-    QString newMacString = NvHTTP::getXmlString(serverInfo, "mac");
-    if (newMacString != "00:00:00:00:00:00") {
-        QStringList macOctets = newMacString.split(':');
-        for (const QString& macOctet : std::as_const(macOctets)) {
-            this->macAddress.append((char) macOctet.toInt(nullptr, 16));
+    QByteArray advertisedMac;
+    const QString newMacString = NvHTTP::getXmlString(serverInfo, "mac");
+    const QStringList macOctets = newMacString.split(QLatin1Char(':'));
+    if (newMacString != QStringLiteral("00:00:00:00:00:00")
+            && macOctets.size() == 6) {
+        bool valid = true;
+        for (const QString& macOctet : macOctets) {
+            bool parsed = false;
+            const int value = macOctet.toInt(&parsed, 16);
+            valid = valid && parsed && value >= 0 && value <= 0xff;
+            advertisedMac.append(static_cast<char>(value));
         }
+        if (!valid) advertisedMac.clear();
     }
 
     QString codecSupport = NvHTTP::getXmlString(serverInfo, "ServerCodecModeSupport");
@@ -221,6 +273,12 @@ NvComputer::NvComputer(NvHTTP& http, QString serverInfo)
     this->gfeVersion = NvHTTP::getXmlString(serverInfo, "GfeVersion");
     this->gpuModel = NvHTTP::getXmlString(serverInfo, "gputype");
     this->activeAddress = http.address();
+    // A MAC learned over Tailnet/VPN may identify a virtual adapter or a
+    // different LAN. Only a response reached through a physical local
+    // subnet is allowed to update durable Wake-on-LAN identity.
+    if (isTrustedWakeRoute(this->activeAddress.address())) {
+        this->macAddress = advertisedMac;
+    }
     this->state = NvComputer::CS_ONLINE;
     this->activeReachability = RI_UNKNOWN;
     this->pendingQuit = false;

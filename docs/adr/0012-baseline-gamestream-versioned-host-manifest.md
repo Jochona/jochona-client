@@ -1,0 +1,5 @@
+# Baseline GameStream plus an authenticated versioned Host manifest
+
+Jochona Host preserves GameStream pairing, launch, media, and input compatibility for baseline clients. Jochona extensions live behind one versioned capability/control manifest authenticated with the same pinned client certificate and explicit permission bits; Jochona Client consumes observed fields rather than Host product/version guesses. The Client chooses Effective Settings within advertised proven Encoder Tuples and Host Policy, and the Host validates the exact request or returns structured alternatives. We rejected a replacement wire protocol because it would discard Moonlight compatibility, and rejected ad-hoc `/serverinfo` extensions because they cannot version permissions, Encoder Tuple proof, virtual-display health, or future Runtime Bitrate Sink semantics cleanly.
+
+The wire contract is [Jochona Host capability and control manifest](https://github.com/Jochona/jochona-host/blob/main/docs/protocols/jochona-host-capabilities.md).

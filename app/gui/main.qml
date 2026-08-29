@@ -1,36 +1,131 @@
-import QtQuick 2.9
+/*
+THESIS: Jochona is the private route back to play; it refuses both the console
+rail/hero/shelf template and the dense telemetry dashboard.
+OWN-WORLD: Midnight matte fields, enamel connection lines, nickel rulings, and
+small milk-glass cues; one restrained cyan-violet signal, never stacked glow.
+STORY: Resume leads. The interface proves Device → Rig → Game, A advances,
+B retraces, and technical detail appears only when requested.
+FIRST VIEWPORT: One Resume stage owns the frame; named route stops expose
+Rigs, Library, Controllers, and Settings without icon-only persistent chrome.
+FORM: Night Route, grounded direction 4, seed 1fa81352.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md
+*/
+// Adaptive shell: one stack and route topology, with distinct handheld,
+// desktop, and ten-foot compositions.
+import QtQuick
 import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 import QtQuick.Window 2.2
-import QtQuick.Controls.Material 2.2
 
 import ComputerManager 1.0
-import AutoUpdateChecker 1.0
 import StreamingPreferences 1.0
 import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
+import AutoUpdateChecker 1.0
+
+import "style"
 
 ApplicationWindow {
+    id: window
+
     property bool pollingActive: false
+    property bool updateDismissed: false
 
     // Set by SettingsView to force the back operation to pop all
     // pages except the initial view. This is required when doing
     // a retranslate() because AppView breaks for some reason.
     property bool clearOnBack: false
 
-    id: window
     width: 1280
-    height: 600
+    height: 720
+    minimumWidth: 720
+    minimumHeight: 540
+    color: Tokens.night
+
+    palette.window: Tokens.night
+    palette.windowText: Tokens.textPrimary
+    palette.base: Tokens.surface
+    palette.alternateBase: Tokens.surfaceFocus
+    palette.text: Tokens.textPrimary
+    palette.button: Tokens.surface
+    palette.buttonText: Tokens.textPrimary
+    palette.highlight: Tokens.accentFocus
+    palette.highlightedText: Tokens.focusInk
+    palette.placeholderText: Tokens.textSecondary
+
+    Binding {
+        target: Tokens
+        property: "viewportWidth"
+        value: window.width
+    }
+    Binding {
+        target: Tokens
+        property: "viewportHeight"
+        value: window.height
+    }
+    Binding {
+        target: Tokens
+        property: "uiScale"
+        value: Tokens.scaleFor(window.width, window.height)
+    }
+
+    Connections {
+        target: SdlGamepadKeyNavigation
+        function onInputModeChanged() {
+            Tokens.inputMode = SdlGamepadKeyNavigation.inputMode
+        }
+        function onControllerFamilyChanged() {
+            Glyphs.family = SdlGamepadKeyNavigation.controllerFamily
+        }
+
+    }
+
+    Rectangle {
+        id: updateNotice
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: Tokens.gutter
+        width: Math.min(parent.width - Tokens.gutter * 2, Tokens.dp(520))
+        height: updateRow.implicitHeight + Tokens.gutter
+        radius: Tokens.radiusPanel
+        color: Tokens.surfaceFocus
+        border.color: Tokens.borderFocus
+        border.width: Tokens.routeStroke
+        visible: AutoUpdateChecker.status === "available"
+                 && !window.updateDismissed
+        z: 500
+
+        RowLayout {
+            id: updateRow
+            anchors.fill: parent
+            anchors.margins: Tokens.gutterTight
+            spacing: Tokens.gutterTight
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Jochona %1 is available.")
+                      .arg(AutoUpdateChecker.availableVersion)
+                color: Tokens.textPrimary
+                font.family: Tokens.familyBody
+                font.pixelSize: Tokens.tMeta
+                wrapMode: Text.WordWrap
+            }
+            NavigableButton {
+                compact: true
+                text: qsTr("View")
+                onClicked: Qt.openUrlExternally(
+                               AutoUpdateChecker.availableUrl)
+            }
+            NavigableButton {
+                compact: true
+                text: qsTr("Later")
+                onClicked: window.updateDismissed = true
+            }
+        }
+    }
 
     // This function runs prior to creation of the initial StackView item
     function doEarlyInit() {
-        // Override the background color to Material 2 colors for Qt 6.5+
-        // in order to improve contrast between GFE's placeholder box art
-        // and the background of the app grid.
-        if (SystemProperties.usesMaterial3Theme) {
-            Material.background = "#303030"
-        }
-
         // Jochona: SdlGamepadKeyNavigation.enable() is deferred to bootTimer below.
         // It initializes the SDL game-controller subsystem, which runs HID device
         // enumeration inside a nested CFRunLoop. Doing that here (before the
@@ -39,6 +134,12 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        Tokens.inputMode = SdlGamepadKeyNavigation.inputMode
+        Glyphs.family = SdlGamepadKeyNavigation.controllerFamily
+        // Resume-route backing
+        AutoUpdateChecker.start()
+        RecentApps.setup(database)
+
         // Show the window according to the user's preferences
         if (SystemProperties.hasDesktopEnvironment) {
             if (StreamingPreferences.uiDisplayMode == StreamingPreferences.UI_MAXIMIZED) {
@@ -71,23 +172,6 @@ ApplicationWindow {
         bootTimer.start()
     }
 
-    Timer {
-        id: bootTimer
-        interval: 250
-        repeat: true
-        onTriggered: {
-            // Wait for the off-thread gamepad probe (it owns the SDL GC
-            // subsystem init); enable() is then a fast refcount no-op and the
-            // UI thread never sits in HID enumeration.
-            if (SystemProperties.gamepadProbeComplete) {
-                stop()
-                SdlGamepadKeyNavigation.enable()
-                if (runConfigChecks)
-                    SystemProperties.startAsyncLoad()
-            }
-        }
-    }
-
     function hasHardwareAccelerationChanged() {
         if (!SystemProperties.hasHardwareAcceleration && StreamingPreferences.videoDecoderSelection !== StreamingPreferences.VDS_FORCE_SOFTWARE) {
             if (SystemProperties.isRunningXWayland) {
@@ -106,100 +190,26 @@ ApplicationWindow {
         }
     }
 
-    // It would be better to use TextMetrics here, but it always lays out
-    // the text slightly more compactly than real Text does in ToolTip,
-    // causing unexpected line breaks to be inserted
-    Text {
-        id: tooltipTextLayoutHelper
-        visible: false
-        font: ToolTip.toolTip.font
-        text: ToolTip.toolTip.text
-    }
-
-    // This configures the maximum width of the singleton attached QML ToolTip. If left unconstrained,
-    // it will never insert a line break and just extend on forever.
-    ToolTip.toolTip.contentWidth: Math.min(tooltipTextLayoutHelper.width, 400)
-
-    function goBack() {
-        if (clearOnBack) {
-            // Pop all items except the first one
-            stackView.pop(null)
-            clearOnBack = false
-        }
-        else {
-            stackView.pop()
-        }
-    }
-
-    StackView {
-        id: stackView
-        anchors.fill: parent
-        focus: true
-
-        Component.onCompleted: {
-            // Perform our early initialization before constructing
-            // the initial view and pushing it to the StackView
-            doEarlyInit()
-            push(initialView)
-
-            // Jochona: first-run guided setup (M2). Modern shell only, and
-            // only when no hosts are known yet — returning users with hosts
-            // skip the welcome entirely. Pushed above Home so skipping and
-            // finishing both land on the host list.
-            if (StreamingPreferences.modernHomeScreen &&
-                    String(initialView).indexOf("HomeView") !== -1) {
-                var probe = Qt.createQmlObject(
-                            'import ComputerModel 1.0; ComputerModel {}',
-                            stackView, 'firstRunProbe')
-                probe.initialize(ComputerManager)
-                if (probe.rowCount() === 0) {
-                    push("qrc:/gui/WelcomeView.qml")
-                }
-                probe.destroy()
+    Timer {
+        id: bootTimer
+        interval: 250
+        repeat: true
+        onTriggered: {
+            // Wait for the off-thread gamepad probe (it owns the SDL GC
+            // subsystem init); enable() is then a fast refcount no-op and the
+            // UI thread never sits in HID enumeration.
+            if (SystemProperties.gamepadProbeComplete) {
+                stop()
+                SdlGamepadKeyNavigation.enable()
+                if (runConfigChecks)
+                    SystemProperties.startAsyncLoad()
             }
-        }
-
-        onCurrentItemChanged: {
-            // Ensure focus travels to the next view when going back
-            if (currentItem) {
-                currentItem.forceActiveFocus()
-            }
-        }
-
-        Keys.onEscapePressed: {
-            if (depth > 1) {
-                goBack()
-            }
-            else {
-                quitConfirmationDialog.open()
-            }
-        }
-
-        Keys.onBackPressed: {
-            if (depth > 1) {
-                goBack()
-            }
-            else {
-                quitConfirmationDialog.open()
-            }
-        }
-
-        Keys.onMenuPressed: {
-            settingsButton.clicked()
-        }
-
-        // This is a keypress we've reserved for letting the
-        // SdlGamepadKeyNavigation object tell us to show settings
-        // when Menu is consumed by a focused control.
-        Keys.onHangupPressed: {
-            settingsButton.clicked()
         }
     }
 
     // This timer keeps us polling for 5 minutes of inactivity
     // to allow the user to work with Jochona on a second display
-    // while dealing with configuration issues. This will ensure
-    // machines come online even if the input focus isn't on Jochona.
+    // while dealing with configuration issues.
     Timer {
         id: inactivityTimer
         interval: 5 * 60000
@@ -258,287 +268,309 @@ ApplicationWindow {
         SdlGamepadKeyNavigation.notifyWindowFocus(visible && active)
     }
 
+    function goBack() {
+        if (clearOnBack) {
+            // Pop all items except the first one
+            stackView.pop(null)
+            clearOnBack = false
+        }
+        else {
+            stackView.pop()
+        }
+    }
+
+    // Verification hook (main.cpp: JOCHONA_UI_PUSH). Drives the same code
+    // paths a click would, so any screen can be screenshotted headlessly.
+    function uiShotNavigate(spec)
+    {
+        console.log("Jochona: uiShotNavigate", spec)
+        shotNavTimer.spec = spec
+        shotNavTimer.tries = 0
+        shotNavTimer.restart()
+    }
+
+    Timer {
+        id: shotNavTimer
+        interval: 100
+        repeat: true
+        property string spec: ""
+        property int tries: 0
+        onTriggered: {
+            var view = stackView.currentItem
+            var complete = false
+
+            if (spec === "hostdetail" && view && view.shotOpenFirstHost) {
+                view.shotOpenFirstHost()
+                complete = true
+            } else if ((spec === "rigs" || spec === "library")
+                       && view && view.showDestination) {
+                routeBar.currentKey = spec
+                view.showDestination(spec)
+                complete = true
+            } else if (spec === "sheet" && view
+                       && view.shotOpenFirstHostActions) {
+                view.shotOpenFirstHostActions()
+                complete = true
+            } else if (spec === "pairing" && view
+                       && view.shotOpenFirstPairing) {
+                view.shotOpenFirstPairing()
+                complete = true
+            } else if ((spec === "settings"
+                        || spec === "appearance"
+                        || spec === "diagnostics") && view) {
+                if (spec === "appearance" && view.shotShowAppearance) {
+                    complete = view.shotShowAppearance()
+                } else if (spec === "diagnostics"
+                           && view.shotShowDiagnostics) {
+                    complete = view.shotShowDiagnostics()
+                } else if (spec === "settings") {
+                    navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+                    complete = true
+                } else {
+                    navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+                }
+            } else if (spec === "sessionsettings" && view) {
+                if (view.shotOpenPreview) {
+                    complete = view.shotOpenPreview()
+                } else {
+                    stackView.push(
+                        "qrc:/gui/session/SessionSettingsOverlay.qml")
+                }
+            } else if (spec === "controllers" && view) {
+                stackView.push("qrc:/gui/controller/ControllerManagerView.qml")
+                complete = true
+            } else if (spec === "welcome" && view) {
+                stackView.push("qrc:/gui/WelcomeView.qml")
+                complete = true
+            }
+
+            if (complete)
+                stop()
+            else if (++tries > 30) {
+                console.log("Jochona: uiShotNavigate gave up on", spec)
+                stop()
+            }
+        }
+    }
+
     function navigateTo(url, objectType)
     {
         var existingItem = stackView.find(function(item, index) {
             return item instanceof objectType
         })
-
-        if (existingItem !== null) {
-            // Pop to the existing item
+        if (existingItem !== null)
             stackView.pop(existingItem)
-        }
-        else {
-            // Create a new item
+        else
             stackView.push(url)
+    }
+
+    function showHomeDestination(destination)
+    {
+        stackView.pop(null)
+        routeBar.currentKey = destination
+        Qt.callLater(function() {
+            var home = stackView.currentItem
+            if (home && home.showDestination)
+                home.showDestination(destination)
+            else if (home && home.grabFirstFocus)
+                home.grabFirstFocus()
+        })
+    }
+
+    readonly property bool routeVisible: stackView.depth === 1
+                                                 && stackView.currentItem instanceof HomeView
+
+    // The screen stack owns the frame. Root Home leaves room for its named
+    // route; focused tasks and pushed screens use the entire safe viewport.
+    StackView {
+        id: stackView
+        anchors.fill: parent
+        anchors.leftMargin: Tokens.safeInset
+        anchors.rightMargin: Tokens.safeInset
+        anchors.topMargin: Tokens.safeInset
+        anchors.bottomMargin: window.routeVisible
+                              ? Tokens.routeBarHeight + Tokens.safeInset
+                                + Tokens.gutterTight
+                              : Tokens.safeInset
+        focus: true
+
+        Behavior on anchors.bottomMargin {
+            NumberAnimation {
+                duration: Tokens.motion(Tokens.durationBase)
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        pushEnter: Transition {
+            ParallelAnimation {
+                NumberAnimation {
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: Tokens.motion(Tokens.durationBase)
+                }
+                NumberAnimation {
+                    property: "y"
+                    from: Tokens.dp(18)
+                    to: 0
+                    duration: Tokens.motion(Tokens.durationBase)
+                    easing.type: Easing.OutCubic
+                }
+            }
+        }
+        pushExit: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 1
+                to: 0
+                duration: Tokens.motion(Tokens.durationFast)
+            }
+        }
+        popEnter: Transition {
+            NumberAnimation {
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: Tokens.motion(Tokens.durationBase)
+            }
+        }
+        popExit: Transition {
+            ParallelAnimation {
+                NumberAnimation {
+                    property: "opacity"
+                    from: 1
+                    to: 0
+                    duration: Tokens.motion(Tokens.durationFast)
+                }
+                NumberAnimation {
+                    property: "y"
+                    from: 0
+                    to: Tokens.dp(18)
+                    duration: Tokens.motion(Tokens.durationFast)
+                }
+            }
+        }
+
+        Component.onCompleted: {
+            doEarlyInit()
+            push(initialView)
+
+            if (String(initialView).indexOf("HomeView") !== -1) {
+                var probe = Qt.createQmlObject(
+                            'import ComputerModel 1.0; ComputerModel {}',
+                            stackView, 'firstRunProbe')
+                probe.initialize(ComputerManager)
+                if (probe.rowCount() === 0)
+                    push("qrc:/gui/WelcomeView.qml")
+                probe.destroy()
+            }
+        }
+
+        onCurrentItemChanged: {
+            if (currentItem)
+                currentItem.forceActiveFocus()
+        }
+
+        Keys.onEscapePressed: {
+            if (depth > 1)
+                goBack()
+            else
+                quitConfirmationDialog.open()
+        }
+        Keys.onBackPressed: {
+            if (depth > 1)
+                goBack()
+            else
+                quitConfirmationDialog.open()
+        }
+        Keys.onMenuPressed: routeBar.settingsRequested()
+        Keys.onHangupPressed: routeBar.settingsRequested()
+        Keys.onDownPressed: {
+            if (window.routeVisible)
+                routeBar.focusRoute(routeBar.currentKey)
         }
     }
 
-    // Legacy painted bar — kept for modernHomeScreen=false only. The modern
-    // shell collapses it to zero height and uses ShellChrome's floating
-    // overlay (large typographic title + ghost actions) instead.
-    ShellChrome {
-        id: shellChrome
-        stack: stackView
-        onBackRequested: goBack()
-        onAddPcRequested: addPcDialog.open()
+    NavRail {
+        id: routeBar
+        z: 50
+        visible: window.routeVisible
+        opacity: visible ? 1.0 : 0.0
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: Tokens.safeInset
+        anchors.rightMargin: Tokens.safeInset
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Tokens.safeInset
+
+        Behavior on opacity {
+            NumberAnimation { duration: Tokens.motion(Tokens.durationFast) }
+        }
+
+        onResumeRequested: window.showHomeDestination("resume")
+        onRigsRequested: window.showHomeDestination("rigs")
+        onLibraryRequested: window.showHomeDestination("library")
+        onControllersRequested: {
+            stackView.push("qrc:/gui/controller/ControllerManagerView.qml")
+        }
         onSettingsRequested: navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+        onEnterContentRequested: {
+            if (stackView.currentItem && stackView.currentItem.grabFirstFocus)
+                stackView.currentItem.grabFirstFocus()
+        }
+        onBackRequested: enterContentRequested()
     }
 
-    header: ToolBar {
-        id: toolBar
-        height: StreamingPreferences.modernHomeScreen ? 0 : 60
-        visible: height > 0
-        anchors.topMargin: 5
-        anchors.bottomMargin: 5
-
-        Label {
-            id: titleLabel
-            visible: toolBar.width > 700
-            anchors.fill: parent
-            text: stackView.currentItem.objectName
-            font.pointSize: 20
-            elide: Label.ElideRight
-            horizontalAlignment: Qt.AlignHCenter
-            verticalAlignment: Qt.AlignVCenter
-        }
-
-        RowLayout {
-            spacing: 10
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
-            anchors.fill: parent
-
-            NavigableToolButton {
-                // Only make the button visible if the user has navigated somewhere.
-                visible: stackView.depth > 1
-
-                iconSource: "qrc:/res/arrow_left.svg"
-
-                onClicked: goBack()
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            // This label will appear when the window gets too small and
-            // we need to ensure the toolbar controls don't collide
-            Label {
-                id: titleRowLabel
-                font.pointSize: titleLabel.font.pointSize
-                elide: Label.ElideRight
-                horizontalAlignment: Qt.AlignHCenter
-                verticalAlignment: Qt.AlignVCenter
-                Layout.fillWidth: true
-
-                // We need this label to always be visible so it can occupy
-                // the remaining space in the RowLayout. To "hide" it, we
-                // just set the text to empty string.
-                text: !titleLabel.visible ? stackView.currentItem.objectName : ""
-            }
-
-            Label {
-                id: versionLabel
-                visible: stackView.currentItem instanceof SettingsView
-                text: qsTr("Version %1").arg(SystemProperties.versionString)
-                font.pointSize: 12
-                horizontalAlignment: Qt.AlignRight
-                verticalAlignment: Qt.AlignVCenter
-            }
-
-            NavigableToolButton {
-                id: discordButton
-                visible: SystemProperties.hasBrowser &&
-                         stackView.currentItem instanceof SettingsView
-
-                iconSource: "qrc:/res/discord.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Join our community on Discord")
-
-                // TODO need to make sure browser is brought to foreground.
-                onClicked: Qt.openUrlExternally("https://moonlight-stream.org/discord");
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                id: addPcButton
-                // Jochona: HomeView replaces PcView under the modernHomeScreen
-                // flag; both are the host-list surface for this action.
-                visible: stackView.currentItem instanceof PcView ||
-                         stackView.currentItem instanceof HomeView
-
-                iconSource:  "qrc:/res/ic_add_to_queue_white_48px.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Add PC manually") + (newPcShortcut.nativeText ? (" ("+newPcShortcut.nativeText+")") : "")
-
-                Shortcut {
-                    id: newPcShortcut
-                    sequence: StandardKey.New
-                    onActivated: addPcButton.clicked()
-                }
-
-                onClicked: {
-                    addPcDialog.open()
-                }
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                property string browserUrl: ""
-
-                id: updateButton
-
-                iconSource: "qrc:/res/update.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered || visible
-
-                // Invisible until we get a callback notifying us that
-                // an update is available
-                visible: false
-
-                onClicked: {
-                    if (SystemProperties.hasBrowser) {
-                        Qt.openUrlExternally(browserUrl);
-                    }
-                }
-
-                function updateAvailable(version, url)
-                {
-                    ToolTip.text = qsTr("Update available for Jochona: Version %1").arg(version)
-                    updateButton.browserUrl = url
-                    updateButton.visible = true
-                }
-
-                Component.onCompleted: {
-                    AutoUpdateChecker.onUpdateAvailable.connect(updateAvailable)
-                    // Jochona: disabled — upstream endpoint (moonlight-stream.org/updates/qt.json)
-                    // compares against Moonlight's version manifest and would produce false
-                    // "update available" prompts. Re-enable pointing at Jochona's GitHub
-                    // Releases (docs/github-setup.md update policy: check-and-notify).
-                    // AutoUpdateChecker.start()
-                }
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                id: helpButton
-                visible: SystemProperties.hasBrowser
-
-                iconSource: "qrc:/res/question_mark.svg"
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Help") + (helpShortcut.nativeText ? (" ("+helpShortcut.nativeText+")") : "")
-
-                Shortcut {
-                    id: helpShortcut
-                    sequence: StandardKey.HelpContents
-                    onActivated: helpButton.clicked()
-                }
-
-                // TODO need to make sure browser is brought to foreground.
-                onClicked: Qt.openUrlExternally("https://github.com/moonlight-stream/moonlight-docs/wiki/Setup-Guide");
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                // TODO: Implement gamepad mapping then unhide this button
-                visible: false
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Gamepad Mapper")
-
-                iconSource: "qrc:/res/ic_videogame_asset_white_48px.svg"
-
-                onClicked: navigateTo("qrc:/gui/GamepadMapper.qml", GamepadMapper)
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-            }
-
-            NavigableToolButton {
-                id: settingsButton
-
-                iconSource:  "qrc:/res/settings.svg"
-
-                onClicked: navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
-
-                Keys.onDownPressed: {
-                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
-                }
-
-                Shortcut {
-                    id: settingsShortcut
-                    sequence: StandardKey.Preferences
-                    onActivated: settingsButton.clicked()
-                }
-
-                ToolTip.delay: 1000
-                ToolTip.timeout: 3000
-                ToolTip.visible: hovered
-                ToolTip.text: qsTr("Settings") + (settingsShortcut.nativeText ? (" ("+settingsShortcut.nativeText+")") : "")
-            }
-        }
+    // --- Window-level shortcuts (the deleted toolbar owned these) ---
+    Shortcut {
+        sequences: [StandardKey.New]
+        onActivated: stackView.push("qrc:/gui/WelcomeView.qml", {"step": 1})
     }
+    Shortcut {
+        sequences: [StandardKey.Preferences]
+        onActivated: navigateTo("qrc:/gui/SettingsView.qml", SettingsView)
+    }
+    Shortcut {
+        sequences: [StandardKey.HelpContents]
+        onActivated: compatibilityHelpDialog.open()
+    }
+
+    // --- Sheets & dialogs ---
+
 
     ErrorMessageDialog {
         id: noHwDecoderDialog
-        text: qsTr("No functioning hardware accelerated video decoder was detected by Jochona. " +
-                   "Your streaming performance may be severely degraded in this configuration.")
-        helpText: qsTr("Click the Help button for more information on solving this problem.")
+        text: qsTr("Jochona could not find a working hardware video decoder. "
+                   + "Streaming may use much more power and may drop frames.")
+        helpText: "\n\n" + qsTr("Open the upstream hardware-decoding guide?")
         helpUrl: "https://github.com/moonlight-stream/moonlight-docs/wiki/Fixing-Hardware-Decoding-Problems"
     }
 
     ErrorMessageDialog {
         id: xWaylandDialog
-        text: qsTr("Hardware acceleration doesn't work on XWayland. Continuing on XWayland may result in poor streaming performance. " +
-                   "Try running with QT_QPA_PLATFORM=wayland or switch to X11.")
-        helpText: qsTr("Click the Help button for more information.")
+        text: qsTr("Hardware decoding is unavailable through XWayland. "
+                   + "Start Jochona with native Wayland, or switch to X11.")
+        helpText: "\n\n" + qsTr("Open the upstream hardware-decoding guide?")
         helpUrl: "https://github.com/moonlight-stream/moonlight-docs/wiki/Fixing-Hardware-Decoding-Problems"
     }
 
     NavigableMessageDialog {
         id: wow64Dialog
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        // Jochona: first "Moonlight" is this app; second is the download target at the
-        // upstream GitHub releases URL below (Jochona does not publish per-arch builds), kept.
-        text: qsTr("This version of Jochona isn't optimized for your PC. Please download the '%1' version of Moonlight for the best streaming performance.").arg(SystemProperties.friendlyNativeArchName)
-        onAccepted: {
-            Qt.openUrlExternally("https://github.com/moonlight-stream/moonlight-qt/releases");
-        }
+        standardButtons: Dialog.Ok
+        okText: qsTr("Continue")
+        text: qsTr("This Jochona build is not optimized for %1. Install a "
+                   + "native %1 build from the same release channel for the "
+                   + "best streaming performance.")
+              .arg(SystemProperties.friendlyNativeArchName)
     }
 
     ErrorMessageDialog {
         id: unmappedGamepadDialog
         property string unmappedGamepads : ""
-        text: qsTr("Jochona detected gamepads without a mapping:") + "\n" + unmappedGamepads
+        text: qsTr("Jochona found controllers without mappings:")
+              + "\n" + unmappedGamepads
         helpTextSeparator: "\n\n"
-        helpText: qsTr("Click the Help button for information on how to map your gamepads.")
+        helpText: qsTr("Open the upstream controller-mapping guide?")
         helpUrl: "https://github.com/moonlight-stream/moonlight-docs/wiki/Gamepad-Mapping"
     }
 
@@ -546,74 +578,21 @@ ApplicationWindow {
     NavigableMessageDialog {
         id: quitConfirmationDialog
         standardButtons: Dialog.Yes | Dialog.No
-        text: qsTr("Are you sure you want to quit?")
-        // For keyboard/gamepad navigation
+        yesText: qsTr("Quit Jochona")
+        noText: qsTr("Keep playing")
+        text: qsTr("Quit Jochona?")
         onAccepted: Qt.quit()
     }
 
-    // HACK: This belongs in StreamSegue but keeping a dialog around after the parent
-    // dies can trigger bugs in Qt 5.12 that cause the app to crash. For now, we will
-    // host this dialog in a QML component that is never destroyed.
-    //
-    // To repro: Start a stream, cut the network connection to trigger the "Connection
-    // terminated" dialog, wait until the app grid times out back to the PC grid, then
-    // try to dismiss the dialog.
-    ErrorMessageDialog {
-        id: streamSegueErrorDialog
-
-        property bool quitAfter: false
-
-        onClosed: {
-            if (quitAfter) {
-                Qt.quit()
-            }
-
-            // StreamSegue assumes its dialog will be re-created each time we
-            // start streaming, so fake it by wiping out the text each time.
-            text = ""
-        }
+    NavigableMessageDialog {
+        id: compatibilityHelpDialog
+        standardButtons: Dialog.Yes | Dialog.No
+        yesText: qsTr("Open upstream guide")
+        noText: qsTr("Stay in Jochona")
+        text: qsTr("Jochona uses the Moonlight-compatible streaming protocol. "
+                   + "The upstream setup guide documents compatible host setup.")
+        onAccepted: Qt.openUrlExternally(
+                        "https://github.com/moonlight-stream/moonlight-docs/wiki/Setup-Guide")
     }
 
-    NavigableDialog {
-        id: addPcDialog
-        property string label: qsTr("Enter the IP address of your host PC:")
-
-        standardButtons: Dialog.Ok | Dialog.Cancel
-
-        onOpened: {
-            // Force keyboard focus on the textbox so keyboard navigation works
-            editText.forceActiveFocus()
-        }
-
-        onClosed: {
-            editText.clear()
-        }
-
-        onAccepted: {
-            if (editText.text) {
-                ComputerManager.addNewHostManually(editText.text.trim())
-            }
-        }
-
-        ColumnLayout {
-            Label {
-                text: addPcDialog.label
-                font.bold: true
-            }
-
-            TextField {
-                id: editText
-                Layout.fillWidth: true
-                focus: true
-
-                Keys.onReturnPressed: {
-                    addPcDialog.accept()
-                }
-
-                Keys.onEnterPressed: {
-                    addPcDialog.accept()
-                }
-            }
-        }
-    }
 }

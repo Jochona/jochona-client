@@ -27,6 +27,8 @@
 #include <QFlags>
 #include <QJsonObject>
 #include <QMetaType>
+#include <QList>
+#include <QVector>
 #include <QStringList>
 
 class HostCapabilities
@@ -38,7 +40,8 @@ public:
         Unknown,
         Sunshine,
         Apollo,
-        Vibepollo
+        Vibepollo,
+        Jochona
     };
     Q_ENUM(Family)
 
@@ -59,6 +62,7 @@ public:
         ActionCancel               = 0x0400, // GET /actions/cancel, gated by PERM::launch
         ActionBitrates             = 0x0800, // GET /action/bitrates
         RuntimeBitrate             = 0x1000, // GET /api/abr/capabilities advertises "runtime_bitrate" (Vibepollo)
+        JochonaManifest            = 0x2000, // compatible /jochona/v1/capabilities
     };
     Q_DECLARE_FLAGS(Capabilities, Capability)
     Q_FLAG(Capabilities)
@@ -98,6 +102,34 @@ public:
     };
     Q_ENUM(Confidence)
 
+    enum class ManifestStatus {
+        Absent,
+        Invalid,
+        Incompatible,
+        Compatible
+    };
+
+    struct EncoderTuple
+    {
+        QString id;
+        QString codec;
+        QString profile;
+        int bitDepth = 8;
+        QString chroma;
+        int width = 0;
+        int height = 0;
+        int fps = 0;
+        bool hdr = false;
+        QStringList capture;
+
+        int videoFormat() const;
+        bool supportsCapture(bool virtualDisplay) const;
+        QJsonObject toJson() const;
+        static EncoderTuple fromJson(const QJsonObject& object, bool* ok = nullptr);
+
+        bool operator==(const EncoderTuple& other) const;
+    };
+
     HostCapabilities() = default;
 
     Family family = Family::Unknown;
@@ -110,6 +142,18 @@ public:
     // "features" array from GET /api/abr/capabilities.
     int abrVersion = 0;
     QStringList abrFeatures;
+
+    ManifestStatus manifestStatus = ManifestStatus::Absent;
+    int schemaMajor = 0;
+    int schemaMinor = 0;
+    QString hostSoftware;
+    QString hostBuild;
+    QString hostIdentity;
+    QString capacityState;
+    int maxSessions = 0;
+    QString activeApplication;
+    QStringList permissionNames;
+    QVector<EncoderTuple> encoderTuples;
 
     bool hasCapability(Capability capability) const { return capabilities.testFlag(capability); }
 
@@ -126,6 +170,16 @@ public:
     bool allowKeyboard() const { return hasAnyPermission(InputKeyboard); }
     bool allowClipboard() const { return hasAnyPermission(Permissions(ClipboardRead | ClipboardSet)); }
 
+    ManifestStatus applyJochonaManifest(const QJsonObject& object,
+                                        const QString& expectedIdentity,
+                                        QString* error = nullptr);
+    QString selectEncoderTuple(int width,
+                               int height,
+                               int fps,
+                               const QList<int>& preferredVideoFormats,
+                               bool hdr,
+                               bool virtualDisplay) const;
+
     static QString familyName(Family family);
     static Family familyFromName(const QString& name);
 
@@ -141,6 +195,18 @@ public:
 
     bool operator==(const HostCapabilities& other) const;
     bool operator!=(const HostCapabilities& other) const { return !(*this == other); }
+
+    // Confidence-merge policy for a freshly finished probe run against
+    // whatever is already cached (proposal §4.4/§6.9): a probe that could
+    // not even reach /serverinfo this time (a sleeping Host, a Wi-Fi
+    // hiccup, an app-resume race) reports Confidence::Unknown and must
+    // never regress a previously Confirmed capability set -- the Host
+    // hasn't actually changed, this run just failed to reconfirm it.
+    // Every other combination trusts the fresh probe outright, including
+    // Confirmed replacing Confirmed (picks up e.g. a changed encoder
+    // tuple set) and anything replacing a first-ever Unknown/Partial entry.
+    static HostCapabilities mergeProbeResult(const HostCapabilities& cached,
+                                             const HostCapabilities& probed);
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(HostCapabilities::Capabilities)

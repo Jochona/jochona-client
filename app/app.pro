@@ -198,11 +198,16 @@ SOURCES += \
     backend/boxartmanager.cpp \
     backend/richpresencemanager.cpp \
     backend/thememanager.cpp \
+    backend/supportbundlemanager.cpp \
     backend/controllermanager.cpp \
+    backend/negotiation/negotiator.cpp \
     backend/controllerprofilestore.cpp \
     backend/adapters/hostcapabilities.cpp \
     backend/adapters/hostprober.cpp \
     backend/adapters/hostadaptermanager.cpp \
+    backend/beacon/spake2client.cpp \
+    backend/beacon/beaconmanager.cpp \
+    backend/wake/wakeprovider.cpp \
     cli/commandlineparser.cpp \
     cli/listapps.cpp \
     cli/quitstream.cpp \
@@ -212,6 +217,8 @@ SOURCES += \
     settings/compatfetcher.cpp \
     settings/mappingfetcher.cpp \
     settings/streamingpreferences.cpp \
+    settings/effectivesettingsresolver.cpp \
+    library/librarymanager.cpp \
     streaming/input/abstouch.cpp \
     streaming/input/gamepad.cpp \
     streaming/input/input.cpp \
@@ -250,11 +257,16 @@ HEADERS += \
     backend/boxartmanager.h \
     backend/richpresencemanager.h \
     backend/thememanager.h \
+    backend/supportbundlemanager.h \
     backend/controllermanager.h \
     backend/controllerprofilestore.h \
     backend/adapters/hostcapabilities.h \
+    backend/negotiation/negotiator.h \
     backend/adapters/hostprober.h \
     backend/adapters/hostadaptermanager.h \
+    backend/beacon/spake2client.h \
+    backend/beacon/beaconmanager.h \
+    backend/wake/wakeprovider.h \
     cli/commandlineparser.h \
     cli/listapps.h \
     cli/quitstream.h \
@@ -262,6 +274,8 @@ HEADERS += \
     core/settingsdatabase.h \
     core/credentialstore.h \
     settings/streamingpreferences.h \
+    settings/effectivesettingsresolver.h \
+    library/librarymanager.h \
     streaming/input/input.h \
     streaming/session.h \
     streaming/audio/renderers/renderer.h \

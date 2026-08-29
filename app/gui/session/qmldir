@@ -1,3 +1,4 @@
 module session
 SessionStatusOverlay 1.0 SessionStatusOverlay.qml
 ConnectionTestDialog 1.0 ConnectionTestDialog.qml
+SessionSettingsOverlay 1.0 SessionSettingsOverlay.qml

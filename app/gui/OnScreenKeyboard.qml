@@ -43,19 +43,20 @@ FocusScope {
     // True while the most recent input was typed on a physical keyboard.
     property bool directInput: false
 
-    readonly property int keySpacing: 8
-    readonly property int keyHeight: digitsOnly ? 56 : 50
+    readonly property int keySpacing: Tokens.dp(8)
+    readonly property int keyHeight: Tokens.dp(digitsOnly ? 56 : 50)
     readonly property int unitsPerRow: digitsOnly ? 3 : 10
     readonly property real keyUnit: {
-        var avail = (width - (unitsPerRow - 1) * keySpacing) / unitsPerRow
-        return Math.min(avail, digitsOnly ? 96 : 76)
+        var available = (width - (unitsPerRow - 1) * keySpacing) / unitsPerRow
+        return Math.min(available, Tokens.dp(digitsOnly ? 96 : 76))
     }
-    readonly property real gridWidth: keyUnit * unitsPerRow + keySpacing * (unitsPerRow - 1)
+    readonly property real gridWidth: keyUnit * unitsPerRow
+                                     + keySpacing * (unitsPerRow - 1)
 
     implicitHeight: keyColumn.implicitHeight
-    // Static (largest-layout) width so an unset host width never loops
-    // through keyUnit; hosts may still set any explicit width.
-    implicitWidth: digitsOnly ? (3 * 96 + 2 * keySpacing) : (10 * 76 + 9 * keySpacing)
+    implicitWidth: digitsOnly
+                   ? (3 * Tokens.dp(96) + 2 * keySpacing)
+                   : (10 * Tokens.dp(76) + 9 * keySpacing)
 
     // Key descriptors: { t: "char"|"shift"|"page"|"space"|"del"|"done", ch, span }
     readonly property var rows: {
@@ -261,19 +262,20 @@ FocusScope {
                                                           keyboard.curCol === index
                         readonly property bool armed: key.t === "shift" && keyboard.shifted
 
-                        width: keyboard.keyUnit * key.span + keyboard.keySpacing * (key.span - 1)
+                        width: keyboard.keyUnit * key.span
+                               + keyboard.keySpacing * (key.span - 1)
                         height: keyboard.keyHeight
-                        radius: 8
+                        radius: Tokens.radiusControl
 
                         color: isCurrent && keyboard.activeFocus ? Tokens.surfaceFocus
                              : keyArea.containsMouse             ? Tokens.surfaceFocus
                              : armed                             ? Tokens.surfaceFocus
                                                                  : Tokens.surface
-                        border.width: (isCurrent && keyboard.activeFocus) || armed ? 2 : 1
-                        border.color: isCurrent && keyboard.activeFocus ? Tokens.borderFocus
-                                    : armed                             ? Tokens.accentFocus
-                                    : isCurrent                         ? Tokens.accent
-                                                                        : Tokens.border
+                        border.width: isCurrent && keyboard.activeFocus
+                                      ? Tokens.focusStroke : Tokens.routeStroke
+                        border.color: isCurrent && keyboard.activeFocus
+                                      ? Tokens.borderFocus
+                                      : armed ? Tokens.link : Tokens.border
 
                         Behavior on color {
                             ColorAnimation { duration: Tokens.motion(Tokens.durationFast) }
@@ -292,12 +294,16 @@ FocusScope {
                             anchors.centerIn: parent
                             text: keyboard.keyLabel(keyRect.key)
                             font.family: Tokens.familyBody
-                            font.pointSize: keyRect.key.t === "char"
-                                            ? (keyboard.digitsOnly ? Tokens.sizeTitle : Tokens.sizeSection)
-                                            : Tokens.sizeMicro
-                            font.weight: keyRect.key.t === "char" ? Font.Medium : Font.DemiBold
-                            font.capitalization: keyRect.key.t === "char" ? Font.MixedCase : Font.AllUppercase
-                            color: keyRect.key.t === "done" ? Tokens.accentFocus : Tokens.textPrimary
+                            font.pixelSize: keyRect.key.t === "char"
+                                            ? (keyboard.digitsOnly
+                                               ? Tokens.tTitle : Tokens.tShelf)
+                                            : Tokens.tMicro
+                            font.weight: keyRect.key.t === "char"
+                                         ? Font.Medium : Font.DemiBold
+                            font.capitalization: keyRect.key.t === "char"
+                                                 ? Font.MixedCase : Font.AllUppercase
+                            color: keyRect.key.t === "done" ? Tokens.link
+                                                            : Tokens.textPrimary
                         }
 
                         // Press feedback shared by mouse and gamepad activation.
@@ -330,6 +336,7 @@ FocusScope {
                             id: keyArea
                             anchors.fill: parent
                             hoverEnabled: true
+                            onEntered: Tokens.inputMode = "pointer"
                             onClicked: {
                                 keyboard.forceActiveFocus()
                                 keyboard.curRow = keyRow.rowIndex

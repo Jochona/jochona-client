@@ -99,18 +99,17 @@ QtObject {
 
     readonly property var fontFiles: {FONTS}
 
-    property var _loaders: []
+    property var _loaders: ({})
 
     Component.onCompleted: {
-        var comps = []
+        var loaders = ({})
         var names = Object.keys(fontFiles)
         for (var i = 0; i < names.length; i++) {
-            comps.push(fontLoaderComp.createObject(root, {
-                "name": fontFiles[names[i]],
+            loaders[names[i]] = fontLoaderComp.createObject(root, {
                 "source": "qrc:/fonts/" + fontFiles[names[i]] + ".ttf"
-            }))
+            })
         }
-        root._loaders = comps
+        root._loaders = loaders
     }
 
     // QtObject has no default property — the Component must hang off an
@@ -121,7 +120,8 @@ QtObject {
 
     function fontFamily(family) {
         var key = (family in glyphs) ? family : "generic"
-        return fontFiles[key]
+        var loader = root._loaders[key]
+        return loader && loader.name.length > 0 ? loader.name : "Inter"
     }
 
     // Returns the glyph character, or "" for unknown names/families.

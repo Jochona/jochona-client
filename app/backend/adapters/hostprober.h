@@ -50,11 +50,12 @@ signals:
 private:
     struct ProbeResult
     {
-        // The route exists on this host: a 2xx response, or a 401/403/405
-        // that still proves the handler is registered (just gated by
-        // permission or method). Everything else -- 404, connection
-        // refused, TLS failure, timeout -- means "not present".
+        // present means the route handler is proven by 2xx, 401, 403, or
+        // 405. responded distinguishes a definitive HTTP response, such as
+        // 404, from a transport, TLS, or timeout failure. Probe completeness
+        // depends on that distinction.
         bool present = false;
+        bool responded = false;
         bool ok = false; // 2xx specifically
         int statusCode = 0;
         QByteArray body;

@@ -1,76 +1,90 @@
-import QtQuick 2.0
+// Visible host-side stop transition. It preserves the route while the host
+// closes an application and never references retired shell chrome.
+import QtQuick 2.15
 import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.3
 
 import ComputerManager 1.0
 import Session 1.0
 
-Item {
-    property string appName
-    property var quitRunningAppFn
-    property Session nextSession : null
-    property string nextAppName : ""
+import "style"
 
-    property string stageText : qsTr("Quitting %1...").arg(appName)
+Item {
+    id: quitView
+
+    property string appName: ""
+    property var quitRunningAppFn
+    property Session nextSession: null
+    property string nextAppName: ""
+
+    objectName: qsTr("Stop application")
 
     function quitAppCompleted(error)
     {
-        // Display a failed dialog if we got an error
         if (error !== undefined) {
             errorDialog.text = error
             errorDialog.open()
             console.error(error)
         }
 
-        // If we're supposed to launch another game after this, do so now
         if (error === undefined && nextSession !== null) {
             var component = Qt.createComponent("StreamSegue.qml")
-            var segue = component.createObject(stackView, {"appName": nextAppName, "session": nextSession})
+            var segue = component.createObject(stackView, {
+                                                   "appName": nextAppName,
+                                                   "session": nextSession
+                                               })
             stackView.replace(segue)
-        }
-        else {
-            // Exit this view
+        } else {
             stackView.pop()
         }
     }
 
     StackView.onActivated: {
-        // Hide the toolbar before we start loading
-        toolBar.visible = false
-
-        // Connect the quit completion signal
         ComputerManager.quitAppCompleted.connect(quitAppCompleted)
-
-        // Start the quit operation if requested
-        if (quitRunningAppFn) {
+        if (quitRunningAppFn)
             quitRunningAppFn()
-        }
     }
 
-    StackView.onDeactivating: {
-        // Show the toolbar again
-        toolBar.visible = true
-
-        // Disconnect the signal
+    StackView.onDeactivating:
         ComputerManager.quitAppCompleted.disconnect(quitAppCompleted)
+
+    Rectangle {
+        anchors.fill: parent
+        color: Tokens.night
     }
 
-    Row {
+    ColumnLayout {
         anchors.centerIn: parent
-        spacing: 5
+        width: Math.min(parent.width - Tokens.gutter * 2, Tokens.dp(720))
+        spacing: Tokens.gutter
 
         BusyIndicator {
-            id: stageSpinner
-            running: visible
+            Layout.alignment: Qt.AlignHCenter
+            running: true
+            width: Tokens.dp(48)
+            height: width
         }
 
         Label {
-            id: stageLabel
-            height: stageSpinner.height
-            text: stageText
-            font.pointSize: 20
-            verticalAlignment: Text.AlignVCenter
+            Layout.fillWidth: true
+            text: qsTr("Stopping %1 on the rig…").arg(appName)
+            font.family: Tokens.familyDisplay
+            font.pixelSize: Tokens.tTitle
+            font.weight: Font.Medium
+            color: Tokens.textPrimary
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            Accessible.role: Accessible.Heading
+        }
 
-            wrapMode: Text.Wrap
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("The stream stays closed until the rig confirms.")
+            font.family: Tokens.familyBody
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
         }
     }
 

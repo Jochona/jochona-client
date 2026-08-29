@@ -14,6 +14,11 @@
 #include <QElapsedTimer>
 #include <QTemporaryFile>
 #include <QRegularExpression>
+#include <QQuickWindow>
+#include <QQuickItem>
+#include <QProcess>
+#include <dlfcn.h>
+#include <QTimer>
 
 #ifdef Q_OS_UNIX
 #include <sys/socket.h>
@@ -53,13 +58,18 @@
 #include "backend/computermanager.h"
 #include "backend/systemproperties.h"
 #include "backend/thememanager.h"
+#include "backend/supportbundlemanager.h"
 #include "backend/controllermanager.h"
 #include "backend/controllerprofilestore.h"
+#include "backend/negotiation/negotiator.h"
 #include "backend/adapters/hostadaptermanager.h"
+#include "backend/beacon/beaconmanager.h"
 #include "core/credentialstore.h"
 #include "core/settingsdatabase.h"
 #include "streaming/session.h"
 #include "settings/streamingpreferences.h"
+#include "settings/effectivesettingsresolver.h"
+#include "library/librarymanager.h"
 #include "gui/sdlgamepadkeynavigation.h"
 
 #if defined(Q_OS_WIN32)
@@ -423,6 +433,31 @@ void configureSignalHandlers()
     sigaction(SIGTERM, &sa, nullptr);
 }
 
+#endif
+
+#ifdef Q_OS_MACOS
+// Bring this process frontmost through the ObjC runtime. Headless launches
+// start backgrounded; Qt Quick only delivers key events to the active window,
+// so UI-walk verification must make itself key without another process
+// stealing focus on the way.
+static void activateAppMac()
+{
+    void* getCls = dlsym(RTLD_DEFAULT, "objc_getClass");
+    void* getSel = dlsym(RTLD_DEFAULT, "sel_getUid");
+    void* msg = dlsym(RTLD_DEFAULT, "objc_msgSend");
+    if (getCls == nullptr || getSel == nullptr || msg == nullptr) {
+        return;
+    }
+    typedef void* (*ClassFn)(const char*);
+    typedef void* (*SelFn)(const char*);
+    typedef void* (*SendV)(void*, void*);
+    typedef void (*SendBool)(void*, void*, signed char);
+    void* nsAppClass = ((ClassFn)getCls)("NSApplication");
+    void* selShared = ((SelFn)getSel)("sharedApplication");
+    void* app = ((SendV)msg)(nsAppClass, selShared);
+    void* selActivate = ((SelFn)getSel)("activateIgnoringOtherApps:");
+    ((SendBool)msg)(app, selActivate, 1);
+}
 #endif
 
 int main(int argc, char *argv[])
@@ -867,6 +902,14 @@ int main(int argc, char *argv[])
 #endif
     }
 
+    // Authoritative client state must exist before StreamingPreferences is
+    // first constructed (CLI and GUI paths share the same baseline).
+    auto database = new SettingsDatabase(&app);
+    if (!database->open()) {
+        qWarning() << "Failed to open settings database:"
+                   << database->lastError();
+    }
+
     // Apply the initial translation based on user preference
     StreamingPreferences::get()->retranslate();
 
@@ -948,17 +991,32 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonType<ComputerManager>("ComputerManager", 1, 0,
                                               "ComputerManager",
                                               [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {
-                                                  return new ComputerManager(StreamingPreferences::get(qmlEngine));
+                                                  auto* manager = new ComputerManager(StreamingPreferences::get(qmlEngine));
+                                                  Negotiator::setComputerManager(manager);
+                                                  LibraryManager::setComputerManager(manager);
+                                                  return manager;
                                               });
+    qmlRegisterSingletonType<LibraryManager>(
+        "LibraryManager", 1, 0, "LibraryManager",
+        [](QQmlEngine*, QJSEngine*) -> QObject* {
+            return LibraryManager::get();
+        });
     qmlRegisterSingletonType<AutoUpdateChecker>("AutoUpdateChecker", 1, 0,
                                                 "AutoUpdateChecker",
                                                 [](QQmlEngine*, QJSEngine*) -> QObject* {
                                                     return new AutoUpdateChecker();
                                                 });
+    qmlRegisterSingletonType<SupportBundleManager>(
+        "SupportBundleManager", 1, 0, "SupportBundleManager",
+        [](QQmlEngine*, QJSEngine*) -> QObject* {
+            return SupportBundleManager::get();
+        });
     qmlRegisterSingletonType<SystemProperties>("SystemProperties", 1, 0,
                                                "SystemProperties",
                                                [](QQmlEngine*, QJSEngine*) -> QObject* {
-                                                   return new SystemProperties();
+                                                   auto* properties = new SystemProperties();
+                                                  Negotiator::setSystemProperties(properties);
+                                                   return properties;
                                                });
     qmlRegisterSingletonType<SdlGamepadKeyNavigation>("SdlGamepadKeyNavigation", 1, 0,
                                                       "SdlGamepadKeyNavigation",
@@ -970,22 +1028,33 @@ int main(int argc, char *argv[])
                                                  [](QQmlEngine*, QJSEngine*) -> QObject* {
                                                      return ControllerManager::get();
                                                  });
-    qmlRegisterSingletonType<ControllerProfileStore>("ControllerProfileStore", 1, 0,
-                                                     "ControllerProfileStore",
+    qmlRegisterSingletonType<ControllerMapStore>("ControllerMapStore", 1, 0,
+                                                     "ControllerMapStore",
                                                      [](QQmlEngine*, QJSEngine*) -> QObject* {
-                                                         return ControllerProfileStore::get();
+                                                         return ControllerMapStore::get();
                                                      });
+    qmlRegisterSingletonType<Negotiator>("Negotiator", 1, 0,
+                                         "Negotiator",
+                                         [](QQmlEngine*, QJSEngine*) -> QObject* {
+                                             return Negotiator::get();
+                                         });
     qmlRegisterSingletonType<StreamingPreferences>("StreamingPreferences", 1, 0,
                                                    "StreamingPreferences",
                                                    [](QQmlEngine* qmlEngine, QJSEngine*) -> QObject* {
                                                        return StreamingPreferences::get(qmlEngine);
                                                    });
+    qmlRegisterSingletonType<EffectiveSettingsResolver>(
+        "EffectiveSettings", 1, 0, "EffectiveSettings",
+        [](QQmlEngine*, QJSEngine*) -> QObject* {
+            return EffectiveSettingsResolver::get();
+        });
 
     // Create the identity manager on the main thread
     IdentityManager::get();
 
-    // We require the Material theme
-    QQuickStyle::setStyle("Material");
+    // Basic delegates inherit the live QML palette instead of injecting
+    // Material purple/gray into Night Route and theme-package surfaces.
+    QQuickStyle::setStyle("Basic");
 
     // Jochona: brand typography. Inter carries UI text, Space Grotesk is the
     // display face (screens select it explicitly), and Noto Color Emoji
@@ -1012,22 +1081,6 @@ int main(int argc, char *argv[])
         brandFont.setFamilies({QStringLiteral("Inter"), QStringLiteral("Noto Emoji")});
         app.setFont(brandFont);
     }
-    // Our icons are styled for a dark theme, so we do not allow the user to override this
-    qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
-
-    // These are defaults that we allow the user to override
-    if (!qEnvironmentVariableIsSet("QT_QUICK_CONTROLS_MATERIAL_ACCENT")) {
-        qputenv("QT_QUICK_CONTROLS_MATERIAL_ACCENT", "Purple");
-    }
-    if (!qEnvironmentVariableIsSet("QT_QUICK_CONTROLS_MATERIAL_VARIANT")) {
-        qputenv("QT_QUICK_CONTROLS_MATERIAL_VARIANT", "Dense");
-    }
-    if (!qEnvironmentVariableIsSet("QT_QUICK_CONTROLS_MATERIAL_PRIMARY")) {
-        // Qt 6.9 began to use a different shade of Material.Indigo when we use a dark theme
-        // (which is all the time). The new color looks washed out, so manually specify the
-        // old primary color unless the user overrides it themselves.
-        qputenv("QT_QUICK_CONTROLS_MATERIAL_PRIMARY", "#3F51B5");
-    }
 
     QQmlApplicationEngine engine;
     QString initialView;
@@ -1035,11 +1088,9 @@ int main(int argc, char *argv[])
 
     switch (commandLineParserResult) {
     case GlobalCommandLineParser::NormalStartRequested:
-        // Jochona: M1 feature flag — the modern home screen replaces PcView
-        // when enabled (ADR-0001 incremental shell replacement).
-        initialView = StreamingPreferences::get()->modernHomeScreen
-                          ? "qrc:/gui/HomeView.qml"
-                          : "qrc:/gui/PcView.qml";
+        // Jochona: the Nightlink shell is the only shell (ADR-0001 cutover).
+        // The legacy PcView and its feature flag were removed.
+        initialView = "qrc:/gui/HomeView.qml";
         break;
     case GlobalCommandLineParser::StreamRequested:
         {
@@ -1086,12 +1137,7 @@ int main(int argc, char *argv[])
         engine.rootContext()->setContextProperty("initialView", initialView);
         engine.rootContext()->setContextProperty("runConfigChecks", commandLineParserResult == GlobalCommandLineParser::NormalStartRequested);
 
-        // Jochona: settings database and OS credential vault (proposal.md
-        // 6.15, 7.1). Exposed to QML ahead of any consumer; open() logs its
-        // own diagnostics if it fails, and QML reads simply see an empty
-        // "database" property in that case rather than a crash.
-        auto database = new SettingsDatabase(&app);
-        database->open();
+        // The process-wide database is already open before preferences load.
         engine.rootContext()->setContextProperty("database", database);
 
         auto credentialStore = new CredentialStore(&app);
@@ -1100,11 +1146,173 @@ int main(int argc, char *argv[])
         engine.rootContext()->setContextProperty("themeManager", ThemeManager::get());
 
         engine.rootContext()->setContextProperty("hostAdapters", HostAdapterManager::get());
+        engine.rootContext()->setContextProperty("beaconManager",
+                                                 BeaconManager::get());
 
         // Load the main.qml file
         engine.load(QUrl(QStringLiteral("qrc:/gui/main.qml")));
         if (engine.rootObjects().isEmpty())
             return -1;
+
+        // Jochona: verification hook for shell work. When JOCHONA_UI_SHOT is
+        // set, grab one settled frame to that path and exit. This verifies UI
+        // changes headlessly (scripts/CI) without screencapturing a Metal
+        // window, which yields blank images.
+        const QString shotPath = qEnvironmentVariable("JOCHONA_UI_SHOT");
+        const QString pushSpec = qEnvironmentVariable("JOCHONA_UI_PUSH");
+        const QString walkSpec = qEnvironmentVariable("JOCHONA_UI_WALK");
+        const QString gamepadWalkSpec =
+            qEnvironmentVariable("JOCHONA_UI_GAMEPAD_WALK");
+        if (!shotPath.isEmpty() || !walkSpec.isEmpty()
+                || !gamepadWalkSpec.isEmpty()) {
+            auto window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+            if (window != nullptr) {
+                // Keyboard dispatch needs a key window; headless launches
+                // start backgrounded on macOS.
+                window->raise();
+                window->requestActivate();
+
+                if (!pushSpec.isEmpty()) {
+                    const bool invoked = QMetaObject::invokeMethod(window, "uiShotNavigate",
+                                              Q_ARG(QVariant, pushSpec));
+                    qInfo("Jochona: uiShotNavigate invoked=%d spec=%s",
+                          invoked, qPrintable(pushSpec));
+                }
+
+                // Deepest item holding focus in the chain, independent of
+                // window activation (backgrounded macOS launches race for key
+                // window, which would blank activeFocusItem()).
+                auto focusedLeaf = [](auto&& self, QQuickItem* item) -> QQuickItem* {
+                    if (item == nullptr) {
+                        return nullptr;
+                    }
+                    const auto kids = item->childItems();
+                    for (auto* kid : kids) {
+                        if (auto* deeper = self(self, kid)) {
+                            return deeper;
+                        }
+                    }
+                    return item->hasFocus() ? item : nullptr;
+                };
+                auto focusLabel = [&focusedLeaf, window]() {
+                    QQuickItem* leaf = focusedLeaf(focusedLeaf, window->contentItem());
+                    return QString("%1[%2]").arg(
+                        leaf ? leaf->metaObject()->className() : "none",
+                        leaf ? leaf->objectName() : QString());
+                };
+
+                // Synthetic focus walk: named keys posted to the window on a
+                // timer, with the focused item logged before each press.
+                static const QHash<QString, int> walkKeys = {
+                    {"down", Qt::Key_Down}, {"up", Qt::Key_Up},
+                    {"left", Qt::Key_Left}, {"right", Qt::Key_Right},
+                    {"enter", Qt::Key_Return}, {"tab", Qt::Key_Tab},
+                    {"back", Qt::Key_Escape},
+                };
+                int whenMs = 3500;
+                if (!gamepadWalkSpec.isEmpty()) {
+                    QTimer::singleShot(3300, window, []() {
+                        if (auto* navigation =
+                                SdlGamepadKeyNavigation::get()) {
+                            navigation->enable();
+                            navigation->notifyWindowFocus(true);
+                        }
+                    });
+                }
+                const QStringList steps = walkSpec.split(',', Qt::SkipEmptyParts);
+                for (const QString& step : steps) {
+                    auto it = walkKeys.constFind(step.trimmed().toLower());
+                    if (it == walkKeys.constEnd()) {
+                        qWarning("Jochona: unknown JOCHONA_UI_WALK step '%s'",
+                                 qPrintable(step));
+                        continue;
+                    }
+                    const int key = it.value();
+                    QTimer::singleShot(whenMs, window, [window, key, whenMs, focusLabel]() {
+                        QObject* target = window->focusObject();
+                        qInfo("Jochona: walk t=%dms key=%d active=%d focus=%s target=%s", whenMs, key,
+                              window->isActive(), qPrintable(focusLabel()),
+                              target ? target->metaObject()->className() : "none");
+                        QCoreApplication::postEvent(window,
+                            new QKeyEvent(QEvent::KeyPress, key, Qt::NoModifier));
+                        QCoreApplication::postEvent(window,
+                            new QKeyEvent(QEvent::KeyRelease, key, Qt::NoModifier));
+                    });
+                    whenMs += 300;
+                }
+
+                static const QHash<QString, Uint8> gamepadButtons = {
+                    {"up", SDL_CONTROLLER_BUTTON_DPAD_UP},
+                    {"down", SDL_CONTROLLER_BUTTON_DPAD_DOWN},
+                    {"left", SDL_CONTROLLER_BUTTON_DPAD_LEFT},
+                    {"right", SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
+                    {"a", SDL_CONTROLLER_BUTTON_A},
+                    {"b", SDL_CONTROLLER_BUTTON_B},
+                    {"x", SDL_CONTROLLER_BUTTON_X},
+                    {"y", SDL_CONTROLLER_BUTTON_Y},
+                };
+                const QStringList gamepadSteps =
+                    gamepadWalkSpec.split(',', Qt::SkipEmptyParts);
+                for (const QString& step : gamepadSteps) {
+                    auto it = gamepadButtons.constFind(
+                        step.trimmed().toLower());
+                    if (it == gamepadButtons.constEnd()) {
+                        qWarning("Jochona: unknown JOCHONA_UI_GAMEPAD_WALK step '%s'",
+                                 qPrintable(step));
+                        continue;
+                    }
+                    const Uint8 button = it.value();
+                    QTimer::singleShot(
+                        whenMs, window,
+                        [button, whenMs, focusLabel]() {
+                            qInfo("Jochona: gamepad walk t=%dms button=%u focus=%s",
+                                  whenMs, button,
+                                  qPrintable(focusLabel()));
+                            SDL_Event event = {};
+                            event.type = SDL_CONTROLLERBUTTONDOWN;
+                            event.cbutton.button = button;
+                            event.cbutton.state = SDL_PRESSED;
+                            SDL_PushEvent(&event);
+                            event.type = SDL_CONTROLLERBUTTONUP;
+                            event.cbutton.state = SDL_RELEASED;
+                            SDL_PushEvent(&event);
+                        });
+                    whenMs += 300;
+                }
+
+                if (!walkSpec.isEmpty() || !gamepadWalkSpec.isEmpty()) {
+                    // The synthetic key events bypass the window system, but
+                    // Qt Quick only routes keys into an ACTIVE window. Ask
+                    // the shell (osascript) to make us frontmost once.
+                    for (int at : {2000, 2600, 3200, 3450}) {
+                        QTimer::singleShot(at, window, [window]() {
+#ifdef Q_OS_MACOS
+                            activateAppMac();
+#endif
+                            window->raise();
+                            window->requestActivate();
+                        });
+                    }
+                }
+
+                if (!shotPath.isEmpty()) {
+                    QTimer::singleShot(whenMs + 500, window, [window, shotPath, focusLabel]() {
+                        qInfo("Jochona: walk final focus=%s", qPrintable(focusLabel()));
+                        const QImage shot = window->grabWindow();
+                        if (shot.save(shotPath)) {
+                            qInfo("Jochona: UI screenshot written to %s", qPrintable(shotPath));
+                        } else {
+                            qWarning("Jochona: failed to write UI screenshot to %s", qPrintable(shotPath));
+                        }
+                        QCoreApplication::quit();
+                    });
+                } else {
+                    QTimer::singleShot(whenMs + 500, window, []() {
+                        QCoreApplication::quit();
+                    });
+                }
+            }
+        }
     }
 
     int err = app.exec();

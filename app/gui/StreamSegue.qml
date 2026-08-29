@@ -1,242 +1,314 @@
-import QtQuick 2.0
+// Stream launch and reconnect composition. SessionStatusOverlay owns every
+// visible state; the native SDL window still owns live video.
+import QtQuick 2.15
 import QtQuick.Controls 2.2
-import QtQuick.Window 2.2
 
 import SdlGamepadKeyNavigation 1.0
 import Session 1.0
 import SystemProperties 1.0
+import EffectiveSettings 1.0
+
+import "session"
+import "style"
 
 Item {
-    property Session session
-    property string appName
-    property string stageText : isResume ? qsTr("Resuming %1...").arg(appName) :
-                                           qsTr("Starting %1...").arg(appName)
-    property bool isResume : false
-    property bool quitAfter : false
+    id: streamSegue
 
-    function stageStarting(stage)
-    {
-        // Update the spinner text
-        stageText = qsTr("Starting %1...").arg(stage)
+    property Session session
+    property Session reconnectSource: null
+    property string appName: ""
+    property string hostName: qsTr("Rig")
+    property bool isResume: false
+    property bool quitAfter: false
+    property string launchWarning: ""
+    property bool displayReconnectPending: false
+    property bool sessionSettingsOpen: false
+
+    function openSessionSettings() {
+        if (!session)
+            return
+        sessionSettingsOpen = true
+        SdlGamepadKeyNavigation.setStreamOverlayMode(true)
+        SdlGamepadKeyNavigation.setUiNavMode(true)
+        SdlGamepadKeyNavigation.enable()
+        window.visible = true
+        window.show()
+        window.raise()
+        window.requestActivate()
+        sessionSettings.open()
     }
 
-    function stageFailed(stage, errorCode, failingPorts)
-    {
-        // Display the error dialog after Session::exec() returns
-        streamSegueErrorDialog.text = qsTr("Starting %1 failed: Error %2").arg(stage).arg(errorCode)
+    function closeSessionSettings() {
+        sessionSettings.visible = false
+        sessionSettingsOpen = false
+        SdlGamepadKeyNavigation.disable()
+        SdlGamepadKeyNavigation.setStreamOverlayMode(false)
+        SdlGamepadKeyNavigation.setUiNavMode(false)
+        window.visible = false
+        if (session)
+            session.closeSessionSettings()
+    }
 
-        if (failingPorts) {
-            streamSegueErrorDialog.text += "\n\n" + qsTr("Check your firewall and port forwarding rules for port(s): %1").arg(failingPorts)
+    function applySessionSettings(patch, scope) {
+        sessionSettings.visible = false
+        sessionSettingsOpen = false
+        SdlGamepadKeyNavigation.disable()
+        SdlGamepadKeyNavigation.setStreamOverlayMode(false)
+        SdlGamepadKeyNavigation.setUiNavMode(false)
+        window.visible = false
+        if (session)
+            session.applySessionSettings(patch, scope)
+    }
+
+    objectName: isResume ? qsTr("Resume stream") : qsTr("Start stream")
+
+    function beginCurrentSession()
+    {
+        launchWarning = ""
+        SdlGamepadKeyNavigation.disable()
+
+        if (!session || !session.initialize(window)) {
+            statusOverlay.failureTitle = qsTr("Jochona could not prepare the stream")
+            statusOverlay.failureDetail = qsTr(
+                        "Check the rig and local decoder settings, then try again.")
+            statusOverlay.errorCode = 0
+            statusOverlay.state = "failed"
+            window.visible = true
+            SdlGamepadKeyNavigation.enable()
+            return
         }
+
+        if (session.launchWarnings.length > 0) {
+            var warnings = []
+            for (var i = 0; i < session.launchWarnings.length; i++) {
+                warnings.push(session.launchWarnings[i])
+                console.warn(session.launchWarnings[i])
+            }
+            launchWarning = warnings.join("\n")
+        }
+
+        startSessionTimer.start()
+    }
+
+    function reconnect()
+    {
+        var source = reconnectSource !== null ? reconnectSource : session
+        if (source === null) {
+            statusOverlay.failureTitle = qsTr("Reconnect is no longer available")
+            statusOverlay.failureDetail = qsTr("Return to the rig and start the game again.")
+            statusOverlay.state = "failed"
+            return
+        }
+
+        var replacement = source.createReconnectSession()
+        reconnectSource = null
+        session = replacement
+        window.visible = true
+        startupTimer.restart()
     }
 
     function connectionStarted()
     {
-        // Hide the UI contents so the user doesn't
-        // see them briefly when we pop off the StackView
-        stageSpinner.visible = false
-        stageLabel.visible = false
-        hintText.visible = false
-
-        // Hide the window now that streaming has begun
         window.visible = false
+        launchWarning = ""
     }
 
-    function displayLaunchError(text)
+    function sessionFinished(result)
     {
-        // Display the error dialog after Session::exec() returns
-        streamSegueErrorDialog.text = text
-        console.error(text)
+        if (sessionSettingsOpen) {
+            sessionSettings.visible = false
+            sessionSettingsOpen = false
+            SdlGamepadKeyNavigation.disable()
+            SdlGamepadKeyNavigation.setStreamOverlayMode(false)
+            SdlGamepadKeyNavigation.setUiNavMode(false)
+        }
+        SdlGamepadKeyNavigation.enable()
+        window.visible = true
+        if (displayReconnectPending) {
+            reconnectSource = session
+            displayReconnectPending = false
+            streamSegue.reconnect()
+            return
+        }
+
+        if (statusOverlay.state === "failed"
+                || statusOverlay.state === "reconnecting") {
+            reconnectSource = session
+            return
+        }
+
+        if (!quitAfter) {
+            stackView.pop()
+        } else if (statusOverlay.state !== "failed") {
+            Qt.quit()
+        }
     }
 
     function quitStarting()
     {
-        // Avoid the push transition animation
         var component = Qt.createComponent("QuitSegue.qml")
-        stackView.replace(stackView.currentItem, component.createObject(stackView, {"appName": appName}), StackView.Immediate)
-
-        // Show the Qt window again to show quit segue
+        stackView.replace(stackView.currentItem,
+                          component.createObject(stackView, {"appName": appName}),
+                          StackView.Immediate)
         window.visible = true
     }
 
-    function sessionFinished(portTestResult)
+    function showLaunchError(text)
     {
-        if (portTestResult !== 0 && portTestResult !== -1 && streamSegueErrorDialog.text) {
-            streamSegueErrorDialog.text += "\n\n" + qsTr("This PC's Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.")
-        }
-
-        // Re-enable GUI gamepad usage now
-        SdlGamepadKeyNavigation.enable()
-
-        // Pop the StreamSegue off the stack if this is a GUI-based app launch
-        if (!quitAfter) {
-            stackView.pop()
-        }
-
-        if (quitAfter && !streamSegueErrorDialog.text) {
-            // If this was a CLI launch without errors, exit now
-            Qt.quit()
-        }
-        else {
-            // Show the Qt window again after streaming
-            window.visible = true
-
-            // Display any launch errors. We do this after
-            // the Qt UI is visible again to prevent losing
-            // focus on the dialog which would impact gamepad
-            // users.
-            if (streamSegueErrorDialog.text) {
-                streamSegueErrorDialog.quitAfter = quitAfter
-                streamSegueErrorDialog.open()
-            }
-        }
-    }
-
-    function sessionReadyForDeletion()
-    {
-        // Garbage collect the Session object since it's pretty heavyweight
-        // and keeps other libraries (like SDL_TTF) around until it is deleted.
-        session = null
-        gc()
-    }
-
-    StackView.onDeactivating: {
-        // Show the toolbar again when popped off the stack
-        toolBar.visible = true
-
-        // Re-enable GUI gamepad usage now
-        SdlGamepadKeyNavigation.enable()
+        console.error(text)
+        reconnectSource = session
+        statusOverlay.failureTitle = qsTr("The stream could not start")
+        statusOverlay.failureDetail = text
+        statusOverlay.errorCode = 0
+        statusOverlay.state = "failed"
+        window.visible = true
     }
 
     StackView.onActivated: {
-        // Hide the toolbar before we start loading
-        toolBar.visible = false
-
-        // Hook up our signals
-        session.stageStarting.connect(stageStarting)
-        session.stageFailed.connect(stageFailed)
-        session.connectionStarted.connect(connectionStarted)
-        session.displayLaunchError.connect(displayLaunchError)
-        session.quitStarting.connect(quitStarting)
-        session.sessionFinished.connect(sessionFinished)
-        session.readyForDeletion.connect(sessionReadyForDeletion)
-
-        // Ensure the SystemProperties async thread is finished,
-        // since it may currently be using the SDL video subsystem
         SystemProperties.waitForAsyncLoad()
-
-        // Kick off the stream
-        spinnerTimer.start()
-        streamLoader.active = true
+        startupTimer.start()
     }
 
-    Timer {
-        id: spinnerTimer
+    StackView.onDeactivating: SdlGamepadKeyNavigation.enable()
 
-        // Display the spinner appearance a bit to allow us to reach
-        // the code in Session.exec() that pumps the event loop.
-        // If we display it immediately, it will briefly hang in the
-        // middle of the animation on Windows, which looks very
-        // obviously broken.
+    Timer {
+        id: startupTimer
         interval: 100
-        onTriggered: stageSpinner.visible = true
+        onTriggered: streamSegue.beginCurrentSession()
     }
 
     Timer {
         id: startSessionTimer
+        interval: 0
         onTriggered: {
-            // Garbage collect QML stuff before we start streaming,
-            // since we'll probably be streaming for a while and we
-            // won't be able to GC during the stream.
             gc()
-
-            // Run the streaming session to completion
             session.start()
         }
     }
 
-    Loader {
-        id: streamLoader
-        active: false
-        asynchronous: true
+    Connections {
+        target: streamSegue.session
 
-        onLoaded: {
-            // Set the hint text. We do this here rather than
-            // in the hintText control itself to synchronize
-            // with Session.exec() which requires no concurrent
-            // gamepad usage.
-            hintText.text = qsTr("Tip:") + " " + qsTr("Press %1 to disconnect your session").arg(SdlGamepadKeyNavigation.getConnectedGamepads() > 0 ?
-                                                  qsTr("Start+Select+L1+R1") : qsTr("Ctrl+Alt+Shift+Q"))
-
-            // Stop GUI gamepad usage now
-            SdlGamepadKeyNavigation.disable()
-
-            // Initialize the session and probe for host/client capabilities
-            if (!session.initialize(window)) {
-                sessionFinished(0);
-                sessionReadyForDeletion();
-                return;
-            }
-
-            // Don't wait unless we have toasts to display
-            startSessionTimer.interval = 0
-
-            // Display the toasts together in a vertical centered arrangement
-            var yOffset = 0
-            for (var i = 0; i < session.launchWarnings.length; i++) {
-                var text = session.launchWarnings[i]
-                console.warn(text)
-
-                // Show the tooltip for 3 seconds
-                var toast = Qt.createQmlObject('import QtQuick.Controls 2.2; ToolTip {}', parent, '')
-                toast.timeout = 3000
-                toast.text = text
-                toast.y += yOffset
-                toast.visible = true
-
-                // Offset the next toast below the previous one
-                yOffset = toast.y + toast.padding + toast.height
-
-                // Allow an extra 500 ms for the tooltip's fade-out animation to finish
-                startSessionTimer.interval = toast.timeout + 500;
-            }
-
-            // Start the timer to wait for toasts (or start the session immediately)
-            startSessionTimer.start()
+        function onConnectionStarted() {
+            streamSegue.connectionStarted()
         }
-
-        sourceComponent: Item {}
+        function onStageFailed(stage, code, ports) {
+            streamSegue.reconnectSource = streamSegue.session
+        }
+        function onConnectionTerminated(code, ports) {
+            if (code !== 0)
+                streamSegue.reconnectSource = streamSegue.session
+        }
+        function onDisplayLaunchError(text) {
+            streamSegue.showLaunchError(text)
+        }
+        function onQuitStarting() {
+            streamSegue.quitStarting()
+        }
+        function onSessionFinished(result) {
+            streamSegue.sessionFinished(result)
+        }
+        function onDisplayReconnectRequested() {
+            streamSegue.displayReconnectPending = true
+            streamSegue.reconnectSource = streamSegue.session
+        }
+        function onReadyForDeletion() {
+            if (statusOverlay.state !== "failed"
+                    && statusOverlay.state !== "reconnecting") {
+                streamSegue.session = null
+                gc()
+            }
+        }
+        function onSessionSettingsRequested() {
+            streamSegue.openSessionSettings()
+        }
     }
 
-    Row {
-        anchors.centerIn: parent
-        spacing: 5
-
-        BusyIndicator {
-            id: stageSpinner
-            running: visible
-            visible: false
+    Connections {
+        target: SystemProperties
+        function onDisplayTopologyChanged(previousContextId,
+                                          currentContextId) {
+            if (!streamSegue.session
+                    || statusOverlay.state !== "connected")
+                return
+            var displayName = qsTr("another display")
+            var contexts = SystemProperties.displayContexts
+            for (var i = 0; i < contexts.length; ++i) {
+                if (contexts[i].id === currentContextId) {
+                    displayName = contexts[i].name
+                    break
+                }
+            }
+            streamSegue.session.notifyDisplayContextChanged(displayName)
         }
+    }
 
-        Label {
-            id: stageLabel
-            height: stageSpinner.height
-            text: stageText
-            font.pointSize: 20
-            verticalAlignment: Text.AlignVCenter
+    SessionStatusOverlay {
+        id: statusOverlay
+        session: streamSegue.session
+        hostLabel: streamSegue.hostName
+        destinationLabel: streamSegue.appName
 
-            wrapMode: Text.Wrap
+        onReconnectRequested: streamSegue.reconnect()
+        onQuitRequested: {
+            reconnectSource = null
+            session = null
+            if (quitAfter)
+                Qt.quit()
+            else
+                stackView.pop()
         }
+        onDetailsRequested: {
+            connectionDetails.retryAvailable = false
+            connectionDetails.open()
+            connectionDetails.connectionTestComplete(
+                        statusOverlay.portTestResult,
+                        statusOverlay.failingPorts)
+        }
+    }
+
+
+    SessionSettingsOverlay {
+        id: sessionSettings
+        session: streamSegue.session
+        onCloseRequested: streamSegue.closeSessionSettings()
+        onApplyRequested: function(restartPatch, saveScope) {
+            streamSegue.applySessionSettings(restartPatch, saveScope)
+        }
+    }
+    ConnectionTestDialog {
+        id: connectionDetails
+        returnFocusItem: statusOverlay
+        pairKey: streamSegue.session
+                 ? EffectiveSettings.clientDeviceId + "|"
+                   + streamSegue.session.hostUuid
+                 : ""
     }
 
     Label {
-        id: hintText
+        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 50
-        anchors.horizontalCenter: parent.horizontalCenter
-        font.pointSize: 18
-        verticalAlignment: Text.AlignVCenter
+        anchors.bottomMargin: Tokens.gutter
+        visible: launchWarning.length > 0
+        text: launchWarning
+        font.family: Tokens.familyBody
+        font.pixelSize: Tokens.tMicro
+        color: Tokens.statusPairing
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+    }
 
-        wrapMode: Text.Wrap
+    Label {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Tokens.gutter
+        visible: launchWarning.length === 0
+        text: SdlGamepadKeyNavigation.getConnectedGamepads() > 0
+              ? qsTr("Disconnect shortcut: Start + Select + L1 + R1")
+              : qsTr("Disconnect shortcut: Ctrl + Alt + Shift + Q")
+        font.family: Tokens.familyBody
+        font.pixelSize: Tokens.tMicro
+        color: Tokens.textSecondary
     }
 }

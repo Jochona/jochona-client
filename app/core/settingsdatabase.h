@@ -1,11 +1,14 @@
 #pragma once
 
+#include <QDateTime>
 #include <QObject>
 #include <QSqlDatabase>
 #include <QString>
 #include <QStringList>
 #include <QVariant>
+#include <QVariantMap>
 #include <QVector>
+#include <QVariantList>
 
 // SettingsDatabase owns the single SQLite database that stores settings,
 // paired hosts, per-host application caches, favorites, collections, and
@@ -27,6 +30,10 @@ class SettingsDatabase : public QObject
 
 public:
     explicit SettingsDatabase(QObject* parent = nullptr);
+
+    // Jochona: process-wide instance created at startup (main.cpp). Returns
+    // nullptr before startup wiring or after teardown; callers must tolerate.
+    static SettingsDatabase* get();
 
     ~SettingsDatabase() override;
 
@@ -54,6 +61,82 @@ public:
     Q_INVOKABLE QVariant setting(const QString& key, const QVariant& defaultValue = QVariant()) const;
 
     Q_INVOKABLE void setSetting(const QString& key, const QVariant& value);
+
+    // Atomic batch write used by baseline saves and one-time imports.
+    bool setSettings(const QVariantMap& values);
+
+    // Imports namespaced legacy values once. The marker is written in the
+    // same transaction, so a crash never produces a half-imported baseline.
+    bool importLegacySettings(const QVariantMap& values, const QString& markerKey);
+
+    QVariantMap settingsPatch(const QString& scope,
+                              const QString& contextKey) const;
+    bool setSettingsPatch(const QString& scope,
+                          const QString& contextKey,
+                          const QVariantMap& values,
+                          const QVariantMap& pins = {},
+                          const QVariantMap& floors = {});
+    QVariantMap streamingProfile(const QString& profileId) const;
+    bool saveStreamingProfile(const QString& profileId,
+                              const QString& name,
+                              const QVariantMap& values);
+    QVariantList streamingProfiles() const;
+    bool deleteStreamingProfile(const QString& profileId);
+    bool ensureClientDevice(const QString& deviceId, const QString& name);
+    QVariantMap clientDeviceSettings(const QString& deviceId) const;
+    bool setClientDeviceSettings(const QString& deviceId,
+                                 const QVariantMap& values,
+                                 const QVariantMap& pins = {},
+                                 const QVariantMap& floors = {});
+    QVariantMap displayContext(const QString& contextId) const;
+    bool upsertDisplayContext(const QString& contextId,
+                              const QString& deviceId,
+                              const QString& name,
+                              const QString& fingerprint,
+                              const QString& dockState,
+                              const QVariantMap& metadata);
+    bool setDisplayContextSettings(const QString& contextId,
+                                   const QVariantMap& values,
+                                   const QVariantMap& pins = {},
+                                   const QVariantMap& floors = {},
+                                   const QString& profileId = QString());
+    QVariantMap controllerMap(const QString& controllerId,
+                              const QString& scope,
+                              const QString& contextKey) const;
+    bool setControllerMap(const QString& controllerId,
+                          const QString& scope,
+                          const QString& contextKey,
+                          const QVariantMap& map);
+    bool removeControllerMap(const QString& controllerId,
+                             const QString& scope,
+                             const QString& contextKey);
+    QStringList knownControllerIds() const;
+    QVariantMap capabilityCache() const;
+    bool setCapability(const QString& hostId,
+                       const QVariantMap& capabilities,
+                       const QString& confidence,
+                       const QDateTime& verifiedAt);
+    bool importLegacyCapabilities(const QVariantMap& capabilities,
+                                  const QString& markerKey);
+    QVariantList beacons() const;
+    QVariantMap beacon(const QString& beaconId) const;
+    bool savePairedBeacon(const QString& beaconId,
+                          const QString& name,
+                          const QString& url,
+                          const QString& spkiFingerprint);
+    bool markBeaconIdentityChanged(const QString& beaconId);
+    bool removeBeacon(const QString& beaconId);
+    QVariantMap wakeRoute(const QString& hostId) const;
+    QVariantList wakeRoutes() const;
+    bool setWakeRoute(const QString& hostId,
+                      const QString& provider,
+                      const QString& beaconId = QString(),
+                      const QString& beaconHostId = QString());
+    int historyRetentionDays() const;
+    bool setHistoryRetentionDays(int days);
+    bool clearLocalHistory();
+    bool importLegacyControllerMaps(const QVariantMap& profiles,
+                                    const QString& markerKey);
 
     // The default per-platform location for the database file
     // (QStandardPaths::AppDataLocation + "/jochona.db"), creating the
@@ -84,4 +167,6 @@ private:
     QString m_ConnectionName;
     QString m_DatabasePath;
     QString m_LastError;
+
+    static SettingsDatabase* s_Instance;
 };

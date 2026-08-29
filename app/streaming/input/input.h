@@ -3,6 +3,7 @@
 #include "settings/streamingpreferences.h"
 #include "backend/computermanager.h"
 
+#include <QVariantMap>
 #include "SDL_compat.h"
 
 struct GamepadState {
@@ -36,6 +37,18 @@ struct GamepadState {
     short lsX, lsY;
     short rsX, rsY;
     unsigned char lt, rt;
+};
+
+struct ControllerMapTransform {
+    double deadzoneLeftStick = 0.10;
+    double deadzoneRightStick = 0.10;
+    double deadzoneLeftTrigger = 0.02;
+    double deadzoneRightTrigger = 0.02;
+    double curveLeftStick = 1.0;
+    double curveRightStick = 1.0;
+    double curveLeftTrigger = 1.0;
+    double curveRightTrigger = 1.0;
+    int targetButtonFlags[SDL_CONTROLLER_BUTTON_MAX] = {};
 };
 
 
@@ -84,7 +97,11 @@ struct DualSenseOutputReport{
 class SdlInputHandler
 {
 public:
-    explicit SdlInputHandler(StreamingPreferences& prefs, int streamWidth, int streamHeight);
+    explicit SdlInputHandler(StreamingPreferences& prefs,
+                             int streamWidth,
+                             int streamHeight,
+                             const QString& libraryEntryId = QString(),
+                             const QString& hostApplicationKey = QString());
 
     ~SdlInputHandler();
 
@@ -132,6 +149,7 @@ public:
 
     int getAttachedGamepadMask();
 
+    void rescanGamepads();
     void raiseAllKeys();
 
     void notifyMouseLeave();
@@ -168,11 +186,23 @@ private:
         KeyComboTogglePointerRegionLock,
         KeyComboQuitAndExit,
         KeyComboToggleKeyboardGrab,
+        KeyComboReconnectDisplay,
+        KeyComboSessionSettings,
         KeyComboMax
     };
 
-    GamepadState*
-    findStateForGamepad(SDL_JoystickID id);
+    GamepadState* findStateForGamepad(SDL_JoystickID id);
+
+    ControllerMapTransform compileControllerMap(
+            const QVariantMap& map) const;
+    void applyControllerMap(const GamepadState* state,
+                            int& buttons,
+                            unsigned char& lt,
+                            unsigned char& rt,
+                            short& lsX,
+                            short& lsY,
+                            short& rsX,
+                            short& rsY) const;
 
     void sendGamepadState(GamepadState* state);
 
@@ -218,6 +248,10 @@ private:
 
     int m_GamepadMask;
     GamepadState m_GamepadState[MAX_GAMEPADS];
+    ControllerMapTransform m_ControllerMaps[MAX_GAMEPADS];
+    QString m_ControllerIds[MAX_GAMEPADS];
+    QString m_LibraryEntryId;
+    QString m_HostApplicationKey;
     QSet<short> m_KeysDown;
     bool m_FakeMouseCaptureActive;
     bool m_KeyboardCaptureActive;

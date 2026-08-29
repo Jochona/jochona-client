@@ -1,0 +1,3 @@
+# Launch Adaptation precedes Runtime ABR
+
+Milestone 2 adapts only before a Session: Effective Settings combine live device/display/Host/Application capability facts and a user-approved guided-test Pair patch, then Session latches the result. Runtime ABR remains a committed post-1.0 contract limited to bitrate changes through a capability-selected Runtime Bitrate Sink: Vibepollo is the known adapter and unsupported Hosts expose no actuator; Apollo waits for verified semantics. Resolution, FPS, codec, HDR, and display changes are restart-class and queue behind explicit Apply & Reconnect. We rejected reconnect-based ABR because repeated Session teardown is visibly disruptive and inherently oscillation-prone.

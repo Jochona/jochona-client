@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0013
+---
+
 # Direct Wake-on-LAN only for v1; overlay and relay wake deferred
 
 Waking a powered-off Host requires delivering a magic packet to a layer-2 broadcast domain the Host listens on. A Client Device on the same LAN can do this directly; nothing else can — Tailscale and WireGuard-class overlays route layer-3 unicast only and drop the broadcast, and a Host behind arbitrary NAT is unreachable from the open Internet. We decided v1 ships only Direct Wake (the inherited Moonlight mechanism, refined), explicitly excluding Tailscale as a Wake path, and deferring the two mechanisms that could cross those boundaries.

@@ -4,16 +4,19 @@ Jochona Client is a controller-first desktop game-streaming client for Windows, 
 
 This repository is a history-preserving import of [moonlight-stream/moonlight-qt](https://github.com/moonlight-stream/moonlight-qt) (GPL-3.0), synced regularly from an `upstream` remote. Upstream commit history and copyright notices are retained in-tree; Jochona-specific changes are marked with `Jochona:` comments.
 
-**Status:** Milestone 0 — compatibility fork. The client builds and streams as upstream today; the product plan lives in [`proposal.md`](proposal.md), binding terminology in [`CONTEXT.md`](CONTEXT.md), architecture decisions in [`docs/adr/`](docs/adr/), and repository/CI/release setup in [`docs/github-setup.md`](docs/github-setup.md).
+**Status:** Milestone 2 beta. The client now uses the Night Route interface and the SQLite settings model.
 
-## What Jochona adds (planned, per proposal)
+## What Jochona adds in Milestone 2
 
-- Controller manager: live visualization, calibration, remapping, per-game Controller Maps, Player Slot ordering
-- Unified multi-host library with user-confirmed deduplication
-- Streaming Profile automation across devices, displays, and games
-- Extended Wake-on-LAN: waking state, manual overrides, external wake providers
-- Capability-adaptive host integration (Vibepollo, Apollo, Sunshine)
-- Modern theming (data-only theme packages) and a controller-first shell
+- A controller-first Night Route interface for desktop, handheld, and television layouts
+- Unified Library Entries with Host scoring, favorites, hidden entries, recents, and offline cache data
+- Settings Baseline, Streaming Profiles, sparse contextual patches, provenance, pins, and quality floors
+- Controller Maps with calibration, remapping, persistent Player Slot Order, and streamed-input transforms
+- Bounded Wake recovery, display contexts, audio-output recovery, Session settings, and reconnect controls
+- Local History controls and previewed Support Bundle export with address redaction
+- Stable and preview update channels for Jochona releases
+
+The separate Jochona Host project remains planned. Its first target is strict AV1 encoding on Windows with an NVIDIA RTX 5090.
 
 ## Upstream features inherited today
 

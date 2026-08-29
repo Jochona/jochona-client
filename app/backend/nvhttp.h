@@ -10,6 +10,8 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 
+#include <utility>
+
 class NvComputer;
 
 class NvDisplayMode
@@ -31,11 +33,13 @@ Q_DECLARE_TYPEINFO(NvDisplayMode, Q_PRIMITIVE_TYPE);
 class GfeHttpResponseException : public std::exception
 {
 public:
-    GfeHttpResponseException(int statusCode, QString message) :
+    GfeHttpResponseException(int statusCode,
+                             QString message,
+                             QByteArray responseBody = QByteArray()) :
         m_StatusCode(statusCode),
-        m_StatusMessage(message.toUtf8())
+        m_StatusMessage(message.toUtf8()),
+        m_ResponseBody(std::move(responseBody))
     {
-
     }
 
     const char* what() const throw()
@@ -58,9 +62,15 @@ public:
         return QString::fromUtf8(m_StatusMessage) + " (Error " + QString::number(m_StatusCode) + ")";
     }
 
+    QByteArray responseBody() const
+    {
+        return m_ResponseBody;
+    }
+
 private:
     int m_StatusCode;
     QByteArray m_StatusMessage;
+    QByteArray m_ResponseBody;
 };
 
 class QtNetworkReplyException : public std::exception
@@ -170,6 +180,8 @@ public:
              bool localAudio,
              int gamepadMask,
              bool persistGameControllersOnDisconnect,
+             bool virtualDisplay,
+             const QString& jochonaTuple,
              QString& rtspSessionUrl);
 
     QVector<NvApp>

@@ -25,6 +25,27 @@ jobs:
           CI_VERSION=`echo ${GITHUB_SHA} | cut -c1-6`
           echo "ci_version=${CI_VERSION}" >> "${GITHUB_OUTPUT}"
 
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.11.1'
+          cache: true
+      - name: Install SDL test dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev
+      - name: Build core contract tests
+        run: |
+          mkdir -p build/core-tests
+          cd build/core-tests
+          qmake ../../tests/core/core.pro
+          make -j2
+      - name: Run core contract tests
+        run: ./build/core-tests/core -o -,txt
+
   build-appimage:
     needs: setup
     uses: ./.github/workflows/build-appimage.yml

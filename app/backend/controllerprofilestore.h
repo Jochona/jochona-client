@@ -3,41 +3,10 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
-// Jochona: per-controller calibration + button-remap persistence (proposal
-// §6.7). ControllerManager owns live SDL state; this store owns durable
-// config keyed by controller identity (ControllerManager::controllerPath(),
-// generally an SDL_GameControllerPath()-derived string) and, optionally, a
-// per-game app id for a per-title override layered on top of the
-// controller-wide profile.
-//
-// --- SQLite seam -------------------------------------------------------
-// app/backend/database.{h,cpp} (Database class, migration runner) is being
-// built concurrently and isn't finalized. Rather than block on it or touch
-// its files, ControllerProfileStore talks only to the abstract
-// IControllerProfileBackend interface below; JsonControllerProfileBackend
-// is the M2 fallback (one JSON file under QStandardPaths::AppConfigLocation)
-// so this ships end-to-end today.
-//
-// Once Database lands, add a DatabaseControllerProfileBackend implementing
-// IControllerProfileBackend, backed by:
-//
-//   CREATE TABLE controller_profiles(
-//       controller_path TEXT PRIMARY KEY,
-//       config           JSON NOT NULL
-//   );
-//   CREATE TABLE game_profiles(
-//       app_id           TEXT NOT NULL,
-//       controller_path  TEXT NOT NULL,
-//       config           JSON NOT NULL,
-//       PRIMARY KEY (app_id, controller_path)
-//   );
-//
-// `config` is the same JSON shape ControllerProfile::toVariantMap() already
-// produces (calibration + buttonRemap), so the swap is confined to
-// ControllerProfileStore::get() constructing the new backend - no QML- or
-// caller-facing API changes required.
-// -------------------------------------------------------------------------
+// Jochona Controller Maps. SQLite is authoritative; the JSON backend only
+// reads the pre-M2 file during the transactional one-time import.
 #pragma once
+#include "SDL_compat.h"
 
 #include <QObject>
 #include <QString>
@@ -66,7 +35,7 @@ struct ControllerCalibration
     fromVariantMap(const QVariantMap& map);
 };
 
-struct ControllerProfile
+struct ControllerMap
 {
     QString controllerPath;
     QString appId; // empty => controller-wide profile, not a per-game override
@@ -76,16 +45,16 @@ struct ControllerProfile
     QVariantMap
     toVariantMap() const;
 
-    static ControllerProfile
+    static ControllerMap
     fromVariantMap(const QString& controllerPath, const QString& appId, const QVariantMap& map);
 };
 
-// Persistence seam: ControllerProfileStore never touches storage directly,
+// Persistence seam: ControllerMapStore never touches storage directly,
 // only through this interface. See the SQLite seam note above.
-class IControllerProfileBackend
+class IControllerMapBackend
 {
 public:
-    virtual ~IControllerProfileBackend() = default;
+    virtual ~IControllerMapBackend() = default;
 
     // Returns an empty map if no profile is stored for this key.
     virtual QVariantMap
@@ -105,10 +74,10 @@ public:
 // QStandardPaths::AppConfigLocation. The whole file is read/rewritten on
 // each save; the profile count is small (at most a handful of controllers
 // and games), so this is not a performance concern.
-class JsonControllerProfileBackend : public IControllerProfileBackend
+class JsonControllerMapBackend : public IControllerMapBackend
 {
 public:
-    explicit JsonControllerProfileBackend(const QString& filePath = QString());
+    explicit JsonControllerMapBackend(const QString& filePath = QString());
 
     QVariantMap
     load(const QString& controllerPath, const QString& appId) const override;
@@ -124,6 +93,7 @@ public:
 
     static QString
     defaultFilePath();
+    QVariantMap allProfiles() const;
 
 private:
     static QString
@@ -138,52 +108,59 @@ private:
     QString m_FilePath;
 };
 
-class ControllerProfileStore : public QObject
+class SqliteControllerMapBackend : public IControllerMapBackend
+{
+public:
+    QVariantMap load(const QString& controllerId,
+                     const QString& contextKey) const override;
+    void save(const QString& controllerId,
+              const QString& contextKey,
+              const QVariantMap& config) override;
+    void remove(const QString& controllerId,
+                const QString& contextKey) override;
+    QStringList knownControllerPaths() const override;
+
+private:
+    static QString scopeForContext(const QString& contextKey);
+    static QString keyWithoutScope(const QString& contextKey);
+};
+
+
+class ControllerMapStore : public QObject
 {
     Q_OBJECT
 
 public:
-    // Production entry point. Owns a JsonControllerProfileBackend until the
-    // SQLite-backed one is wired in (see the seam note above).
-    Q_INVOKABLE static ControllerProfileStore*
-    get();
+    Q_INVOKABLE static ControllerMapStore* get();
 
-    // Seam constructor: takes ownership of `backend`. Used by get() today
-    // and by the future Database-backed swap-in / unit tests.
-    explicit ControllerProfileStore(IControllerProfileBackend* backend, QObject* parent = nullptr);
+    explicit ControllerMapStore(IControllerMapBackend* backend,
+                                QObject* parent = nullptr);
+    static QString controllerId(SDL_GameController* controller);
+    ~ControllerMapStore() override;
 
-    ~ControllerProfileStore() override;
-
-    // Returns calibration+remap for controllerPath, layering a per-game
-    // override (if any and if appId is non-empty) on top of the
-    // controller-wide profile. Unset fields fall back to
-    // ControllerCalibration's defaults.
-    Q_INVOKABLE QVariantMap
-    profileFor(const QString& controllerPath, const QString& appId = QString()) const;
-
-    Q_INVOKABLE void
-    saveProfile(const QString& controllerPath, const QVariantMap& config, const QString& appId = QString());
-
-    // Convenience for the M2 calibration panel: read-modify-write a single
-    // deadzone field. `stick` is one of "leftStick" | "rightStick" |
-    // "leftTrigger" | "rightTrigger".
-    Q_INVOKABLE void
-    setDeadzone(const QString& controllerPath, const QString& stick, double value, const QString& appId = QString());
-
-    Q_INVOKABLE void
-    resetProfile(const QString& controllerPath, const QString& appId = QString());
-
-    Q_INVOKABLE QStringList
-    knownControllerPaths() const;
+    Q_INVOKABLE QVariantMap mapFor(
+            const QString& controllerId,
+            const QString& libraryEntryId = QString(),
+            const QString& hostApplicationKey = QString()) const;
+    Q_INVOKABLE void saveMap(const QString& controllerId,
+                             const QString& scope,
+                             const QString& contextKey,
+                             const QVariantMap& patch);
+    Q_INVOKABLE void resetMap(const QString& controllerId,
+                              const QString& scope,
+                              const QString& contextKey = QString());
+    Q_INVOKABLE QStringList knownControllerIds() const;
+    Q_INVOKABLE int playerSlot(const QString& controllerId) const;
+    Q_INVOKABLE bool setPlayerSlot(const QString& controllerId, int slot);
 
 signals:
-    void
-    profileChanged(const QString& controllerPath, const QString& appId);
+    void mapChanged(const QString& controllerId,
+                    const QString& scope,
+                    const QString& contextKey);
 
 private:
-    Q_DISABLE_COPY(ControllerProfileStore)
+    Q_DISABLE_COPY(ControllerMapStore)
 
-    static ControllerProfileStore* s_Instance;
-
-    IControllerProfileBackend* m_Backend;
+    static ControllerMapStore* s_Instance;
+    IControllerMapBackend* m_Backend;
 };

@@ -5,6 +5,7 @@
 //
 #include "hostadaptermanager.h"
 #include "hostprober.h"
+#include "core/settingsdatabase.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -38,49 +39,70 @@ HostAdapterManager::get()
 void
 HostAdapterManager::loadCache()
 {
-    QSettings settings;
-
-    settings.beginGroup(SER_GROUP);
-    const QStringList uuids = settings.childKeys();
+    SettingsDatabase* database = SettingsDatabase::get();
+    QSettings legacy;
+    legacy.beginGroup(SER_GROUP);
+    QVariantMap legacyCapabilities;
+    const QStringList uuids = legacy.childKeys();
     for (const QString& uuid : uuids) {
-        const QByteArray json = settings.value(uuid).toByteArray();
-
         QJsonParseError parseError {};
-        const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-            continue;
+        const QJsonDocument document = QJsonDocument::fromJson(
+            legacy.value(uuid).toByteArray(), &parseError);
+        if (parseError.error == QJsonParseError::NoError
+                && document.isObject()) {
+            legacyCapabilities.insert(
+                uuid, document.object().toVariantMap());
         }
-
-        m_Cache.insert(uuid, HostCapabilities::fromJson(doc.object()));
     }
-    settings.endGroup();
+    legacy.endGroup();
+
+    QVariantMap persisted = legacyCapabilities;
+    if (database != nullptr && database->isOpen()) {
+        database->importLegacyCapabilities(
+            legacyCapabilities,
+            QStringLiteral("migration.qsettings_capabilities_imported_v1"));
+        persisted = database->capabilityCache();
+    }
+    for (auto it = persisted.constBegin(); it != persisted.constEnd(); ++it) {
+        m_Cache.insert(
+            it.key(),
+            HostCapabilities::fromJson(
+                QJsonObject::fromVariantMap(it.value().toMap())));
+    }
 }
 
 void
-HostAdapterManager::persist(const QString& uuid, const HostCapabilities& capabilities)
+HostAdapterManager::persist(const QString& uuid,
+                            const HostCapabilities& capabilities)
 {
-    QSettings settings;
-
-    settings.beginGroup(SER_GROUP);
-    settings.setValue(uuid, QJsonDocument(capabilities.toJson()).toJson(QJsonDocument::Compact));
-    settings.endGroup();
+    SettingsDatabase* database = SettingsDatabase::get();
+    if (database != nullptr && database->isOpen()) {
+        database->setCapability(
+            uuid,
+            capabilities.toJson().toVariantMap(),
+            HostCapabilities::confidenceName(capabilities.confidence),
+            capabilities.lastProbed);
+    }
 }
 
 HostCapabilities
 HostAdapterManager::capabilities(const QString& uuid) const
 {
+    QReadLocker lock(&m_CacheLock);
     return m_Cache.value(uuid);
 }
 
 QVariantMap
 HostAdapterManager::capabilitiesFor(const QString& uuid) const
 {
+    QReadLocker lock(&m_CacheLock);
     return m_Cache.value(uuid).toJson().toVariantMap();
 }
 
 bool
 HostAdapterManager::hasProbed(const QString& uuid) const
 {
+    QReadLocker lock(&m_CacheLock);
     const auto it = m_Cache.constFind(uuid);
     return it != m_Cache.constEnd() && it->confidence != HostCapabilities::Confidence::Unknown;
 }
@@ -121,8 +143,14 @@ HostAdapterManager::refreshAll()
 void
 HostAdapterManager::handleProbeFinished(QString uuid, HostCapabilities capabilities)
 {
-    m_Cache.insert(uuid, capabilities);
-    persist(uuid, capabilities);
+    HostCapabilities merged;
+    {
+        QWriteLocker lock(&m_CacheLock);
+        merged = HostCapabilities::mergeProbeResult(
+            m_Cache.value(uuid), capabilities);
+        m_Cache.insert(uuid, merged);
+    }
+    persist(uuid, merged);
 
     emit capabilitiesChanged(uuid);
 }

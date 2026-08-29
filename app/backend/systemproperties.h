@@ -2,6 +2,8 @@
 
 #include <QObject>
 #include <QRect>
+#include <QStringList>
+#include <QVariantList>
 
 #include "SDL_compat.h"
 
@@ -37,15 +39,31 @@ public:
     Q_PROPERTY(bool gamepadProbeComplete MEMBER gamepadProbeComplete NOTIFY gamepadProbeCompleteChanged)
     Q_PROPERTY(QSize maximumResolution MEMBER maximumResolution NOTIFY maximumResolutionChanged)
     Q_PROPERTY(bool supportsHdr MEMBER supportsHdr NOTIFY supportsHdrChanged)
+    Q_PROPERTY(QVariantList displayContexts MEMBER displayContexts
+               NOTIFY displayContextsChanged)
+    Q_PROPERTY(QString activeDisplayContextId MEMBER activeDisplayContextId
+               NOTIFY activeDisplayContextIdChanged)
+    Q_PROPERTY(bool activeDisplaySupportsHdr MEMBER activeDisplaySupportsHdr
+               NOTIFY activeDisplaySupportsHdrChanged)
+    Q_PROPERTY(QStringList audioOutputDevices MEMBER audioOutputDevices
+               NOTIFY audioOutputDevicesChanged)
 
     // Either startAsyncLoad()+waitForAsyncLoad() or refreshDisplays() must be invoked first
     Q_INVOKABLE QRect getNativeResolution(int displayIndex);
     Q_INVOKABLE QRect getSafeAreaResolution(int displayIndex);
     Q_INVOKABLE int getRefreshRate(int displayIndex);
+    Q_INVOKABLE QVariantMap getDisplayContext(int displayIndex) const;
+    Q_INVOKABLE void refreshAudioOutputs();
 
     Q_INVOKABLE void startAsyncLoad();
     Q_INVOKABLE void waitForAsyncLoad();
     Q_INVOKABLE void refreshDisplays();
+
+    // Jochona: C++-side read access to the decoder-probe results (the QML
+    // surface is the Q_PROPERTYs above; the backing members stay private).
+    bool hwAccelerationAvailable() const { return hasHardwareAcceleration; }
+    QSize maxDecoderResolution() const { return maximumResolution; }
+    bool hdrCapable() const { return supportsHdr; }
 
 signals:
     void unmappedGamepadsChanged();
@@ -54,6 +72,12 @@ signals:
     void rendererAlwaysFullScreenChanged();
     void maximumResolutionChanged();
     void supportsHdrChanged();
+    void displayContextsChanged();
+    void activeDisplayContextIdChanged();
+    void activeDisplaySupportsHdrChanged();
+    void displayTopologyChanged(QString previousContextId,
+                                QString currentContextId);
+    void audioOutputDevicesChanged();
 
 private slots:
     void updateDecoderProperties(bool hasHardwareAcceleration, bool rendererAlwaysFullScreen, QSize maximumResolution, bool supportsHdr);
@@ -86,5 +110,9 @@ private:
     QList<QRect> monitorNativeResolutions;
     QList<QRect> monitorSafeAreaResolutions;
     QList<int> monitorRefreshRates;
+    QVariantList displayContexts;
+    QString activeDisplayContextId;
+    bool activeDisplaySupportsHdr = false;
+    QStringList audioOutputDevices;
 };
 

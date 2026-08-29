@@ -1,58 +1,290 @@
-import QtQuick 2.9
+// Night Route host and library surface. Host state and stream quality form the
+// route header; applications are wide destinations, not a legacy poster grid.
+import QtQuick 2.15
 import QtQuick.Controls 2.2
-import QtQuick.Controls.Material 2.2
+import QtQuick.Layouts 1.3
 
 import AppModel 1.0
 import ComputerManager 1.0
 import StreamingPreferences 1.0
 import SdlGamepadKeyNavigation 1.0
+import Negotiator 1.0
+import LibraryManager 1.0
+import EffectiveSettings 1.0
 
-CenteredGridView {
-    property int computerIndex
-    property AppModel appModel : createModel()
-    property bool activated
-    property bool showHiddenGames
-    property bool showGames
+import "style"
 
+pragma ComponentBehavior: Bound
+
+GridView {
     id: appGrid
+
+    property int computerIndex
+    property AppModel appModel: createModel()
+    property bool activated: false
+    property bool showHiddenGames: false
+    property bool showGames: false
+
+    property string hostUuid: ""
+    property string hostDisplayName: ""
+    property int pendingAutoLaunchAppId: -1
+    property var hostProbe: null
+    property int hostRevision: 0
+    property var hostInfo: {
+        hostRevision
+        return hostProbe === null ? ({})
+                                  : hostProbe.hostInfoForIndex(computerIndex)
+    }
+
+    property var qualityEffective: ({})
+    property var qualityOverride: ({})
+    property var autoChip: null
+
+    property int actionAppIndex: -1
+    property int actionAppId: 0
+    property string actionAppName: ""
+    property bool actionAppRunning: false
+    property bool actionAppDirectLaunch: false
+    property int pendingFloorAppIndex: -1
+    property int pendingFloorAppId: -1
+    property string pendingFloorAppName: ""
+    property bool pendingFloorQuitExisting: false
+
+    function settingsContext(appId) {
+        return {
+            hostUuid: hostUuid,
+            appId: appId,
+            libraryEntryId: LibraryManager.libraryEntryFor(
+                                hostUuid, appId)
+        }
+    }
+
+    function floorConflictText(conflicts) {
+        var messages = []
+        var keys = Object.keys(conflicts)
+        for (var i = 0; i < keys.length; ++i) {
+            var conflict = conflicts[keys[i]]
+            messages.push(qsTr("%1 requested %2; safety resolved %3.")
+                          .arg(keys[i])
+                          .arg(conflict.floor)
+                          .arg(conflict.resolved))
+        }
+        return messages.join("\n")
+    }
+    property bool actionAppHidden: false
+
+    readonly property bool loadingApps: hostProbe === null
+                                                || hostInfo.statusUnknown === true
+                                                || hostInfo.online === undefined
+    readonly property int columnCount: Math.max(
+                                           1,
+                                           Math.floor((width - leftMargin - rightMargin)
+                                                      / Tokens.dp(Tokens.handheld
+                                                                  ? 268 : 320)))
+
     focus: true
     activeFocusOnTab: true
-    // Reserve the floating chrome title zone under the modern shell
-    topMargin: StreamingPreferences.modernHomeScreen ? 112 : 20
-    bottomMargin: 5
-    cellWidth: 230; cellHeight: 297;
+    model: appModel
+    currentIndex: -1
+    keyNavigationWraps: false
+    boundsBehavior: Flickable.StopAtBounds
+    leftMargin: Tokens.gutter / 2
+    rightMargin: Tokens.gutter / 2
+    topMargin: Tokens.gutter
+    bottomMargin: Tokens.gutter
+    cellWidth: Math.floor((width - leftMargin - rightMargin) / columnCount)
+    cellHeight: Tokens.dp(178)
+
+    function createModel()
+    {
+        var model = Qt.createQmlObject(
+                    'import AppModel 1.0; AppModel {}', parent, '')
+        model.initialize(ComputerManager, computerIndex, showHiddenGames)
+        return model
+    }
 
     function computerLost()
     {
-        // Go back to the PC view on PC loss
-        stackView.pop()
+        if (hostProbe === null || hostProbe.indexOfUuid(hostUuid) < 0)
+            stackView.pop()
+    }
+
+    function refreshQuality()
+    {
+        qualityEffective = Negotiator.effectiveQualityFor(hostUuid)
+        qualityOverride = Negotiator.qualityOverride(hostUuid)
+    }
+
+    function qualityActive(kind)
+    {
+        var override = qualityOverride
+        if (kind === "auto")
+            return hostUuid.length > 0 && Object.keys(override).length === 0
+        if (Object.keys(override).length === 0)
+            return false
+        if (kind === "4k120")
+            return override.width === 3840 && override.height === 2160
+                    && override.fps === 120
+        if (kind === "1080p60")
+            return override.width === 1920 && override.height === 1080
+                    && override.fps === 60
+        return !(override.width === 3840 && override.height === 2160
+                 && override.fps === 120)
+                && !(override.width === 1920 && override.height === 1080
+                     && override.fps === 60)
+    }
+
+    function qualitySummaryText()
+    {
+        if (hostUuid.length === 0 || qualityEffective.width === undefined)
+            return ""
+        var q = qualityEffective
+        var resolution = qsTr("%1×%2 at %3 fps")
+                         .arg(q.width).arg(q.height).arg(q.fps)
+        var codec = String(q.codec).toLowerCase() === "auto"
+                    ? qsTr("Automatic codec")
+                    : String(q.codec).toUpperCase()
+        var bitrate = qsTr("%1 Mbps")
+                      .arg(Math.round(q.bitrateKbps / 100) / 10)
+        return resolution + " · " + codec + " · " + bitrate
+    }
+
+    function qualityExplanationText()
+    {
+        var adjusted = qualityEffective.reasons !== undefined
+                       && Object.keys(qualityEffective.reasons).length > 0
+        var custom = Object.keys(qualityOverride).length > 0
+        if (adjusted && custom)
+            return qsTr("Jochona adjusted your custom profile to fit the "
+                        + "current display, decoder, host, or network path.")
+        if (adjusted)
+            return qsTr("Jochona chose the closest safe profile for the "
+                        + "current display, decoder, host, and network path.")
+        if (custom)
+            return qsTr("This rig is using your custom quality profile.")
+        return qsTr("This rig follows your global streaming preferences.")
+    }
+
+    function recordLaunch(appId, appName)
+    {
+        if (hostUuid.length > 0) {
+            RecentApps.record(hostUuid, hostDisplayName, appId, appName)
+            LibraryManager.recordLaunch(hostUuid, appId)
+        }
+    }
+
+    function launchApp(index, appId, appName, quitExistingApp,
+                       bypassFloorPrompt)
+    {
+        if (!bypassFloorPrompt) {
+            var resolved = EffectiveSettings.resolve(
+                               settingsContext(appId))
+            var conflicts = resolved.floorConflicts || ({})
+            if (Object.keys(conflicts).length > 0) {
+                pendingFloorAppIndex = index
+                pendingFloorAppId = appId
+                pendingFloorAppName = appName
+                pendingFloorQuitExisting = quitExistingApp
+                qualityFloorDialog.conflictText =
+                    floorConflictText(conflicts)
+                qualityFloorDialog.open()
+                return
+            }
+        }
+        var runningId = appModel.getRunningAppId()
+        if (runningId !== 0 && runningId !== appId) {
+            if (quitExistingApp) {
+                quitAppSheet.appName = appModel.getRunningAppName()
+                quitAppSheet.segueToStream = true
+                quitAppSheet.nextAppName = appName
+                quitAppSheet.nextAppIndex = index
+                quitAppSheet.open()
+            }
+            return
+        }
+
+        var component = Qt.createComponent("StreamSegue.qml")
+        recordLaunch(appId, appName)
+        var segue = component.createObject(stackView, {
+                                               "appName": appName,
+                                               "hostName": appGrid.hostInfo.name
+                                                           || appGrid.hostDisplayName,
+                                               "session": appModel.createSessionForApp(index),
+                                               "isResume": runningId === appId
+                                           })
+        stackView.push(segue)
+    }
+
+    function autoLaunchPending()
+    {
+        if (pendingAutoLaunchAppId < 0)
+            return
+        var appId = pendingAutoLaunchAppId
+        pendingAutoLaunchAppId = -1
+        var index = appModel.indexForAppId(appId)
+        if (index < 0)
+            return
+        var runningId = appModel.getRunningAppId()
+        if (runningId !== 0 && runningId !== appId)
+            return
+        launchApp(index, appId, appModel.nameForAppId(appId), false)
+    }
+
+    function focusFirstApp(event)
+    {
+        if (count > 0) {
+            currentIndex = 0
+            forceActiveFocus()
+            if (event !== undefined)
+                event.accepted = true
+        }
+    }
+
+    function openAppActions(index, appId, appName, running, directLaunch, hidden)
+    {
+        actionAppIndex = index
+        actionAppId = appId
+        actionAppName = appName
+        actionAppRunning = running
+        actionAppDirectLaunch = directLaunch
+        actionAppHidden = hidden
+        appActionsPanel.title = appName
+        appActionsPanel.open()
     }
 
     Component.onCompleted: {
-        // Don't show any highlighted item until interacting with them.
-        // We do this here instead of onActivated to avoid losing the user's
-        // selection when backing out of a different page of the app.
-        currentIndex = -1
+        currentIndex = count > 0 ? 0 : -1
+        refreshQuality()
+        Negotiator.deviceProfileChanged.connect(refreshQuality)
+        Negotiator.qualityOverridesChanged.connect(refreshQuality)
+
+        var probe = Qt.createQmlObject(
+                    'import ComputerModel 1.0; ComputerModel {}',
+                    appGrid, 'hostDetailProbe')
+        probe.initialize(ComputerManager)
+        probe.dataChanged.connect(function() { hostRevision++ })
+        probe.modelReset.connect(function() {
+            hostRevision++
+            computerLost()
+        })
+        hostProbe = probe
+
+        if (pendingAutoLaunchAppId >= 0)
+            Qt.callLater(autoLaunchPending)
     }
 
     StackView.onActivated: {
         appModel.computerLost.connect(computerLost)
         activated = true
-
-        // Highlight the first item if a gamepad is connected
-        if (currentIndex === -1 && SdlGamepadKeyNavigation.getConnectedGamepads() > 0) {
+        if (currentIndex < 0 && count > 0)
             currentIndex = 0
-        }
+        forceActiveFocus()
 
         if (!showGames && !showHiddenGames) {
-            // Check if there's a direct launch app
-            var directLaunchAppIndex = model.getDirectLaunchAppIndex();
+            var directLaunchAppIndex = model.getDirectLaunchAppIndex()
             if (directLaunchAppIndex >= 0) {
-                // Start the direct launch app if nothing else is running
                 currentIndex = directLaunchAppIndex
-                currentItem.launchOrResumeSelectedApp(false)
-
-                // Set showGames so we will not loop when the stream ends
+                currentItem.cardActivate()
                 showGames = true
             }
         }
@@ -63,314 +295,895 @@ CenteredGridView {
         activated = false
     }
 
-    function createModel()
-    {
-        var model = Qt.createQmlObject('import AppModel 1.0; AppModel {}', parent, '')
-        model.initialize(ComputerManager, computerIndex, showHiddenGames)
-        return model
+    onCountChanged: {
+        if (count === 0)
+            currentIndex = -1
+        else if (currentIndex < 0 || currentIndex >= count)
+            currentIndex = 0
     }
 
-    model: appModel
+    Keys.onUpPressed: function(event) {
+        if (autoChip !== null && currentIndex < columnCount) {
+            autoChip.forceActiveFocus()
+            event.accepted = true
+        }
+    }
+    Keys.onReturnPressed: {
+        if (currentItem !== null)
+            currentItem.cardActivate()
+    }
+    Keys.onEnterPressed: {
+        if (currentItem !== null)
+            currentItem.cardActivate()
+    }
+    Keys.onMenuPressed: {
+        if (currentItem !== null)
+            currentItem.pressHold()
+    }
 
-    delegate: NavigableItemDelegate {
-        width: 220; height: 287;
-        grid: appGrid
+    header: Item {
+        width: appGrid.width
+        height: hostHeader.implicitHeight + Tokens.gutter
 
-        property alias appContextMenu: appContextMenuLoader.item
-        property alias appNameText: appNameTextLoader.item
+        Column {
+            id: hostHeader
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.leftMargin: Tokens.gutter / 2
+            anchors.rightMargin: Tokens.gutter / 2
+            spacing: Tokens.gutterTight
 
-        // Dim the app if it's hidden
-        opacity: model.hidden ? 0.4 : 1.0
+            Row {
+                spacing: Tokens.dp(12)
 
-        Image {
-            property bool isPlaceholder: false
-
-            id: appIcon
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: 10
-            source: model.boxart
-
-            onSourceSizeChanged: {
-                // Nearly all of Nvidia's official box art does not match the dimensions of placeholder
-                // images, however the one known exception is Overcooked. Therefore, we only execute
-                // the image size checks if this is not an app collector game. We know the officially
-                // supported games all have box art, so this check is not required.
-                if (!model.isAppCollectorGame &&
-                    ((sourceSize.width === 130 && sourceSize.height === 180) || // GFE 2.0 placeholder image
-                     (sourceSize.width === 628 && sourceSize.height === 888) || // GFE 3.0 placeholder image
-                     (sourceSize.width === 200 && sourceSize.height === 266)))  // Our no_app_image.png
-                {
-                    isPlaceholder = true
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Tokens.dp(11)
+                    height: width
+                    radius: width / 2
+                    color: appGrid.hostInfo.statusUnknown
+                           ? Tokens.statusUnknown
+                           : appGrid.hostInfo.online
+                             ? Tokens.statusOnline : Tokens.statusOffline
                 }
-                else
-                {
-                    isPlaceholder = false
-                }
 
-                width = 200
-                height = 267
+                Label {
+                    text: appGrid.hostInfo.name || appGrid.hostDisplayName
+                    font.family: Tokens.familyDisplay
+                    font.pixelSize: Tokens.tTitle
+                    font.weight: Font.Medium
+                    color: Tokens.textPrimary
+                    Accessible.role: Accessible.Heading
+                }
             }
 
-            // Display a tooltip with the full name if it's truncated
-            ToolTip.text: model.name
-            ToolTip.delay: 1000
-            ToolTip.timeout: 5000
-            ToolTip.visible: (parent.hovered || parent.highlighted) && (!appNameText || appNameText.truncated)
-        }
-
-        Loader {
-            active: model.running
-            asynchronous: true
-            anchors.fill: appIcon
-
-            sourceComponent: Item {
-                RoundButton {
-                    // Don't steal focus from the toolbar buttons
-                    focusPolicy: Qt.NoFocus
-
-                    anchors.horizontalCenterOffset: appIcon.isPlaceholder ? -47 : 0
-                    anchors.verticalCenterOffset: appIcon.isPlaceholder ? -75 : -60
-                    anchors.centerIn: parent
-                    implicitWidth: 85
-                    implicitHeight: 85
-
-                    icon.source: "qrc:/res/play_arrow_FILL1_wght700_GRAD200_opsz48.svg"
-                    icon.width: 75
-                    icon.height: 75
-
-                    onClicked: {
-                        launchOrResumeSelectedApp(true)
-                    }
-
-                    ToolTip.text: qsTr("Resume Game")
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 3000
-                    ToolTip.visible: hovered
-
-                    Material.background: "#D0808080"
-                }
-
-                RoundButton {
-                    // Don't steal focus from the toolbar buttons
-                    focusPolicy: Qt.NoFocus
-
-                    anchors.horizontalCenterOffset: appIcon.isPlaceholder ? 47 : 0
-                    anchors.verticalCenterOffset: appIcon.isPlaceholder ? -75 : 60
-                    anchors.centerIn: parent
-                    implicitWidth: 85
-                    implicitHeight: 85
-
-                    icon.source: "qrc:/res/stop_FILL1_wght700_GRAD200_opsz48.svg"
-                    icon.width: 75
-                    icon.height: 75
-
-                    onClicked: {
-                        doQuitGame()
-                    }
-
-                    ToolTip.text: qsTr("Quit Game")
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 3000
-                    ToolTip.visible: hovered
-
-                    Material.background: "#D0808080"
-                }
-            }
-        }
-
-        Loader {
-            id: appNameTextLoader
-            active: appIcon.isPlaceholder
-
-            // This loader is not asynchronous to avoid noticeable differences
-            // in the time in which the text loads for each game.
-
-            width: appIcon.width
-            height: model.running ? 175 : appIcon.height
-
-            anchors.left: appIcon.left
-            anchors.right: appIcon.right
-            anchors.bottom: appIcon.bottom
-
-            sourceComponent: Label {
-                id: appNameText
-                text: model.name
-                font.pointSize: 22
-                leftPadding: 20
-                rightPadding: 20
-                verticalAlignment: Text.AlignVCenter
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
+            Label {
+                width: parent.width
+                text: (appGrid.hostInfo.summary || "")
+                      + (appGrid.hostInfo.path ? " · " + appGrid.hostInfo.path : "")
+                font.family: Tokens.familyBody
+                font.pixelSize: Tokens.tMeta
+                color: Tokens.textSecondary
                 elide: Text.ElideRight
             }
-        }
 
-        function launchOrResumeSelectedApp(quitExistingApp)
-        {
-            var runningId = appModel.getRunningAppId()
-            if (runningId !== 0 && runningId !== model.appid) {
-                if (quitExistingApp) {
-                    quitAppDialog.appName = appModel.getRunningAppName()
-                    quitAppDialog.segueToStream = true
-                    quitAppDialog.nextAppName = model.name
-                    quitAppDialog.nextAppIndex = index
-                    quitAppDialog.open()
+            Label {
+                text: qsTr("Stream quality")
+                font.family: Tokens.familyDisplay
+                font.pixelSize: Tokens.tShelf
+                font.weight: Font.Medium
+                color: Tokens.textPrimary
+            }
+
+            Flow {
+                id: chipsFlow
+                width: parent.width
+                spacing: Tokens.gutterTight
+
+                Repeater {
+                    id: chipRepeater
+                    model: ["auto", "4k120", "1080p60", "custom"]
+
+                    delegate: NavigableButton {
+                        id: qualityChip
+                        required property var modelData
+                        required property int index
+
+                        compact: true
+                        text: modelData === "auto" ? qsTr("Auto")
+                              : modelData === "4k120" ? qsTr("4K 120")
+                              : modelData === "1080p60" ? qsTr("1080p 60")
+                                                       : qsTr("Custom…")
+                        highlighted: appGrid.qualityActive(modelData)
+
+                        Component.onCompleted: {
+                            if (modelData === "auto")
+                                appGrid.autoChip = qualityChip
+                        }
+
+                        onClicked: {
+                            if (modelData === "custom") {
+                                customQualityPanel.openFor(
+                                    "host_client_pair", -1)
+                            } else if (modelData === "auto") {
+                                Negotiator.clearQualityOverride(appGrid.hostUuid)
+                                appGrid.refreshQuality()
+                            } else if (modelData === "4k120") {
+                                Negotiator.setQualityOverride(
+                                            appGrid.hostUuid,
+                                            {width: 3840, height: 2160, fps: 120})
+                                appGrid.refreshQuality()
+                            } else {
+                                Negotiator.setQualityOverride(
+                                            appGrid.hostUuid,
+                                            {width: 1920, height: 1080, fps: 60})
+                                appGrid.refreshQuality()
+                            }
+                        }
+
+                        Keys.onLeftPressed: {
+                            var previous = chipRepeater.itemAt(index - 1)
+                            if (previous)
+                                previous.forceActiveFocus()
+                        }
+                        Keys.onRightPressed: {
+                            var next = chipRepeater.itemAt(index + 1)
+                            if (next)
+                                next.forceActiveFocus()
+                        }
+                        Keys.onDownPressed: function(event) {
+                            appGrid.focusFirstApp(event)
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                width: parent.width
+                spacing: Tokens.gutterTight
+
+                Label {
+                    Layout.fillWidth: true
+                    text: appGrid.qualitySummaryText()
+                    font.family: Tokens.familyBody
+                    font.pixelSize: Tokens.tMeta
+                    color: Tokens.link
+                    elide: Text.ElideRight
                 }
 
-                return
-            }
-
-            var component = Qt.createComponent("StreamSegue.qml")
-            var segue = component.createObject(stackView, {
-                                                   "appName": model.name,
-                                                   "session": appModel.createSessionForApp(index),
-                                                   "isResume": runningId === model.appid
-                                               })
-            stackView.push(segue)
-        }
-
-        onClicked: {
-            // Only allow clicking on the box art for non-running games.
-            // For running games, buttons will appear to resume or quit which
-            // will handle starting the game and clicks on the box art will
-            // be ignored.
-            if (!model.running) {
-                launchOrResumeSelectedApp(true)
-            }
-        }
-
-        onPressAndHold: {
-            // popup() ensures the menu appears under the mouse cursor
-            if (appContextMenu.popup) {
-                appContextMenu.popup()
-            }
-            else {
-                // Qt 5.9 doesn't have popup()
-                appContextMenu.open()
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.RightButton;
-            onClicked: {
-                parent.pressAndHold()
-            }
-        }
-
-        Keys.onReturnPressed: {
-            // Open the app context menu if activated via the gamepad or keyboard
-            // for running games. If the game isn't running, the above onClicked
-            // method will handle the launch.
-            if (model.running) {
-                // This will be keyboard/gamepad driven so use
-                // open() instead of popup()
-                appContextMenu.open()
-            }
-        }
-
-        Keys.onEnterPressed: {
-            // Open the app context menu if activated via the gamepad or keyboard
-            // for running games. If the game isn't running, the above onClicked
-            // method will handle the launch.
-            if (model.running) {
-                // This will be keyboard/gamepad driven so use
-                // open() instead of popup()
-                appContextMenu.open()
-            }
-        }
-
-        Keys.onMenuPressed: {
-            // This will be keyboard/gamepad driven so use open() instead of popup()
-            appContextMenu.open()
-        }
-
-        function doQuitGame() {
-            quitAppDialog.appName = appModel.getRunningAppName()
-            quitAppDialog.segueToStream = false
-            quitAppDialog.open()
-        }
-
-        Loader {
-            id: appContextMenuLoader
-            asynchronous: true
-            sourceComponent: NavigableMenu {
-                id: appContextMenu
-                initiator: appContextMenuLoader.parent
-                NavigableMenuItem {
-                    text: model.running ? qsTr("Resume Game") : qsTr("Launch Game")
-                    onTriggered: launchOrResumeSelectedApp(true)
+                NavigableButton {
+                    compact: true
+                    text: qsTr("Why this profile?")
+                    onClicked: qualityWhyPanel.open()
+                    Keys.onDownPressed: function(event) {
+                        appGrid.focusFirstApp(event)
+                    }
                 }
-                NavigableMenuItem {
-                    text: qsTr("Quit Game")
-                    onTriggered: doQuitGame()
-                    visible: model.running
-                }
-                NavigableMenuItem {
-                    checkable: true
-                    checked: model.directLaunch
-                    text: qsTr("Direct Launch")
-                    onTriggered: appModel.setAppDirectLaunch(model.index, !model.directLaunch)
-                    enabled: !model.hidden
+            }
 
-                    ToolTip.text: qsTr("Launch this app immediately when the host is selected, bypassing the app selection grid.")
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 3000
-                    ToolTip.visible: hovered
-                }
-                NavigableMenuItem {
-                    checkable: true
-                    checked: model.hidden
-                    text: qsTr("Hide Game")
-                    onTriggered: appModel.setAppHidden(model.index, !model.hidden)
-                    enabled: model.hidden || (!model.running && !model.directLaunch)
+            Flow {
+                width: parent.width
+                spacing: Tokens.gutterTight
 
-                    ToolTip.text: qsTr("Hide this game from the app grid. To access hidden games, right-click on the host and choose %1.").arg(qsTr("View All Apps"))
-                    ToolTip.delay: 1000
-                    ToolTip.timeout: 5000
-                    ToolTip.visible: hovered
+                NavigableButton {
+                    visible: appGrid.hostInfo.wakeable === true
+                             && appGrid.hostInfo.online === false
+                    enabled: appGrid.hostInfo.wakeState !== "sending"
+                             && appGrid.hostInfo.wakeState !== "sent"
+                    text: appGrid.hostInfo.wakeState === "sending"
+                          ? qsTr("Sending via %1…")
+                                .arg(appGrid.hostInfo.wakeProvider)
+                          : appGrid.hostInfo.wakeState === "sent"
+                            ? qsTr("Sent via %1")
+                                  .arg(appGrid.hostInfo.wakeProvider)
+                          : appGrid.hostInfo.wakeState === "failed"
+                            ? qsTr("Retry %1")
+                                  .arg(appGrid.hostInfo.wakeProvider)
+                            : qsTr("Wake via %1")
+                                  .arg(appGrid.hostInfo.wakeProvider)
+                    description: appGrid.hostInfo.wakeState === "failed"
+                                 ? appGrid.hostInfo.wakeError
+                                 : appGrid.hostInfo.wakeProvider === "Beacon"
+                                   ? qsTr("Beacon accepts one request and owns "
+                                          + "the LAN Wake burst")
+                                   : qsTr("Direct Wake sends from this Client")
+                    onClicked: appGrid.hostProbe.wakeComputer(
+                                   appGrid.computerIndex, false, -1)
+                }
+
+                NavigableButton {
+                    visible: appGrid.hostInfo.online === false
+                             && appGrid.hostInfo.wakeState === "failed"
+                             && appGrid.hostInfo.wakeProvider === "Beacon"
+                             && appGrid.hostInfo.canDirectWake === true
+                    text: qsTr("Try Direct Wake")
+                    description: qsTr("Explicit fallback; the Beacon route remains selected")
+                    onClicked: appGrid.hostProbe.wakeComputer(
+                                   appGrid.computerIndex, false, -1, true)
+                }
+
+                NavigableButton {
+                    text: qsTr("Wake settings")
+                    onClicked: wakeSettingsSheet.open()
                 }
             }
         }
     }
 
-    Row {
+    delegate: AppTile {
+        required property string name
+        required property bool running
+        required property url boxart
+        required property bool hidden
+        required property int appid
+        required property bool directLaunch
+
+        width: appGrid.cellWidth - Tokens.gutter
+        height: Tokens.dp(158)
+        titleText: name
+        artUrl: boxart
+        hostText: appGrid.hostInfo.name || appGrid.hostDisplayName
+        selected: appGrid.activeFocus && appGrid.currentIndex === index
+        navigationOwner: appGrid
+
+        onCardActivate: appGrid.launchApp(index, appid, name, true)
+        onPressHold: appGrid.openAppActions(index, appid, name, running,
+                                            directLaunch, hidden)
+    }
+
+    Item {
         anchors.centerIn: parent
-        spacing: 5
+        width: Math.min(appGrid.width * 0.72, Tokens.dp(760))
+        height: emptyColumn.implicitHeight
         visible: appGrid.count === 0
 
+        Column {
+            id: emptyColumn
+            width: parent.width
+            spacing: Tokens.gutterTight
+
+            BusyIndicator {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: appGrid.loadingApps
+                running: visible
+                width: Tokens.dp(42)
+                height: width
+            }
+
+            Label {
+                width: parent.width
+                text: appGrid.loadingApps
+                      ? qsTr("Reading this rig’s library…")
+                      : appGrid.hostInfo.online === false
+                        ? qsTr("This rig is offline. Wake it to read its library.")
+                        : qsTr("No visible applications are available on this rig.")
+                font.family: Tokens.familyBody
+                font.pixelSize: Tokens.tMeta
+                color: Tokens.textSecondary
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    QuickSheet {
+        id: qualityWhyPanel
+        title: qsTr("Why this profile?")
+        initialFocusItem: whyCloseButton
+
         Label {
-            text: qsTr("This computer doesn't seem to have any applications or some applications are hidden")
-            font.pointSize: 20
-            verticalAlignment: Text.AlignVCenter
-            wrapMode: Text.Wrap
+            width: parent.width
+            text: appGrid.qualitySummaryText()
+            font.family: Tokens.familyDisplay
+            font.pixelSize: Tokens.tShelf
+            color: Tokens.textPrimary
+            wrapMode: Text.WordWrap
+        }
+
+        Label {
+            width: parent.width
+            text: appGrid.qualityExplanationText()
+            font.family: Tokens.familyBody
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        NavigableButton {
+            id: whyCloseButton
+            text: qsTr("Done")
+            primary: true
+            onClicked: qualityWhyPanel.close()
+        }
+    }
+
+    QuickSheet {
+        id: wakeSettingsSheet
+        title: qsTr("Wake provider")
+        initialFocusItem: directWakeChoice
+
+        property var route: ({})
+        property int hostsRevision: 0
+
+        function refreshRoute() {
+            route = beaconManager.wakeRouteForHost(appGrid.hostUuid)
+            appGrid.hostRevision++
+        }
+
+        onAboutToShow: {
+            refreshRoute()
+            var paired = beaconManager.pairedBeacons
+            for (var i = 0; i < paired.length; ++i) {
+                if (paired[i].identityState === "trusted")
+                    beaconManager.refreshHosts(paired[i].id)
+            }
+        }
+
+        Column {
+            width: parent.width
+            spacing: Tokens.gutter
+
+            Label {
+                width: parent.width
+                text: qsTr("Choose one Wake Provider for this Host. "
+                           + "A failed Beacon request never silently sends "
+                           + "from this Client.")
+                color: Tokens.textSecondary
+                wrapMode: Text.WordWrap
+            }
+
+            NavigableButton {
+                id: directWakeChoice
+                width: parent.width
+                text: wakeSettingsSheet.route.provider === "direct"
+                      ? qsTr("Direct Wake — selected")
+                      : qsTr("Use Direct Wake")
+                description: qsTr("This Client sends Wake packets on its own network interfaces")
+                onClicked: {
+                    if (beaconManager.setDirectWake(appGrid.hostUuid))
+                        wakeSettingsSheet.refreshRoute()
+                }
+            }
+
+            Label {
+                width: parent.width
+                visible: beaconManager.pairedBeacons.length === 0
+                text: qsTr("No Beacon is paired. Pair one in Settings → Beacon Wake.")
+                color: Tokens.textSecondary
+                wrapMode: Text.WordWrap
+            }
+
+            Repeater {
+                model: beaconManager.pairedBeacons
+                delegate: Column {
+                    id: beaconChoice
+                    property var beacon: modelData
+                    width: wakeSettingsSheet.width - 2 * Tokens.gutter
+                    spacing: Tokens.gutterTight
+
+                    RowLayout {
+                        width: parent.width
+                        Label {
+                            Layout.fillWidth: true
+                            text: beacon.name
+                            font.weight: Font.Medium
+                            color: beacon.identityState === "trusted"
+                                   ? Tokens.textPrimary : Tokens.statusPairing
+                            elide: Text.ElideRight
+                        }
+                        NavigableButton {
+                            compact: true
+                            text: qsTr("Refresh")
+                            enabled: beacon.identityState === "trusted"
+                            onClicked:
+                                beaconManager.refreshHosts(beacon.id)
+                        }
+                    }
+
+                    Label {
+                        width: parent.width
+                        visible: beacon.identityState !== "trusted"
+                        text: qsTr("Identity changed — re-pair this Beacon")
+                        color: Tokens.statusPairing
+                        wrapMode: Text.WordWrap
+                    }
+
+                    Repeater {
+                        model: {
+                            wakeSettingsSheet.hostsRevision
+                            return beaconManager.hostsForBeacon(
+                                beaconChoice.beacon.id)
+                        }
+                        delegate: NavigableButton {
+                            property var beaconHost: modelData
+                            property string beaconHostId:
+                                String(beaconHost.host_id !== undefined
+                                       ? beaconHost.host_id
+                                       : beaconHost.id !== undefined
+                                         ? beaconHost.id : "")
+                            width: beaconChoice.width
+                            text: {
+                                var name = beaconHost.name !== undefined
+                                           ? beaconHost.name : beaconHostId
+                                var selected =
+                                    wakeSettingsSheet.route.provider === "beacon"
+                                    && wakeSettingsSheet.route.beaconId
+                                        === beaconChoice.beacon.id
+                                    && wakeSettingsSheet.route.beaconHostId
+                                        === beaconHostId
+                                return selected
+                                    ? qsTr("%1 — selected").arg(name)
+                                    : qsTr("Wake %1 through this Beacon").arg(name)
+                            }
+                            description: beaconHost.ready === true
+                                         ? qsTr("Host is ready now")
+                                         : qsTr("Beacon will send the LAN Wake burst")
+                            enabled: beaconChoice.beacon.identityState === "trusted"
+                                     && beaconHostId.length > 0
+                            onClicked: {
+                                if (beaconManager.setBeaconWake(
+                                        appGrid.hostUuid,
+                                        beaconChoice.beacon.id,
+                                        beaconHostId)) {
+                                    wakeSettingsSheet.refreshRoute()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            NavigableButton {
+                text: qsTr("Done")
+                primary: true
+                onClicked: wakeSettingsSheet.close()
+            }
+        }
+
+        Connections {
+            target: beaconManager
+            function onHostsChanged(beaconId) {
+                wakeSettingsSheet.hostsRevision++
+            }
+            function onHostRefreshFailed(beaconId, error) {
+                wakeProviderError.text = error
+            }
+        }
+
+        Label {
+            id: wakeProviderError
+            width: parent.width
+            visible: text.length > 0
+            color: Tokens.statusPairing
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    QuickSheet {
+        id: customQualityPanel
+        title: targetAppId >= 0
+               ? qsTr("Game quality patch") : qsTr("Pair quality patch")
+
+        property string targetScope: "host_client_pair"
+        property int targetAppId: -1
+        property string targetLibraryEntryId: ""
+        property int selWidth: 3840
+        property int selHeight: 2160
+        property int selFps: 120
+        property int selBitrateKbps: 80000
+        property string selCodec: "auto"
+        property bool selVirtualDisplay: false
+        property bool pinPatch: false
+        property bool enforceFloor: false
+
+        function contextKey() {
+            if (targetScope === "library_entry")
+                return targetLibraryEntryId
+            if (targetScope === "host_application")
+                return appGrid.hostUuid + "|" + targetAppId
+            return EffectiveSettings.clientDeviceId + "|" + appGrid.hostUuid
+        }
+        function codecName(values) {
+            if (values.codec !== undefined)
+                return values.codec
+            if (values.videocfg === StreamingPreferences.VCC_FORCE_H264)
+                return "h264"
+            if (values.videocfg === StreamingPreferences.VCC_FORCE_HEVC)
+                return "hevc"
+            if (values.videocfg === StreamingPreferences.VCC_FORCE_AV1)
+                return "av1"
+            return "auto"
+        }
+        function loadSelection() {
+            var bundle = EffectiveSettings.patch(targetScope, contextKey())
+            var values = bundle.values || ({})
+            selWidth = values.width !== undefined ? values.width
+                                                   : qualityEffective.width || 1920
+            selHeight = values.height !== undefined ? values.height
+                                                     : qualityEffective.height || 1080
+            selFps = values.fps !== undefined ? values.fps
+                                               : qualityEffective.fps || 60
+            selBitrateKbps = values.bitrateKbps !== undefined
+                             ? values.bitrateKbps
+                             : values.bitrate !== undefined ? values.bitrate
+                             : qualityEffective.bitrateKbps || 20000
+            selCodec = codecName(values)
+            selVirtualDisplay = values.virtualdisplay !== undefined
+                                ? values.virtualdisplay === true
+                                : qualityEffective.virtualdisplay === true
+            var pins = bundle.pins || ({})
+            pinPatch = pins.width === true || pins.fps === true
+                       || pins.bitrateKbps === true
+            var floors = bundle.floors || ({})
+            enforceFloor = floors.fps !== undefined
+                           || floors.bitrateKbps !== undefined
+        }
+        function openFor(scope, appId) {
+            targetAppId = appId
+            targetLibraryEntryId = appId >= 0
+                ? LibraryManager.libraryEntryFor(appGrid.hostUuid, appId) : ""
+            targetScope = scope
+            open()
+        }
+        onAboutToShow: loadSelection()
+
+        Column {
+            width: parent.width
+            spacing: Tokens.gutter
+
+            Label {
+                text: qsTr("Save to")
+                font.family: Tokens.familyDisplay
+                font.pixelSize: Tokens.tCard
+                color: Tokens.textPrimary
+            }
+            AutoResizingComboBox {
+                id: qualityScope
+                width: parent.width
+                textRole: "name"
+                model: {
+                    var choices = [{
+                        name: qsTr("This Device ↔ Rig"),
+                        scope: "host_client_pair"
+                    }]
+                    if (customQualityPanel.targetLibraryEntryId.length > 0)
+                        choices.push({
+                            name: qsTr("Library Entry"),
+                            scope: "library_entry"
+                        })
+                    if (customQualityPanel.targetAppId >= 0)
+                        choices.push({
+                            name: qsTr("Host Application"),
+                            scope: "host_application"
+                        })
+                    return choices
+                }
+                function syncScope() {
+                    for (var i = 0; i < model.length; ++i) {
+                        if (model[i].scope
+                                === customQualityPanel.targetScope) {
+                            currentIndex = i
+                            return
+                        }
+                    }
+                    currentIndex = 0
+                }
+                Component.onCompleted: syncScope()
+                onModelChanged: syncScope()
+                onActivated: {
+                    customQualityPanel.targetScope =
+                        model[currentIndex].scope
+                    customQualityPanel.loadSelection()
+                }
+            }
+
+            Label {
+                text: qsTr("Resolution")
+                font.family: Tokens.familyDisplay
+                font.pixelSize: Tokens.tCard
+                color: Tokens.textPrimary
+            }
+            Flow {
+                width: parent.width
+                spacing: Tokens.gutterTight
+                Repeater {
+                    model: [["1080p", 1920, 1080],
+                            ["1440p", 2560, 1440],
+                            ["4K", 3840, 2160]]
+                    delegate: NavigableButton {
+                        required property var modelData
+                        compact: true
+                        text: modelData[0]
+                        highlighted: customQualityPanel.selWidth === modelData[1]
+                        onClicked: {
+                            customQualityPanel.selWidth = modelData[1]
+                            customQualityPanel.selHeight = modelData[2]
+                        }
+                    }
+                }
+            }
+
+            Label {
+                text: qsTr("Frame rate")
+                font.family: Tokens.familyDisplay
+                font.pixelSize: Tokens.tCard
+                color: Tokens.textPrimary
+            }
+            Flow {
+                width: parent.width
+                spacing: Tokens.gutterTight
+                Repeater {
+                    model: [30, 60, 120]
+                    delegate: NavigableButton {
+                        required property var modelData
+                        compact: true
+                        text: qsTr("%1 fps").arg(modelData)
+                        highlighted: customQualityPanel.selFps === modelData
+                        onClicked: customQualityPanel.selFps = modelData
+                    }
+                }
+            }
+
+            Label {
+                text: qsTr("Bitrate")
+                font.family: Tokens.familyDisplay
+                font.pixelSize: Tokens.tCard
+                color: Tokens.textPrimary
+            }
+            Flow {
+                width: parent.width
+                spacing: Tokens.gutterTight
+                Repeater {
+                    model: [20, 50, 80, 120]
+                    delegate: NavigableButton {
+                        required property var modelData
+                        compact: true
+                        text: qsTr("%1 Mbps").arg(modelData)
+                        highlighted: customQualityPanel.selBitrateKbps
+                                     === modelData * 1000
+                        onClicked: customQualityPanel.selBitrateKbps
+                                   = modelData * 1000
+                    }
+                }
+            }
+
+            Label {
+                text: qsTr("Codec")
+                font.family: Tokens.familyDisplay
+                font.pixelSize: Tokens.tCard
+                color: Tokens.textPrimary
+            }
+            Flow {
+                width: parent.width
+                spacing: Tokens.gutterTight
+                Repeater {
+                    model: ["auto", "h264", "hevc", "av1"]
+                    delegate: NavigableButton {
+                        required property var modelData
+                        compact: true
+                        text: modelData === "auto"
+                              ? qsTr("Automatic") : modelData.toUpperCase()
+                        highlighted: customQualityPanel.selCodec === modelData
+                        onClicked: customQualityPanel.selCodec = modelData
+                    }
+                }
+            }
+
+            CheckBox {
+                width: parent.width
+                text: qsTr("Use Host virtual display")
+                enabled: {
+                    var caps = hostAdapters.capabilitiesFor(appGrid.hostUuid)
+                    var names = caps.capabilities || []
+                    return names.indexOf("virtualDisplayDriverReady") >= 0
+                }
+                checked: customQualityPanel.selVirtualDisplay
+                onToggled: customQualityPanel.selVirtualDisplay = checked
+            }
+
+            CheckBox {
+                width: parent.width
+                text: qsTr("Pin this patch")
+                checked: customQualityPanel.pinPatch
+                onToggled: customQualityPanel.pinPatch = checked
+            }
+            CheckBox {
+                width: parent.width
+                text: qsTr("Use frame rate and bitrate as quality floors")
+                checked: customQualityPanel.enforceFloor
+                onToggled: customQualityPanel.enforceFloor = checked
+            }
+            Label {
+                width: parent.width
+                text: qsTr("Capability safety can still lower pinned values. "
+                           + "Jochona asks before launch when safety crosses "
+                           + "a saved quality floor.")
+                color: Tokens.textSecondary
+                wrapMode: Text.WordWrap
+            }
+
+            Row {
+                spacing: Tokens.gutterTight
+
+                NavigableButton {
+                    text: qsTr("Save patch")
+                    primary: true
+                    onClicked: customQualityPanel.accept()
+                }
+                NavigableButton {
+                    text: qsTr("Cancel")
+                    onClicked: customQualityPanel.reject()
+                }
+            }
+        }
+
+        onAccepted: {
+            var bundle = EffectiveSettings.patch(targetScope, contextKey())
+            var values = bundle.values || ({})
+            values.width = selWidth
+            values.height = selHeight
+            values.fps = selFps
+            values.bitrateKbps = selBitrateKbps
+            values.codec = selCodec
+            values.virtualdisplay = selVirtualDisplay
+
+            var pins = bundle.pins || ({})
+            var keys = ["width", "height", "fps", "bitrateKbps", "codec",
+                        "virtualdisplay"]
+            for (var i = 0; i < keys.length; ++i) {
+                if (pinPatch)
+                    pins[keys[i]] = true
+                else
+                    delete pins[keys[i]]
+            }
+            var floors = bundle.floors || ({})
+            if (enforceFloor) {
+                floors.fps = selFps
+                floors.bitrateKbps = selBitrateKbps
+            } else {
+                delete floors.fps
+                delete floors.bitrateKbps
+            }
+            EffectiveSettings.setPatch(targetScope, contextKey(),
+                                       values, pins, floors)
+            appGrid.refreshQuality()
         }
     }
 
     NavigableMessageDialog {
-        id: quitAppDialog
-        property string appName : ""
-        property bool segueToStream : false
+        id: qualityFloorDialog
+        property string conflictText: ""
+        title: qsTr("Quality floor cannot be met")
+        text: qsTr("Capability safety must lower this launch below a saved "
+                   + "quality floor:\n\n%1\n\nLaunch with the safe values?")
+              .arg(conflictText)
+        standardButtons: Dialog.Yes | Dialog.No
+        yesText: qsTr("Launch safely")
+        noText: qsTr("Cancel")
+        onAccepted: {
+            appGrid.launchApp(appGrid.pendingFloorAppIndex,
+                              appGrid.pendingFloorAppId,
+                              appGrid.pendingFloorAppName,
+                              appGrid.pendingFloorQuitExisting,
+                              true)
+        }
+    }
+
+    QuickSheet {
+        id: appActionsPanel
+        title: appGrid.actionAppName
+        initialFocusItem: launchActionButton
+
+        NavigableButton {
+            id: launchActionButton
+            text: appGrid.actionAppRunning ? qsTr("Resume") : qsTr("Play")
+            primary: true
+            onClicked: {
+                appActionsPanel.close()
+                appGrid.launchApp(appGrid.actionAppIndex, appGrid.actionAppId,
+                                  appGrid.actionAppName, true)
+            }
+        }
+
+        NavigableButton {
+            visible: appGrid.actionAppRunning
+            text: qsTr("Stop on rig")
+            destructive: true
+            onClicked: {
+                appActionsPanel.close()
+                quitAppSheet.appName = appGrid.actionAppName
+                quitAppSheet.segueToStream = false
+                quitAppSheet.open()
+            }
+        }
+
+        NavigableButton {
+            checkable: true
+            checked: appGrid.actionAppDirectLaunch
+            text: checked ? qsTr("Direct launch: on") : qsTr("Direct launch: off")
+            description: qsTr("Open this app immediately after selecting the rig")
+            onClicked: {
+                appModel.setAppDirectLaunch(appGrid.actionAppIndex, checked)
+                appActionsPanel.close()
+            }
+        }
+
+        NavigableButton {
+            checkable: true
+            checked: appGrid.actionAppHidden
+            text: checked ? qsTr("Hidden") : qsTr("Hide from library")
+            enabled: checked || (!appGrid.actionAppRunning
+                                 && !appGrid.actionAppDirectLaunch)
+            onClicked: {
+                appModel.setAppHidden(appGrid.actionAppIndex, checked)
+                appActionsPanel.close()
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Game quality settings")
+            description: qsTr("Save a sparse patch to the Library Entry or "
+                              + "this Host Application")
+            onClicked: {
+                appActionsPanel.close()
+                customQualityPanel.openFor(
+                    "host_application", appGrid.actionAppId)
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Cancel")
+            onClicked: appActionsPanel.close()
+        }
+    }
+
+    QuickSheet {
+        id: quitAppSheet
+        title: qsTr("Stop %1?").arg(appName)
+        initialFocusItem: keepRunningButton
+
+        property string appName: ""
+        property bool segueToStream: false
         property string nextAppName: ""
         property int nextAppIndex: 0
-        text:qsTr("Are you sure you want to quit %1? Any unsaved progress will be lost.").arg(appName)
-        standardButtons: Dialog.Yes | Dialog.No
+
+        Label {
+            width: parent.width
+            text: qsTr("Unsaved progress in the host application may be lost.")
+            font.family: Tokens.familyBody
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        NavigableButton {
+            id: keepRunningButton
+            text: qsTr("Keep running")
+            primary: true
+            onClicked: quitAppSheet.close()
+        }
+
+        NavigableButton {
+            text: qsTr("Stop application")
+            destructive: true
+            onClicked: quitAppSheet.accept()
+        }
 
         function quitApp() {
             var component = Qt.createComponent("QuitSegue.qml")
-            var params = {"appName": appName, "quitRunningAppFn": function() { appModel.quitRunningApp() }}
+            var parameters = {
+                "appName": appName,
+                "quitRunningAppFn": function() { appModel.quitRunningApp() }
+            }
             if (segueToStream) {
-                // Store the session and app name if we're going to stream after
-                // successfully quitting the old app.
-                params.nextAppName = nextAppName
-                params.nextSession = appModel.createSessionForApp(nextAppIndex)
+                parameters.nextAppName = nextAppName
+                parameters.nextSession = appModel.createSessionForApp(nextAppIndex)
+            } else {
+                parameters.nextAppName = null
+                parameters.nextSession = null
             }
-            else {
-                params.nextAppName = null
-                params.nextSession = null
-            }
-
-            stackView.push(component.createObject(stackView, params))
+            stackView.push(component.createObject(stackView, parameters))
         }
 
         onAccepted: quitApp()

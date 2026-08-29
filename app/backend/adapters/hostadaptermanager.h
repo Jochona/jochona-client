@@ -23,6 +23,7 @@
 #include <QHash>
 #include <QObject>
 #include <QSslCertificate>
+#include <QReadWriteLock>
 #include <QVariantMap>
 
 class HostAdapterManager : public QObject
@@ -84,11 +85,10 @@ private:
         uint16_t httpsPort = 0;
         QSslCertificate serverCert;
     };
-
-    // Both maps are only ever touched from the GUI thread: HostProber runs
-    // on a QThreadPool worker but only talks back to us through the queued
-    // capabilitiesReady signal, so no lock is needed here (same reasoning
-    // as ThemeManager).
+    // Probe results arrive on the GUI thread, but Session resolves a tuple
+    // from its connection worker. Protect the cache; connection details stay
+    // GUI-thread-only.
+    mutable QReadWriteLock m_CacheLock;
     QHash<QString, HostCapabilities> m_Cache;
     QHash<QString, ConnectionInfo> m_ConnectionInfo;
 };

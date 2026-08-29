@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QRect>
 #include <QQmlEngine>
+#include <QVariantMap>
 
 class StreamingPreferences : public QObject
 {
@@ -17,6 +18,10 @@ public:
     Q_INVOKABLE void save();
 
     void reload();
+
+    QVariantMap toVariantMap() const;
+    void applyVariantMap(const QVariantMap& values);
+    StreamingPreferences* clone() const;
 
     enum AudioConfig
     {
@@ -130,9 +135,6 @@ public:
     Q_PROPERTY(bool playAudioOnHost MEMBER playAudioOnHost NOTIFY playAudioOnHostChanged)
     Q_PROPERTY(bool multiController MEMBER multiController NOTIFY multiControllerChanged)
     Q_PROPERTY(bool enableMdns MEMBER enableMdns NOTIFY enableMdnsChanged)
-    // Jochona: feature flag for the modern QML home screen (M1). Read once at
-    // startup to pick the initial view; toggling takes effect on next launch.
-    Q_PROPERTY(bool modernHomeScreen MEMBER modernHomeScreen NOTIFY modernHomeScreenChanged)
     Q_PROPERTY(bool quitAppAfter MEMBER quitAppAfter NOTIFY quitAppAfterChanged)
     Q_PROPERTY(bool absoluteMouseMode MEMBER absoluteMouseMode NOTIFY absoluteMouseModeChanged)
     Q_PROPERTY(bool absoluteTouchMode MEMBER absoluteTouchMode NOTIFY absoluteTouchModeChanged)
@@ -144,9 +146,12 @@ public:
     Q_PROPERTY(bool detectNetworkBlocking MEMBER detectNetworkBlocking NOTIFY detectNetworkBlockingChanged)
     Q_PROPERTY(bool showPerformanceOverlay MEMBER showPerformanceOverlay NOTIFY showPerformanceOverlayChanged)
     Q_PROPERTY(AudioConfig audioConfig MEMBER audioConfig NOTIFY audioConfigChanged)
+    Q_PROPERTY(QString audioDevice MEMBER audioDevice NOTIFY audioDeviceChanged)
+    Q_PROPERTY(double sessionVolumeDb MEMBER sessionVolumeDb NOTIFY sessionVolumeDbChanged)
     Q_PROPERTY(VideoCodecConfig videoCodecConfig MEMBER videoCodecConfig NOTIFY videoCodecConfigChanged)
     Q_PROPERTY(bool enableHdr MEMBER enableHdr NOTIFY enableHdrChanged)
     Q_PROPERTY(bool enableYUV444 MEMBER enableYUV444 NOTIFY enableYUV444Changed)
+    Q_PROPERTY(bool useVirtualDisplay MEMBER useVirtualDisplay NOTIFY useVirtualDisplayChanged)
     Q_PROPERTY(VideoDecoderSelection videoDecoderSelection MEMBER videoDecoderSelection NOTIFY videoDecoderSelectionChanged)
     Q_PROPERTY(RendererSelection rendererSelection MEMBER rendererSelection NOTIFY rendererSelectionChanged)
     Q_PROPERTY(WindowMode windowMode MEMBER windowMode NOTIFY windowModeChanged)
@@ -175,7 +180,6 @@ public:
     bool playAudioOnHost;
     bool multiController;
     bool enableMdns;
-    bool modernHomeScreen;
     bool quitAppAfter;
     bool absoluteMouseMode;
     bool absoluteTouchMode;
@@ -194,9 +198,12 @@ public:
     bool keepAwake;
     int packetSize;
     AudioConfig audioConfig;
+    QString audioDevice;
+    double sessionVolumeDb;
     VideoCodecConfig videoCodecConfig;
     bool enableHdr;
     bool enableYUV444;
+    bool useVirtualDisplay;
     VideoDecoderSelection videoDecoderSelection;
     WindowMode windowMode;
     WindowMode recommendedFullScreenMode;
@@ -216,14 +223,16 @@ signals:
     void multiControllerChanged();
     void unsupportedFpsChanged();
     void enableMdnsChanged();
-    void modernHomeScreenChanged();
     void quitAppAfterChanged();
     void absoluteMouseModeChanged();
     void absoluteTouchModeChanged();
     void audioConfigChanged();
+    void audioDeviceChanged();
+    void sessionVolumeDbChanged();
     void videoCodecConfigChanged();
     void enableHdrChanged();
     void enableYUV444Changed();
+    void useVirtualDisplayChanged();
     void videoDecoderSelectionChanged();
     void uiDisplayModeChanged();
     void windowModeChanged();

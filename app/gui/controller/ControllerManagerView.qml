@@ -1,327 +1,726 @@
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
-//
-// SPDX-License-Identifier: GPL-3.0-only
-//
-import QtQuick 2.9
+// Night Route Controller Manager: stable identity, Player Slot Order, live
+// input, Controller Map calibration/remapping, and Kenney CC0 silhouettes.
+import QtQuick 2.15
 import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 
 import ControllerManager 1.0
-import ControllerProfileStore 1.0
+import ControllerMapStore 1.0
 
-import "/gui"
-import "/gui/style"
+import ".."
+import "../style"
 
-// Jochona: M2 controller-first screen (proposal §5.3, controller manager
-// per §6.7). One full-width row per SDL-detected gamepad: family glyph,
-// name, connection status (color plus text, never color alone), and a
-// live input visualization strip fed by ControllerManager's ~30Hz poll.
-// Enter opens a calibration panel; only the left-stick deadzone slider is
-// wired to ControllerProfileStore for M2, to prove the persistence loop
-// end to end. The rest of the panel (remaining deadzones, response
-// curves, button remap table) is a later M2 pass.
 Item {
     id: root
+    objectName: qsTr("Controllers")
+
+    property var liveState: ({})
+    property var selectedMap: ({})
+    property real leftDeadzone: 0.10
+    property real rightDeadzone: 0.10
+    property real leftCurve: 1.0
+    property real rightCurve: 1.0
+    property string pendingSourceButton: "a"
+    property string pendingTargetButton: "b"
+
+    function silhouette(family) {
+        if (family === "playstation")
+            return "qrc:/res/controllers/playstation.svg"
+        if (family === "switch")
+            return "qrc:/res/controllers/switch.svg"
+        if (family === "steam")
+            return "qrc:/res/controllers/steam.svg"
+        return "qrc:/res/controllers/xbox.svg"
+    }
+    function familyLabel(family) {
+        if (family === "playstation")
+            return qsTr("PlayStation layout")
+        if (family === "switch")
+            return qsTr("Nintendo layout")
+        if (family === "steam")
+            return qsTr("Steam layout")
+        if (family === "xbox")
+            return qsTr("Xbox layout")
+        return qsTr("Generic SDL layout")
+    }
+    function reloadControllerMap() {
+        if (selectedEntry === null) {
+            selectedMap = ({})
+            return
+        }
+        selectedMap = ControllerMapStore.mapFor(selectedEntry.path)
+        var calibration = selectedMap.calibration || ({})
+        leftDeadzone = calibration.deadzoneLeftStick !== undefined
+                       ? calibration.deadzoneLeftStick : 0.10
+        rightDeadzone = calibration.deadzoneRightStick !== undefined
+                        ? calibration.deadzoneRightStick : 0.10
+        leftCurve = calibration.curveLeftStick !== undefined
+                    ? calibration.curveLeftStick : 1.0
+        rightCurve = calibration.curveRightStick !== undefined
+                     ? calibration.curveRightStick : 1.0
+    }
+    function saveCalibration() {
+        if (selectedEntry === null)
+            return
+        ControllerMapStore.saveMap(selectedEntry.path, "controller", "", {
+            calibration: {
+                deadzoneLeftStick: leftDeadzone,
+                deadzoneRightStick: rightDeadzone,
+                curveLeftStick: leftCurve,
+                curveRightStick: rightCurve
+            },
+            buttonRemap: selectedMap.buttonRemap || ({})
+        })
+        reloadControllerMap()
+    }
+    function commitRemap(swapConflict) {
+        if (selectedEntry === null)
+            return
+        var remap = ({})
+        var stored = selectedMap.buttonRemap || ({})
+        for (var key in stored)
+            remap[key] = stored[key]
+        if (swapConflict) {
+            var previousTarget = remap[pendingSourceButton]
+                                 || pendingSourceButton
+            var conflictingSource = pendingTargetButton
+            for (var source in remap) {
+                if (source !== pendingSourceButton
+                        && remap[source] === pendingTargetButton) {
+                    conflictingSource = source
+                    break
+                }
+            }
+            remap[conflictingSource] = previousTarget
+        }
+        remap[pendingSourceButton] = pendingTargetButton
+        ControllerMapStore.saveMap(selectedEntry.path, "controller", "", {
+            calibration: selectedMap.calibration || ({}),
+            buttonRemap: remap
+        })
+        reloadControllerMap()
+    }
+    function requestRemap(source, target) {
+        pendingSourceButton = source
+        pendingTargetButton = target
+        if (source === target) {
+            commitRemap(false)
+            return
+        }
+        var remap = selectedMap.buttonRemap || ({})
+        var conflict = target
+        for (var candidate in remap) {
+            if (candidate !== source && remap[candidate] === target) {
+                conflict = candidate
+                break
+            }
+        }
+        remapConflict.conflictingSource = conflict
+        remapConflict.open()
+    }
+    readonly property var selectedEntry:
+        controllerList.currentIndex >= 0
+        && controllerList.currentIndex < ControllerManager.controllers.length
+        ? ControllerManager.controllers[controllerList.currentIndex] : null
+    readonly property var selectedLive:
+        controllerList.currentIndex >= 0
+        && liveState[controllerList.currentIndex] !== undefined
+        ? liveState[controllerList.currentIndex]
+        : ({buttons: ({}), axes: ({})})
+
+    function familyGlyph(family) {
+        var glyph = Glyphs.glyph(family, "controller")
+        return glyph.length > 0 ? glyph : Glyphs.glyph(family, "a")
+    }
+
+    function statusText(connected) {
+        return connected ? qsTr("Connected") : qsTr("Disconnected")
+    }
+
+    Component.onCompleted: {
+        ControllerManager.start()
+        reloadControllerMap()
+    }
+    Component.onDestruction: ControllerManager.stop()
+    StackView.onActivated: controllerList.forceActiveFocus()
+    onSelectedEntryChanged: reloadControllerMap()
+
+    Connections {
+        target: ControllerMapStore
+        function onMapChanged(controllerId, scope, contextKey) {
+            if (root.selectedEntry
+                    && root.selectedEntry.path === controllerId)
+                root.reloadControllerMap()
+        }
+    }
+
+    Connections {
+        target: ControllerManager
+
+        function onControllerLiveUpdate(deviceIndex) {
+            var next = ({})
+            for (var key in root.liveState)
+                next[key] = root.liveState[key]
+            next[deviceIndex] = ControllerManager.controllerSnapshot(deviceIndex)
+            root.liveState = next
+        }
+
+        function onControllersChanged() {
+            root.liveState = ({})
+            controllerList.currentIndex =
+                ControllerManager.controllers.length > 0 ? 0 : -1
+            root.reloadControllerMap()
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        spacing: Tokens.gutter
 
         Label {
-            Layout.leftMargin: Tokens.gutter
-            Layout.topMargin: 20
-            Layout.bottomMargin: 4
+            Layout.fillWidth: true
             text: qsTr("Controllers")
-            font.pointSize: Tokens.sizeTitle
             font.family: Tokens.familyDisplay
-            font.bold: true
+            font.pixelSize: Tokens.tTitle
+            font.weight: Font.Medium
             color: Tokens.textPrimary
+            Accessible.role: Accessible.Heading
         }
 
-        CenteredGridView {
-            id: controllerGrid
-
+        GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            columns: Tokens.handheld || width < Tokens.dp(1100) ? 1 : 2
+            columnSpacing: Tokens.gutter
+            rowSpacing: Tokens.gutter
 
-            focus: true
-            activeFocusOnTab: true
-            topMargin: 4
-            bottomMargin: 8
-            cellWidth: controllerGrid.availableWidth > 0 ? Math.min(controllerGrid.availableWidth, Tokens.listMaxWidth) : Tokens.listMaxWidth
-            cellHeight: Tokens.rowHeight
-            objectName: qsTr("Controllers")
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: Tokens.dp(260)
+                radius: Tokens.radiusPanel
+                color: Tokens.surface
+                border.width: Tokens.routeStroke
+                border.color: controllerList.activeFocus
+                              ? Tokens.borderFocus : Tokens.border
 
-            model: ControllerManager.controllers
-
-            // deviceIndex -> {buttons: {...}, axes: {...}}; refreshed from
-            // ControllerManager.controllerLiveUpdate() every poll tick
-            // (~30Hz). Kept separate from the `controllers` list property
-            // so the visualization strip animates without ever forcing
-            // this GridView to rebuild its model.
-            property var liveState: ({})
-
-            // Index of the row whose calibration panel is open, or -1.
-            property int detailIndex: -1
-
-            Component.onCompleted: {
-                currentIndex = -1
-                ControllerManager.start()
-            }
-
-            Component.onDestruction: {
-                ControllerManager.stop()
-            }
-
-            Connections {
-                target: ControllerManager
-
-                function onControllerLiveUpdate(deviceIndex) {
-                    var next = controllerGrid.liveState
-                    next[deviceIndex] = ControllerManager.controllerSnapshot(deviceIndex)
-                    controllerGrid.liveState = next
-                }
-
-                function onControllersChanged() {
-                    // Topology changed: indices may now refer to a
-                    // different physical controller, so stale live state
-                    // and any open calibration panel are both dropped
-                    // rather than silently relabeled.
-                    controllerGrid.liveState = ({})
-                    controllerGrid.detailIndex = -1
-                }
-            }
-
-            function familyGlyph(family) {
-                var g = Glyphs.glyph(family, "controller")
-                return g.length > 0 ? g : Glyphs.glyph(family, "a")
-            }
-
-            function statusColor(connected) {
-                return connected ? Tokens.statusOnline : Tokens.statusOffline
-            }
-
-            function statusText(connected) {
-                return connected ? qsTr("Connected") : qsTr("Disconnected")
-            }
-
-            Label {
-                anchors.centerIn: parent
-                visible: controllerGrid.count === 0
-                text: qsTr("No controllers detected. Connect a controller to configure it here.")
-                color: Tokens.textSecondary
-                font.pointSize: Tokens.sizeBody
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-                width: Math.min(parent.width - 2 * Tokens.gutter, 480)
-            }
-
-            delegate: NavigableItemDelegate {
-                id: controllerRow
-
-                width: controllerGrid.cellWidth
-                height: controllerGrid.cellHeight
-                grid: controllerGrid
-
-                readonly property var live: controllerGrid.liveState[index] || { "buttons": ({}), "axes": ({}) }
-
-                function openDetail() {
-                    controllerGrid.detailIndex = (controllerGrid.detailIndex === index) ? -1 : index
-                }
-
-                // Overrides NavigableItemDelegate's default clicked()-firing
-                // handlers: this screen has no context menu, Enter always
-                // toggles the calibration panel for this row.
-                Keys.onReturnPressed: openDetail()
-                Keys.onEnterPressed: openDetail()
-
-                Rectangle {
+                ListView {
+                    id: controllerList
                     anchors.fill: parent
-                    anchors.margins: 4
-                    radius: Tokens.radiusCard
-                    color: parent.highlighted ? Tokens.surfaceFocus : Tokens.surface
-                    border.width: parent.highlighted ? 2 : 1
-                    border.color: parent.highlighted ? Tokens.borderFocus : Tokens.border
-                }
+                    anchors.margins: Tokens.gutterTight
+                    model: ControllerManager.controllers
+                    currentIndex: count > 0 ? 0 : -1
+                    focus: true
+                    activeFocusOnTab: true
+                    clip: true
+                    spacing: Tokens.gutterTight
+                    boundsBehavior: Flickable.StopAtBounds
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: Tokens.gutter
-                    anchors.rightMargin: 16
-                    spacing: 18
-
-                    // Family glyph chip
-                    Rectangle {
-                        Layout.preferredWidth: 44
-                        Layout.preferredHeight: 44
-                        Layout.alignment: Qt.AlignVCenter
-                        radius: 8
-                        color: controllerRow.highlighted ? Tokens.accentFocus : Tokens.surfaceFocus
-                        border.width: 1
-                        border.color: Tokens.border
-
-                        Text {
-                            anchors.centerIn: parent
-                            text: controllerGrid.familyGlyph(model.family)
-                            font.family: Glyphs.fontFamily(model.family)
-                            font.pixelSize: 22
-                            color: Tokens.textPrimary
-                        }
+                    Keys.onReturnPressed: function(event) {
+                        // The selected row is already mirrored in the detail
+                        // pane; Return deliberately has no hidden action.
+                        event.accepted = true
                     }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 2
+                    delegate: Item {
+                        id: controllerRow
+                        required property var modelData
+                        required property int index
 
-                        Label {
-                            text: model.name
-                            font.pointSize: Tokens.sizeSection
-                            font.family: Tokens.familyDisplay
-                            font.bold: true
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
+                        width: controllerList.width
+                        height: Tokens.rowHeight
+                        readonly property bool selected:
+                            controllerList.currentIndex === index
+                        readonly property var live:
+                            root.liveState[index] || {buttons: ({}), axes: ({})}
+
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: modelData.name
+                        Accessible.description: root.statusText(modelData.connected)
+                                                + ", "
+                                                + qsTr("Slot %1").arg(modelData.slot + 1)
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Tokens.radiusControl
+                            color: controllerRow.selected
+                                   ? Tokens.surfaceFocus : "transparent"
+                            border.width: controllerRow.selected
+                                          ? Tokens.focusStroke : 0
+                            border.color: Tokens.borderFocus
                         }
 
                         RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
+                            anchors.fill: parent
+                            anchors.margins: Tokens.gutterTight
+                            spacing: Tokens.gutterTight
 
                             Rectangle {
+                                Layout.preferredWidth: Tokens.dp(46)
+                                Layout.preferredHeight: width
                                 Layout.alignment: Qt.AlignVCenter
-                                Layout.preferredWidth: 10
-                                Layout.preferredHeight: 10
-                                radius: 5
-                                color: controllerGrid.statusColor(model.connected)
+                                radius: Tokens.radiusControl
+                                color: Tokens.surface
+                                border.width: Tokens.routeStroke
+                                border.color: Tokens.border
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: root.familyGlyph(modelData.family)
+                                    font.family: Glyphs.fontFamily(modelData.family)
+                                    font.pixelSize: Tokens.dp(24)
+                                    color: Tokens.textPrimary
+                                }
                             }
 
-                            Label {
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: controllerGrid.statusText(model.connected) + " · " + qsTr("Slot %1").arg(model.slot + 1)
-                                font.pointSize: Tokens.sizeBody
-                                color: Tokens.textSecondary
-                                elide: Text.ElideRight
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: Tokens.dp(3)
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: modelData.name
+                                    font.family: Tokens.familyDisplay
+                                    font.pixelSize: Tokens.tCard
+                                    font.weight: Font.Medium
+                                    color: Tokens.textPrimary
+                                    elide: Text.ElideRight
+                                }
+
+                                Row {
+                                    spacing: Tokens.dp(8)
+
+                                    Rectangle {
+                                        width: Tokens.dp(8)
+                                        height: width
+                                        radius: width / 2
+                                        color: modelData.connected
+                                               ? Tokens.statusOnline
+                                               : Tokens.statusOffline
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+
+                                    Label {
+                                        text: root.statusText(modelData.connected)
+                                              + " · "
+                                              + qsTr("Slot %1").arg(modelData.slot + 1)
+                                        font.family: Tokens.familyBody
+                                        font.pixelSize: Tokens.tMicro
+                                        color: Tokens.textSecondary
+                                    }
+                                }
+                            }
+
+                            Row {
+                                Layout.alignment: Qt.AlignVCenter
+                                spacing: Tokens.dp(4)
+                                visible: !Tokens.handheld
+
+                                Repeater {
+                                    model: ["a", "b", "x", "y", "lb", "rb"]
+
+                                    Rectangle {
+                                        required property var modelData
+                                        width: Tokens.dp(9)
+                                        height: width
+                                        radius: width / 2
+                                        color: controllerRow.live.buttons
+                                               && controllerRow.live.buttons[modelData]
+                                               ? Tokens.moon : Tokens.border
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: Tokens.motion(
+                                                              Tokens.durationFast)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    // Live input visualization strip: one dot per digital
-                    // button in the fixed logical vocabulary, lit with the
-                    // accent color while held.
-                    Row {
-                        Layout.alignment: Qt.AlignVCenter
-                        spacing: 4
-
-                        Repeater {
-                            model: ["a", "b", "x", "y", "lb", "rb", "lt", "rt",
-                                    "dpad_up", "dpad_down", "dpad_left", "dpad_right"]
-
-                            Rectangle {
-                                width: 10
-                                height: 10
-                                radius: 5
-                                color: (controllerRow.live.buttons && controllerRow.live.buttons[modelData])
-                                       ? Tokens.accent : Tokens.border
-
-                                Behavior on color {
-                                    ColorAnimation { duration: Tokens.motion(Tokens.durationFast) }
-                                }
+                        TapHandler {
+                            onTapped: {
+                                Tokens.inputMode = "pointer"
+                                controllerList.currentIndex = index
+                                controllerList.forceActiveFocus()
                             }
                         }
                     }
 
                     Label {
-                        Layout.alignment: Qt.AlignVCenter
-                        visible: controllerGrid.detailIndex === index
-                        text: "▾"
-                        font.pointSize: 20
-                        color: Tokens.accent
+                        anchors.centerIn: parent
+                        width: Math.min(parent.width - Tokens.gutter * 2,
+                                        Tokens.dp(520))
+                        visible: controllerList.count === 0
+                        text: qsTr("No controllers detected. Connect one to "
+                                   + "identify it and test live input.")
+                        font.family: Tokens.familyBody
+                        font.pixelSize: Tokens.tMeta
+                        color: Tokens.textSecondary
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: Tokens.dp(260)
+                radius: Tokens.radiusPanel
+                color: Tokens.surface
+                border.width: Tokens.routeStroke
+                border.color: Tokens.border
+
+                ScrollView {
+                    id: detailScroll
+                    anchors.fill: parent
+                    anchors.margins: Tokens.gutter
+                    clip: true
+                    visible: root.selectedEntry !== null
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                        width: detailScroll.availableWidth
+                        spacing: Tokens.gutter
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Tokens.dp(150)
+                            radius: Tokens.radiusControl
+                            color: "#08101C"
+                            border.color: Tokens.border
+                            border.width: Tokens.routeStroke
+
+                            Image {
+                                anchors.centerIn: parent
+                                width: Math.min(parent.width * 0.72,
+                                                Tokens.dp(230))
+                                height: parent.height - Tokens.gutter
+                                source: root.silhouette(
+                                            root.selectedEntry
+                                            ? root.selectedEntry.family
+                                            : "generic")
+                                fillMode: Image.PreserveAspectFit
+                                sourceSize.width: 256
+                                sourceSize.height: 256
+                            }
+                            Label {
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                anchors.margins: Tokens.gutterTight
+                                text: root.familyLabel(
+                                          root.selectedEntry
+                                          ? root.selectedEntry.family
+                                          : "generic")
+                                color: "#A6B4C6"
+                                font.pixelSize: Tokens.tMicro
+                            }
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.selectedEntry ? root.selectedEntry.name : ""
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tShelf
+                            font.weight: Font.Medium
+                            color: Tokens.textPrimary
+                            elide: Text.ElideRight
+                            Accessible.role: Accessible.Heading
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.selectedEntry
+                                  ? root.statusText(root.selectedEntry.connected)
+                                    + " · "
+                                    + root.familyLabel(root.selectedEntry.family)
+                                  : ""
+                            font.family: Tokens.familyBody
+                            font.pixelSize: Tokens.tMeta
+                            color: Tokens.textSecondary
+                            elide: Text.ElideRight
+                        }
+
+                        Label {
+                            text: qsTr("Player Slot Order")
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Tokens.gutterTight
+                            Repeater {
+                                model: [0, 1, 2, 3]
+                                delegate: NavigableButton {
+                                    required property var modelData
+                                    compact: true
+                                    text: qsTr("Player %1").arg(modelData + 1)
+                                    highlighted: root.selectedEntry
+                                                 && root.selectedEntry.slot
+                                                    === modelData
+                                    onClicked: if (root.selectedEntry)
+                                        ControllerManager.assignSlot(
+                                            root.selectedEntry.deviceId,
+                                            modelData)
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: qsTr("Live input")
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: Tokens.handheld ? 4 : 6
+                            columnSpacing: Tokens.gutterTight
+                            rowSpacing: Tokens.gutterTight
+                            Repeater {
+                                model: ["a", "b", "x", "y", "lb", "rb",
+                                        "lt", "rt", "dpad_up", "dpad_down",
+                                        "dpad_left", "dpad_right"]
+                                Rectangle {
+                                    required property var modelData
+                                    Layout.preferredWidth: Tokens.dp(52)
+                                    Layout.preferredHeight: Tokens.dp(44)
+                                    radius: Tokens.radiusControl
+                                    color: root.selectedLive.buttons
+                                           && root.selectedLive.buttons[modelData]
+                                           ? Tokens.surfaceFocus : Tokens.night
+                                    border.width: Tokens.routeStroke
+                                    border.color: root.selectedLive.buttons
+                                                  && root.selectedLive.buttons[modelData]
+                                                  ? Tokens.borderFocus
+                                                  : Tokens.border
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Glyphs.glyph(
+                                                  root.selectedEntry
+                                                  ? root.selectedEntry.family
+                                                  : "generic", modelData)
+                                        font.family: Glyphs.fontFamily(
+                                                         root.selectedEntry
+                                                         ? root.selectedEntry.family
+                                                         : "generic")
+                                        font.pixelSize: Tokens.dp(22)
+                                        color: Tokens.textPrimary
+                                    }
+                                }
+                            }
+                        }
+
+                        Label {
+                            text: qsTr("Controller Map calibration")
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        Label {
+                            text: qsTr("Left deadzone · %1%")
+                                  .arg(Math.round(root.leftDeadzone * 100))
+                            color: Tokens.textSecondary
+                        }
+                        Slider {
+                            Layout.fillWidth: true
+                            from: 0
+                            to: 0.4
+                            stepSize: 0.01
+                            value: root.leftDeadzone
+                            onMoved: root.leftDeadzone = value
+                            Accessible.name: qsTr("Left stick deadzone")
+                        }
+                        Label {
+                            text: qsTr("Right deadzone · %1%")
+                                  .arg(Math.round(root.rightDeadzone * 100))
+                            color: Tokens.textSecondary
+                        }
+                        Slider {
+                            Layout.fillWidth: true
+                            from: 0
+                            to: 0.4
+                            stepSize: 0.01
+                            value: root.rightDeadzone
+                            onMoved: root.rightDeadzone = value
+                            Accessible.name: qsTr("Right stick deadzone")
+                        }
+                        Label {
+                            text: qsTr("Left response curve · %1")
+                                  .arg(root.leftCurve.toFixed(1))
+                            color: Tokens.textSecondary
+                        }
+                        Slider {
+                            Layout.fillWidth: true
+                            from: 0.5
+                            to: 2.0
+                            stepSize: 0.1
+                            value: root.leftCurve
+                            onMoved: root.leftCurve = value
+                            Accessible.name: qsTr("Left stick response curve")
+                        }
+                        Label {
+                            text: qsTr("Right response curve · %1")
+                                  .arg(root.rightCurve.toFixed(1))
+                            color: Tokens.textSecondary
+                        }
+                        Slider {
+                            Layout.fillWidth: true
+                            from: 0.5
+                            to: 2.0
+                            stepSize: 0.1
+                            value: root.rightCurve
+                            onMoved: root.rightCurve = value
+                            Accessible.name: qsTr("Right stick response curve")
+                        }
+                        NavigableButton {
+                            Layout.fillWidth: true
+                            text: qsTr("Save calibration")
+                            onClicked: root.saveCalibration()
+                        }
+
+                        Label {
+                            text: qsTr("Button remap")
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        Row {
+                            Layout.fillWidth: true
+                            spacing: Tokens.gutterTight
+                            AutoResizingComboBox {
+                                id: remapSource
+                                width: (parent.width - remapArrow.width
+                                        - parent.spacing * 2) / 2
+                                textRole: "name"
+                                model: [
+                                    {name: "A", keyValue: "a"},
+                                    {name: "B", keyValue: "b"},
+                                    {name: "X", keyValue: "x"},
+                                    {name: "Y", keyValue: "y"},
+                                    {name: "LB", keyValue: "lb"},
+                                    {name: "RB", keyValue: "rb"}
+                                ]
+                            }
+                            Label {
+                                id: remapArrow
+                                text: "→"
+                                color: Tokens.link
+                            }
+                            AutoResizingComboBox {
+                                id: remapTarget
+                                width: remapSource.width
+                                textRole: "name"
+                                currentIndex: 1
+                                model: remapSource.model
+                            }
+                        }
+                        NavigableButton {
+                            Layout.fillWidth: true
+                            text: qsTr("Save button remap")
+                            onClicked: root.requestRemap(
+                                remapSource.model[remapSource.currentIndex]
+                                    .keyValue,
+                                remapTarget.model[remapTarget.currentIndex]
+                                    .keyValue)
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.selectedEntry
+                                  ? root.selectedEntry.path : ""
+                            font.family: Tokens.familyBody
+                            font.pixelSize: Tokens.tMicro
+                            color: Tokens.textSecondary
+                            elide: Text.ElideMiddle
+                        }
+                    }
+                }
+
+                Column {
+                    anchors.centerIn: parent
+                    width: Math.min(parent.width - Tokens.gutter * 2,
+                                    Tokens.dp(420))
+                    spacing: Tokens.gutterTight
+                    visible: root.selectedEntry === null
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Tokens.dp(150)
+                        height: Tokens.dp(110)
+                        radius: Tokens.radiusControl
+                        color: "#08101C"
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: Tokens.gutterTight
+                            source: "qrc:/res/controllers/xbox.svg"
+                            fillMode: Image.PreserveAspectFit
+                        }
+                    }
+                    Label {
+                        width: parent.width
+                        text: controllerList.count === 0
+                              ? qsTr("Controller route waiting")
+                              : qsTr("Choose a controller")
+                        font.family: Tokens.familyDisplay
+                        font.pixelSize: Tokens.tCard
+                        color: Tokens.textPrimary
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    Label {
+                        width: parent.width
+                        text: controllerList.count === 0
+                              ? qsTr("Connect a controller to identify its "
+                                     + "layout, assign its Player Slot, and "
+                                     + "edit its Controller Map.")
+                              : qsTr("Select a controller to inspect live input.")
+                        font.family: Tokens.familyBody
+                        font.pixelSize: Tokens.tMeta
+                        color: Tokens.textSecondary
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
                     }
                 }
             }
         }
+    }
 
-        // Calibration panel shell. Only the left-stick deadzone slider is
-        // wired to ControllerProfileStore for M2 (see file header).
-        Rectangle {
-            id: detailPanel
+    QuickSheet {
+        id: remapConflict
+        property string conflictingSource: ""
+        title: qsTr("Button mapping conflict")
 
-            Layout.fillWidth: true
-            Layout.preferredHeight: controllerGrid.detailIndex >= 0 ? 140 : 0
-            clip: true
-            color: Tokens.surface
-            border.width: controllerGrid.detailIndex >= 0 ? 1 : 0
-            border.color: Tokens.border
-
-            Behavior on Layout.preferredHeight {
-                NumberAnimation { duration: Tokens.motion(Tokens.durationBase); easing.type: Easing.OutCubic }
-            }
-
-            readonly property var entry: (controllerGrid.detailIndex >= 0 && controllerGrid.detailIndex < controllerGrid.count)
-                                          ? ControllerManager.controllers[controllerGrid.detailIndex] : null
-
-            onEntryChanged: {
-                if (entry) {
-                    deadzoneSlider.value = ControllerProfileStore.profileFor(entry.path).calibration.deadzoneLeftStick
-                    deadzoneSlider.forceActiveFocus()
-                } else {
-                    controllerGrid.forceActiveFocus()
+        Label {
+            width: parent.width
+            text: qsTr("%1 already reaches %2. Swap their targets, let both "
+                       + "buttons reach %2, or cancel?")
+                  .arg(remapConflict.conflictingSource.toUpperCase())
+                  .arg(root.pendingTargetButton.toUpperCase())
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+        Flow {
+            width: parent.width
+            spacing: Tokens.gutterTight
+            NavigableButton {
+                text: qsTr("Swap")
+                primary: true
+                onClicked: {
+                    remapConflict.close()
+                    root.commitRemap(true)
                 }
             }
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Tokens.gutter
-                spacing: 8
-                visible: detailPanel.entry !== null
-
-                Label {
-                    text: detailPanel.entry ? qsTr("Calibration — %1").arg(detailPanel.entry.name) : ""
-                    font.pointSize: Tokens.sizeBody
-                    font.bold: true
-                    color: Tokens.textPrimary
+            NavigableButton {
+                text: qsTr("Keep Both")
+                onClicked: {
+                    remapConflict.close()
+                    root.commitRemap(false)
                 }
-
-                Label {
-                    text: qsTr("Left stick deadzone")
-                    font.pointSize: Tokens.sizeMicro
-                    color: Tokens.textSecondary
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    Slider {
-                        id: deadzoneSlider
-
-                        Layout.fillWidth: true
-                        from: 0.0
-                        to: 0.5
-                        stepSize: 0.01
-
-                        Keys.onEscapePressed: controllerGrid.detailIndex = -1
-
-                        onMoved: {
-                            if (detailPanel.entry) {
-                                ControllerProfileStore.setDeadzone(detailPanel.entry.path, "leftStick", value)
-                            }
-                        }
-                    }
-
-                    Label {
-                        text: Math.round(deadzoneSlider.value * 100) + "%"
-                        font.pointSize: Tokens.sizeBody
-                        color: Tokens.textSecondary
-                    }
-                }
-
-                Label {
-                    text: qsTr("More calibration controls land in a later M2 pass.")
-                    font.pointSize: Tokens.sizeMicro
-                    font.italic: true
-                    color: Tokens.textSecondary
-                }
+            }
+            NavigableButton {
+                text: qsTr("Cancel")
+                onClicked: remapConflict.close()
             }
         }
     }

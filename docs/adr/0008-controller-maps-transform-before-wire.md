@@ -1,0 +1,3 @@
+# Controller Maps transform input before the wire
+
+Controller Maps resolve sparsely from Controller Identity to Library Entry to Host Application and transform streamed gameplay input inside SdlInputHandler before GameStream packets are emitted. SDL hardware mappings remain a compatibility adapter, not the Controller Map interface; persistent Player Slot Order feeds Session packet indices, prompts follow the last-used controller family, and stable OS/SDL paths fall back to user-disambiguated minted Controller Identities. We rejected SDL-hint remapping because it cannot express per-game curves, deadzones, Controller Surface transforms, or native passthrough, and rejected Host-side mapping because maps must work identically across baseline Hosts.

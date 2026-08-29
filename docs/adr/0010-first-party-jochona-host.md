@@ -1,0 +1,3 @@
+# Jochona Host is a separate Sunshine-derived product
+
+Jochona Host will live in a separate repository and release cadence from Jochona Client. It retains Sunshine's mature GameStream media/input foundation while isolating first-party encoder, virtual-display, capability, and control modules; Windows 11/NVIDIA qualifies first and Linux follows through the same seams. The Host runs as a background service with authenticated local web administration and an optional readiness/session tray. We rejected a greenfield GameStream implementation because capture, input, pairing, and protocol risk would delay the AV1 objective, and rejected a Vibepollo hard fork because its product constraints are the capability ceiling being replaced.

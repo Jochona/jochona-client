@@ -205,6 +205,8 @@ NvHTTP::startApp(QString verb,
                  bool localAudio,
                  int gamepadMask,
                  bool persistGameControllersOnDisconnect,
+                 bool virtualDisplay,
+                 const QString& jochonaTuple,
                  QString& rtspSessionUrl)
 {
     int riKeyId;
@@ -212,29 +214,37 @@ NvHTTP::startApp(QString verb,
     memcpy(&riKeyId, streamConfig->remoteInputAesIv, sizeof(riKeyId));
     riKeyId = qFromBigEndian(riKeyId);
 
+    QString arguments =
+            "appid="+QString::number(appId)+
+            "&mode="+QString::number(streamConfig->width)+"x"+
+            QString::number(streamConfig->height)+"x"+
+            // Using an FPS value over 60 causes SOPS to default to 720p60,
+            // so force it to 0 to ensure the correct resolution is set. We
+            // used to use 60 here but that locked the frame rate to 60 FPS
+            // on GFE 3.20.3. We don't need this hack for Sunshine.
+            QString::number((streamConfig->fps > 60 && isGfe) ? 0 : streamConfig->fps)+
+            "&additionalStates=1&sops="+QString::number(sops ? 1 : 0)+
+            "&rikey="+QByteArray(streamConfig->remoteInputAesKey, sizeof(streamConfig->remoteInputAesKey)).toHex()+
+            "&rikeyid="+QString::number(riKeyId)+
+            ((streamConfig->supportedVideoFormats & VIDEO_FORMAT_MASK_10BIT) ?
+                "&hdrMode=1&clientHdrCapVersion=0&clientHdrCapSupportedFlagsInUint32=0&clientHdrCapMetaDataId=NV_STATIC_METADATA_TYPE_1&clientHdrCapDisplayData=0x0x0x0x0x0x0x0x0x0x0" :
+                 "")+
+            "&localAudioPlayMode="+QString::number(localAudio ? 1 : 0)+
+            "&surroundAudioInfo="+QString::number(SURROUNDAUDIOINFO_FROM_AUDIO_CONFIGURATION(streamConfig->audioConfiguration))+
+            "&remoteControllersBitmap="+QString::number(gamepadMask)+
+            "&gcmap="+QString::number(gamepadMask)+
+            "&gcpersist="+QString::number(persistGameControllersOnDisconnect ? 1 : 0)+
+            (virtualDisplay ? QStringLiteral("&virtualDisplay=1") : QString())+
+            (jochonaTuple.isEmpty()
+                 ? QString()
+                 : QStringLiteral("&jochonaTuple=")
+                       + QString::fromLatin1(QUrl::toPercentEncoding(jochonaTuple)))+
+            LiGetLaunchUrlQueryParameters();
+
     QString response =
             openConnectionToString(m_BaseUrlHttps,
                                    verb,
-                                   "appid="+QString::number(appId)+
-                                   "&mode="+QString::number(streamConfig->width)+"x"+
-                                   QString::number(streamConfig->height)+"x"+
-                                   // Using an FPS value over 60 causes SOPS to default to 720p60,
-                                   // so force it to 0 to ensure the correct resolution is set. We
-                                   // used to use 60 here but that locked the frame rate to 60 FPS
-                                   // on GFE 3.20.3. We don't need this hack for Sunshine.
-                                   QString::number((streamConfig->fps > 60 && isGfe) ? 0 : streamConfig->fps)+
-                                   "&additionalStates=1&sops="+QString::number(sops ? 1 : 0)+
-                                   "&rikey="+QByteArray(streamConfig->remoteInputAesKey, sizeof(streamConfig->remoteInputAesKey)).toHex()+
-                                   "&rikeyid="+QString::number(riKeyId)+
-                                   ((streamConfig->supportedVideoFormats & VIDEO_FORMAT_MASK_10BIT) ?
-                                       "&hdrMode=1&clientHdrCapVersion=0&clientHdrCapSupportedFlagsInUint32=0&clientHdrCapMetaDataId=NV_STATIC_METADATA_TYPE_1&clientHdrCapDisplayData=0x0x0x0x0x0x0x0x0x0x0" :
-                                        "")+
-                                   "&localAudioPlayMode="+QString::number(localAudio ? 1 : 0)+
-                                   "&surroundAudioInfo="+QString::number(SURROUNDAUDIOINFO_FROM_AUDIO_CONFIGURATION(streamConfig->audioConfiguration))+
-                                   "&remoteControllersBitmap="+QString::number(gamepadMask)+
-                                   "&gcmap="+QString::number(gamepadMask)+
-                                   "&gcpersist="+QString::number(persistGameControllersOnDisconnect ? 1 : 0)+
-                                   LiGetLaunchUrlQueryParameters(),
+                                   arguments,
                                    LAUNCH_TIMEOUT_MS);
 
     qInfo() << "Launch response:" << response;
@@ -545,6 +555,21 @@ NvHTTP::openConnection(QUrl baseUrl,
     disconnect(sslErrorsConnection);
 
     // Handle error
+    const int httpStatus = reply->attribute(
+        QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (httpStatus == 409) {
+        const QByteArray responseBody = reply->readAll();
+        const QString reason = reply->attribute(
+            QNetworkRequest::HttpReasonPhraseAttribute).toString();
+        GfeHttpResponseException exception(
+            httpStatus,
+            reason.isEmpty() ? QStringLiteral("Host rejected launch")
+                             : reason,
+            responseBody);
+        delete reply;
+        throw exception;
+    }
+
     if (reply->error() != QNetworkReply::NoError)
     {
         if (logLevel >= NvLogLevel::NVLL_ERROR) {

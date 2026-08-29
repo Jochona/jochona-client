@@ -7,22 +7,65 @@ import StreamingPreferences 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import SystemProperties 1.0
+import AutoUpdateChecker 1.0
+import SupportBundleManager 1.0
+import EffectiveSettings 1.0
+
+import "style"
 
 Flickable {
     id: settingsPage
     objectName: qsTr("Settings")
 
     signal languageChanged()
+    property string profileDeleteId: ""
+    property string profileDeleteName: ""
+    property int contextSettingsRevision: 0
 
-    boundsBehavior: Flickable.OvershootBounds
+    Connections {
+        target: EffectiveSettings
+        function onResolvedChanged(context) {
+            settingsPage.contextSettingsRevision++
+        }
+    }
 
-    contentWidth: settingsColumn1.width > settingsColumn2.width ? settingsColumn1.width : settingsColumn2.width
-    contentHeight: settingsColumn1.height > settingsColumn2.height ? settingsColumn1.height : settingsColumn2.height
+    function shotShowAppearance() {
+        contentY = Math.max(0, settingsColumn1.y
+                            + appearanceSettings.y - Tokens.gutter)
+        return true
+    }
+    function shotShowDiagnostics() {
+        contentY = Math.max(0, contentHeight - height)
+        Qt.callLater(function() {
+            exportSupportButton.forceActiveFocus()
+        })
+        return true
+    }
+
+    function activeDisplayProfileId() {
+        contextSettingsRevision
+        if (SystemProperties.activeDisplayContextId.length === 0)
+            return ""
+        var value = EffectiveSettings.patch(
+            "display_context",
+            SystemProperties.activeDisplayContextId).profileId
+        return value === undefined || value === null ? "" : String(value)
+    }
+
+    boundsBehavior: Flickable.StopAtBounds
+
+    readonly property bool singleColumn: Tokens.handheld || width < Tokens.dp(1100)
+    contentWidth: width
+    contentHeight: singleColumn
+                   ? settingsColumn2.y + settingsColumn2.height + Tokens.gutter
+                   : settingsColumn1.y
+                     + Math.max(settingsColumn1.height, settingsColumn2.height)
+                     + Tokens.gutter
 
     ScrollBar.vertical: ScrollBar {
         anchors {
             left: parent.right
-            leftMargin: -10
+            leftMargin: -Tokens.dp(10)
         }
     }
 
@@ -39,7 +82,7 @@ Flickable {
 
     NumberAnimation on contentY {
         id: autoScrollAnimation
-        duration: 100
+        duration: Tokens.motion(100)
     }
 
     Window.onActiveFocusItemChanged: {
@@ -54,7 +97,7 @@ Flickable {
             var pos = item.mapToItem(contentItem, 0, 0)
 
             // Ensure some extra space is visible around the element we're scrolling to
-            var scrollMargin = height > 100 ? 50 : 0
+            var scrollMargin = height > Tokens.dp(100) ? Tokens.dp(50) : 0
 
             if (pos.y - scrollMargin < contentY) {
                 autoScrollAnimation.from = contentY
@@ -93,21 +136,33 @@ Flickable {
         StreamingPreferences.save()
     }
 
-    Column {
-        padding: 10
-        // Under the modern shell the floating title occupies the top zone
-        // (must follow `padding` — grouped assignment order decides last-write)
-        topPadding: StreamingPreferences.modernHomeScreen ? 112 : 10
-        id: settingsColumn1
-        width: settingsPage.width / 2
-        spacing: 15
+    Label {
+        id: settingsTitle
+        x: Tokens.gutter
+        y: 0
+        text: qsTr("Settings")
+        font.family: Tokens.familyDisplay
+        font.pixelSize: Tokens.tTitle
+        font.weight: Font.Medium
+        color: Tokens.textPrimary
+        Accessible.role: Accessible.Heading
+    }
 
-        GroupBox {
+    Column {
+        padding: Tokens.gutter
+        topPadding: 0
+        id: settingsColumn1
+        y: settingsTitle.implicitHeight + Tokens.gutter
+        width: settingsPage.singleColumn ? settingsPage.width
+                                         : settingsPage.width / 2
+        spacing: Tokens.gutter
+
+        SettingsSection {
             id: basicSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Basic Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("Basic Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -117,7 +172,7 @@ Flickable {
                     width: parent.width
                     id: resFPStitle
                     text: qsTr("Resolution and FPS")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                 }
 
@@ -125,7 +180,7 @@ Flickable {
                     width: parent.width
                     id: resFPSdesc
                     text: qsTr("Setting values too high for your PC or network connection may cause lag, stuttering, or errors.")
-                    font.pointSize: 9
+                    font.pointSize: Tokens.sizeMicro
                     wrapMode: Text.Wrap
                 }
 
@@ -673,7 +728,7 @@ Flickable {
                     width: parent.width
                     id: bitrateTitle
                     text: qsTr("Video bitrate:")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                 }
 
@@ -681,7 +736,7 @@ Flickable {
                     width: parent.width
                     id: bitrateDesc
                     text: qsTr("Lower the bitrate on slower connections. Raise the bitrate to increase image quality.")
-                    font.pointSize: 9
+                    font.pointSize: Tokens.sizeMicro
                     wrapMode: Text.Wrap
                 }
 
@@ -733,7 +788,7 @@ Flickable {
                     width: parent.width
                     id: windowModeTitle
                     text: qsTr("Display mode")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                     visible: SystemProperties.hasDesktopEnvironment
                 }
@@ -823,7 +878,7 @@ Flickable {
                         id: vsyncCheck
                         hoverEnabled: true
                         text: qsTr("V-Sync")
-                        font.pointSize:  12
+                        font.pointSize: Tokens.sizeBody
                         checked: StreamingPreferences.enableVsync
                         onCheckedChanged: {
                             StreamingPreferences.enableVsync = checked
@@ -839,7 +894,7 @@ Flickable {
                         id: framePacingCheck
                         hoverEnabled: true
                         text: qsTr("Frame pacing")
-                        font.pointSize:  12
+                        font.pointSize: Tokens.sizeBody
                         enabled: StreamingPreferences.enableVsync
                         checked: StreamingPreferences.enableVsync && StreamingPreferences.framePacing
                         onCheckedChanged: {
@@ -856,34 +911,34 @@ Flickable {
                     id: enableHdr
                     width: parent.width
                     text: qsTr("Enable HDR")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
 
                     enabled: SystemProperties.supportsHdr
-                    checked: enabled && StreamingPreferences.enableHdr
-                    onCheckedChanged: {
-                        StreamingPreferences.enableHdr = checked
-                    }
+                             && SystemProperties.activeDisplaySupportsHdr
+                    checked: StreamingPreferences.enableHdr
+                    onToggled: StreamingPreferences.enableHdr = checked
 
                     // Updating StreamingPreferences.videoCodecConfig is handled above
 
                     ToolTip.delay: 1000
                     ToolTip.timeout: 5000
                     ToolTip.visible: hovered
-                    ToolTip.text: enabled ?
-                                      qsTr("The stream will be HDR-capable, but some games may require an HDR monitor on your host PC to enable HDR mode.")
-                                    :
-                                      qsTr("HDR streaming is not supported on this PC.")
+                    ToolTip.text: !SystemProperties.supportsHdr
+                                      ? qsTr("The decoder does not support HDR.")
+                                      : !SystemProperties.activeDisplaySupportsHdr
+                                        ? qsTr("The active display does not report HDR output capability.")
+                                        : qsTr("HDR will be enabled for compatible rigs and games.")
                 }
             }
         }
 
-        GroupBox {
+        SettingsSection {
 
             id: audioSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Audio Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("Audio Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -893,7 +948,7 @@ Flickable {
                     width: parent.width
                     id: resAudioTitle
                     text: qsTr("Audio configuration")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                 }
 
@@ -935,12 +990,88 @@ Flickable {
                     }
                 }
 
+                Label {
+                    width: parent.width
+                    text: qsTr("Audio output")
+                    font.pointSize: Tokens.sizeBody
+                }
+
+                AutoResizingComboBox {
+                    id: audioOutputCombo
+                    width: parent.width
+                    textRole: ""
+                    model: [qsTr("System default")].concat(
+                               SystemProperties.audioOutputDevices)
+
+                    function selectSavedOutput() {
+                        var saved = StreamingPreferences.audioDevice
+                        currentIndex = saved.length === 0
+                                       ? 0
+                                       : Math.max(0,
+                                           SystemProperties.audioOutputDevices
+                                               .indexOf(saved) + 1)
+                    }
+                    Component.onCompleted: {
+                        SystemProperties.refreshAudioOutputs()
+                        selectSavedOutput()
+                    }
+                    onActivated: {
+                        StreamingPreferences.audioDevice =
+                            currentIndex === 0 ? ""
+                                               : SystemProperties
+                                                   .audioOutputDevices[
+                                                       currentIndex - 1]
+                    }
+                    Connections {
+                        target: SystemProperties
+                        function onAudioOutputDevicesChanged() {
+                            audioOutputCombo.selectSavedOutput()
+                        }
+                    }
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: Tokens.gutterTight
+
+                    Label {
+                        width: parent.width * 0.35
+                        text: qsTr("Session volume")
+                        font.pointSize: Tokens.sizeBody
+                    }
+                    Slider {
+                        id: sessionVolume
+                        width: parent.width * 0.45
+                        from: -60
+                        to: 0
+                        stepSize: 1
+                        value: StreamingPreferences.sessionVolumeDb
+                        onMoved: StreamingPreferences.sessionVolumeDb = value
+                        Accessible.name: qsTr("Session volume")
+                    }
+                    Label {
+                        width: parent.width * 0.15
+                        text: sessionVolume.value <= -60
+                              ? qsTr("Muted")
+                              : qsTr("%1 dB").arg(
+                                    Math.round(sessionVolume.value))
+                        font.pointSize: Tokens.sizeMicro
+                    }
+                }
+
+                NavigableButton {
+                    width: parent.width
+                    enabled: false
+                    text: qsTr("Microphone forwarding — Planned")
+                    description: qsTr("Not available in this beta")
+                }
+
 
                 CheckBox {
                     id: audioPcCheck
                     width: parent.width
                     text: qsTr("Mute host PC speakers while streaming")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: !StreamingPreferences.playAudioOnHost
                     onCheckedChanged: {
                         StreamingPreferences.playAudioOnHost = !checked
@@ -956,7 +1087,7 @@ Flickable {
                     id: muteOnFocusLossCheck
                     width: parent.width
                     text: qsTr("Mute audio stream when Jochona is not the active window")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     visible: SystemProperties.hasDesktopEnvironment
                     checked: StreamingPreferences.muteOnFocusLoss
                     onCheckedChanged: {
@@ -971,12 +1102,12 @@ Flickable {
             }
         }
 
-        GroupBox {
+        SettingsSection {
             id: hostSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Host Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("Host Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -986,7 +1117,7 @@ Flickable {
                     id: optimizeGameSettingsCheck
                     width: parent.width
                     text: qsTr("Optimize game settings for streaming")
-                    font.pointSize:  12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.gameOptimizations
                     onCheckedChanged: {
                         StreamingPreferences.gameOptimizations = checked
@@ -997,7 +1128,7 @@ Flickable {
                     id: quitAppAfter
                     width: parent.width
                     text: qsTr("Quit app on host PC after ending stream")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.quitAppAfter
                     onCheckedChanged: {
                         StreamingPreferences.quitAppAfter = checked
@@ -1011,12 +1142,12 @@ Flickable {
             }
         }
 
-        GroupBox {
+        SettingsSection {
             id: uiSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("UI Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("UI Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -1026,7 +1157,7 @@ Flickable {
                     width: parent.width
                     id: languageTitle
                     text: qsTr("Language")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                 }
 
@@ -1204,7 +1335,7 @@ Flickable {
                     width: parent.width
                     id: uiDisplayModeTitle
                     text: qsTr("GUI display mode")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                     visible: SystemProperties.hasDesktopEnvironment
                 }
@@ -1258,7 +1389,7 @@ Flickable {
                     id: connectionWarningsCheck
                     width: parent.width
                     text: qsTr("Show connection quality warnings")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.connectionWarnings
                     onCheckedChanged: {
                         StreamingPreferences.connectionWarnings = checked
@@ -1269,7 +1400,7 @@ Flickable {
                     id: configurationWarningsCheck
                     width: parent.width
                     text: qsTr("Show configuration warnings")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.configurationWarnings
                     onCheckedChanged: {
                         StreamingPreferences.configurationWarnings = checked
@@ -1281,7 +1412,7 @@ Flickable {
                     id: discordPresenceCheck
                     width: parent.width
                     text: qsTr("Discord Rich Presence integration")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.richPresence
                     onCheckedChanged: {
                         StreamingPreferences.richPresence = checked
@@ -1297,7 +1428,7 @@ Flickable {
                     id: keepAwakeCheck
                     width: parent.width
                     text: qsTr("Keep the display awake while streaming")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.keepAwake
                     onCheckedChanged: {
                         StreamingPreferences.keepAwake = checked
@@ -1310,23 +1441,271 @@ Flickable {
                 }
             }
         }
+
+
+        SettingsSection {
+            width: parent.width - parent.leftPadding - parent.rightPadding
+            padding: Tokens.gutter
+            title: qsTr("Streaming Profiles")
+
+            Column {
+                anchors.fill: parent
+                spacing: Tokens.gutterTight
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Save the current streaming settings as a "
+                               + "reusable named Profile. A display can pin "
+                               + "one Profile without changing the Settings Baseline.")
+                    color: Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+                TextField {
+                    id: newProfileName
+                    width: parent.width
+                    placeholderText: qsTr("Profile name")
+                    Accessible.name: qsTr("Streaming Profile name")
+                }
+                NavigableButton {
+                    width: parent.width
+                    text: qsTr("Save current settings as Profile")
+                    primary: true
+                    enabled: newProfileName.text.trim().length > 0
+                    onClicked: {
+                        EffectiveSettings.saveStreamingProfile(
+                            newProfileName.text.trim(), {
+                                width: StreamingPreferences.width,
+                                height: StreamingPreferences.height,
+                                fps: StreamingPreferences.fps,
+                                bitrate: StreamingPreferences.bitrateKbps,
+                                videocfg: StreamingPreferences.videoCodecConfig,
+                                hdr: StreamingPreferences.enableHdr,
+                                audiocfg: StreamingPreferences.audioConfig,
+                                audiodevice: StreamingPreferences.audioDevice,
+                                sessionvolumedb:
+                                    StreamingPreferences.sessionVolumeDb
+                            })
+                        newProfileName.text = ""
+                    }
+                }
+                Label {
+                    width: parent.width
+                    visible: EffectiveSettings.streamingProfiles.length === 0
+                    text: qsTr("No saved Streaming Profiles.")
+                    color: Tokens.textSecondary
+                }
+                Repeater {
+                    model: EffectiveSettings.streamingProfiles
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: parent.width
+                        height: profileRow.implicitHeight + Tokens.gutterTight * 2
+                        radius: Tokens.radiusControl
+                        color: Tokens.night
+                        border.color: Tokens.border
+                        border.width: Tokens.routeStroke
+                        readonly property bool activeForDisplay: {
+                            settingsPage.contextSettingsRevision
+                            if (SystemProperties.activeDisplayContextId.length === 0)
+                                return false
+                            return settingsPage.activeDisplayProfileId()
+                                   === modelData.id
+                        }
+
+                        Column {
+                            id: profileRow
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: Tokens.gutterTight
+                            spacing: Tokens.dp(4)
+                            Label {
+                                width: parent.width
+                                text: modelData.name
+                                font.pointSize: Tokens.sizeBody
+                                font.bold: true
+                                color: Tokens.textPrimary
+                            }
+                            Label {
+                                width: parent.width
+                                text: qsTr("%1×%2 at %3 fps · %4 Mbps")
+                                      .arg(modelData.values.width)
+                                      .arg(modelData.values.height)
+                                      .arg(modelData.values.fps)
+                                      .arg(Math.round(
+                                          modelData.values.bitrate / 1000))
+                                color: Tokens.textSecondary
+                                wrapMode: Text.WordWrap
+                            }
+                            Flow {
+                                width: parent.width
+                                spacing: Tokens.gutterTight
+                                NavigableButton {
+                                    text: activeForDisplay
+                                          ? qsTr("Used on this display")
+                                          : qsTr("Use on this display")
+                                    enabled:
+                                        SystemProperties.activeDisplayContextId
+                                            .length > 0
+                                        && !activeForDisplay
+                                    onClicked:
+                                        EffectiveSettings
+                                            .setDisplayStreamingProfile(
+                                                SystemProperties
+                                                    .activeDisplayContextId,
+                                                modelData.id)
+                                }
+                                NavigableButton {
+                                    text: qsTr("Remove")
+                                    destructive: true
+                                    onClicked: {
+                                        settingsPage.profileDeleteId =
+                                            modelData.id
+                                        settingsPage.profileDeleteName =
+                                            modelData.name
+                                        profileDeleteDialog.open()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                NavigableButton {
+                    width: parent.width
+                    visible:
+                        settingsPage.activeDisplayProfileId().length > 0
+                    text: qsTr("Use Settings Baseline on this display")
+                    onClicked:
+                        EffectiveSettings.setDisplayStreamingProfile(
+                            SystemProperties.activeDisplayContextId, "")
+                }
+            }
+        }
+        SettingsSection {
+            id: appearanceSettings
+            width: parent.width - parent.leftPadding - parent.rightPadding
+            padding: Tokens.gutter
+            title: qsTr("Appearance")
+
+            Column {
+                anchors.fill: parent
+                spacing: Tokens.gutterTight
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Theme")
+                    font.pointSize: Tokens.sizeBody
+                }
+                AutoResizingComboBox {
+                    id: themeCombo
+                    width: parent.width
+                    textRole: "name"
+                    model: ListModel { id: themeChoices }
+
+                    function rebuild() {
+                        themeChoices.clear()
+                        var ids = themeManager.availableThemeIds
+                        for (var i = 0; i < ids.length; ++i)
+                            themeChoices.append({
+                                "id": ids[i],
+                                "name": themeManager.themeName(ids[i])
+                            })
+                        for (var j = 0; j < themeChoices.count; ++j) {
+                            if (themeChoices.get(j).id === themeManager.theme) {
+                                currentIndex = j
+                                return
+                            }
+                        }
+                        currentIndex = 0
+                    }
+                    Component.onCompleted: rebuild()
+                    onActivated: themeManager.theme =
+                                     themeChoices.get(currentIndex).id
+                    Connections {
+                        target: themeManager
+                        function onThemesChanged() { themeCombo.rebuild() }
+                        function onThemeChanged() { themeCombo.rebuild() }
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Accent color")
+                    font.pointSize: Tokens.sizeBody
+                }
+                TextField {
+                    width: parent.width
+                    text: themeManager.accent
+                    placeholderText: qsTr("Theme default, or #RRGGBB")
+                    onEditingFinished: themeManager.accent = text
+                    Accessible.name: qsTr("Accent color")
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: Tokens.gutterTight
+                    Label {
+                        width: parent.width * 0.32
+                        text: qsTr("Text size")
+                        font.pointSize: Tokens.sizeBody
+                    }
+                    Slider {
+                        width: parent.width * 0.5
+                        from: 0.8
+                        to: 2.0
+                        stepSize: 0.1
+                        value: themeManager.fontScale
+                        onMoved: themeManager.fontScale = value
+                        Accessible.name: qsTr("Text size")
+                    }
+                    Label {
+                        text: qsTr("%1%").arg(
+                                  Math.round(themeManager.fontScale * 100))
+                        font.pointSize: Tokens.sizeMicro
+                    }
+                }
+
+                CheckBox {
+                    width: parent.width
+                    text: qsTr("Compact density")
+                    checked: themeManager.compactDensity
+                    onToggled: themeManager.compactDensity = checked
+                }
+                CheckBox {
+                    width: parent.width
+                    text: qsTr("Reduce motion")
+                    checked: themeManager.reducedMotion
+                    onToggled: themeManager.reducedMotion = checked
+                }
+                NavigableButton {
+                    width: parent.width
+                    text: qsTr("Reload installed themes")
+                    description: themeManager.themesPath()
+                    onClicked: themeManager.reloadThemes()
+                }
+            }
+        }
     }
 
     Column {
-        padding: 10
-        rightPadding: 20
-        topPadding: StreamingPreferences.modernHomeScreen ? 112 : 10
-        anchors.left: settingsColumn1.right
+        topPadding: 0
+        rightPadding: Tokens.gutter
+        leftPadding: settingsPage.singleColumn ? Tokens.gutter : 0
+        anchors.left: settingsPage.singleColumn ? undefined : settingsColumn1.right
         id: settingsColumn2
-        width: settingsPage.width / 2
-        spacing: 15
+        y: settingsPage.singleColumn
+           ? settingsColumn1.y + settingsColumn1.height + Tokens.gutter
+           : settingsColumn1.y
+        width: settingsPage.singleColumn ? settingsPage.width
+                                         : settingsPage.width / 2
+        spacing: Tokens.gutter
 
-        GroupBox {
+        SettingsSection {
             id: inputSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Input Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("Input Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -1337,7 +1716,7 @@ Flickable {
                     hoverEnabled: true
                     width: parent.width
                     text: qsTr("Optimize mouse for remote desktop instead of games")
-                    font.pointSize:  12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.absoluteMouseMode
                     onCheckedChanged: {
                         StreamingPreferences.absoluteMouseMode = checked
@@ -1359,7 +1738,7 @@ Flickable {
                         id: captureSysKeysCheck
                         hoverEnabled: true
                         text: qsTr("Capture system keyboard shortcuts")
-                        font.pointSize: 12
+                        font.pointSize: Tokens.sizeBody
                         enabled: SystemProperties.hasDesktopEnvironment
                         checked: StreamingPreferences.captureSysKeysMode !== StreamingPreferences.CSK_OFF || !SystemProperties.hasDesktopEnvironment
 
@@ -1431,7 +1810,7 @@ Flickable {
                     hoverEnabled: true
                     width: parent.width
                     text: qsTr("Use touchscreen as a virtual trackpad")
-                    font.pointSize:  12
+                    font.pointSize: Tokens.sizeBody
                     checked: !StreamingPreferences.absoluteTouchMode
                     onCheckedChanged: {
                         StreamingPreferences.absoluteTouchMode = !checked
@@ -1448,7 +1827,7 @@ Flickable {
                     hoverEnabled: true
                     width: parent.width
                     text: qsTr("Swap left and right mouse buttons")
-                    font.pointSize:  12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.swapMouseButtons
                     onCheckedChanged: {
                         StreamingPreferences.swapMouseButtons = checked
@@ -1460,7 +1839,7 @@ Flickable {
                     hoverEnabled: true
                     width: parent.width
                     text: qsTr("Reverse mouse scrolling direction")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.reverseScrollDirection
                     onCheckedChanged: {
                         StreamingPreferences.reverseScrollDirection = checked
@@ -1469,12 +1848,12 @@ Flickable {
             }
         }
 
-        GroupBox {
+        SettingsSection {
             id: gamepadSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Gamepad Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("Gamepad Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -1484,7 +1863,7 @@ Flickable {
                     id: swapFaceButtonsCheck
                     width: parent.width
                     text: qsTr("Swap A/B and X/Y gamepad buttons")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.swapFaceButtons
                     onCheckedChanged: {
                         StreamingPreferences.swapFaceButtons = checked
@@ -1500,7 +1879,7 @@ Flickable {
                     id: singleControllerCheck
                     width: parent.width
                     text: qsTr("Force gamepad #1 always connected")
-                    font.pointSize:  12
+                    font.pointSize: Tokens.sizeBody
                     checked: !StreamingPreferences.multiController
                     onCheckedChanged: {
                         StreamingPreferences.multiController = !checked
@@ -1518,7 +1897,7 @@ Flickable {
                     hoverEnabled: true
                     width: parent.width
                     text: qsTr("Enable mouse control with gamepads by holding the 'Start' button")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.gamepadMouse
                     onCheckedChanged: {
                         StreamingPreferences.gamepadMouse = checked
@@ -1529,7 +1908,7 @@ Flickable {
                     id: backgroundGamepadCheck
                     width: parent.width
                     text: qsTr("Process gamepad input when Jochona is in the background")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     visible: SystemProperties.hasDesktopEnvironment
                     checked: StreamingPreferences.backgroundGamepad
                     onCheckedChanged: {
@@ -1544,12 +1923,12 @@ Flickable {
             }
         }
 
-        GroupBox {
+        SettingsSection {
             id: advancedSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
-            padding: 12
-            title: "<font color=\"skyblue\">" + qsTr("Advanced Settings") + "</font>"
-            font.pointSize: 12
+            padding: Tokens.gutter
+            title: qsTr("Advanced Settings")
+            font.pointSize: Tokens.sizeBody
 
             Column {
                 anchors.fill: parent
@@ -1559,7 +1938,7 @@ Flickable {
                     width: parent.width
                     id: resVDSTitle
                     text: qsTr("Video decoder")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                 }
 
@@ -1607,7 +1986,7 @@ Flickable {
                     width: parent.width
                     id: resVCCTitle
                     text: qsTr("Video codec")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                 }
 
@@ -1664,7 +2043,7 @@ Flickable {
                     width: parent.width
                     id: rendererTitle
                     text: qsTr("Renderer")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     wrapMode: Text.Wrap
                     visible: SystemProperties.isDarwin
                 }
@@ -1720,7 +2099,7 @@ Flickable {
                     id: enableYUV444
                     width: parent.width
                     text: qsTr("Enable YUV 4:4:4")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
 
                     checked: StreamingPreferences.enableYUV444
                     onCheckedChanged: {
@@ -1750,7 +2129,7 @@ Flickable {
                     id: unlockBitrate
                     width: parent.width
                     text: qsTr("Unlock bitrate limit (Experimental)")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
 
                     checked: StreamingPreferences.unlockBitrate
                     onCheckedChanged: {
@@ -1769,7 +2148,7 @@ Flickable {
                     id: enableMdns
                     width: parent.width
                     text: qsTr("Automatically find PCs on the local network (Recommended)")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.enableMdns
                     onCheckedChanged: {
                         // This is called on init, so only do the work if we've
@@ -1786,25 +2165,10 @@ Flickable {
                     }
                 }
                 CheckBox {
-                    id: modernHomeScreen
-                    width: parent.width
-                    // Jochona: M1 feature flag — swaps the home screen for the
-                    // modern layout on next launch.
-                    text: qsTr("Use the modern home screen (requires restart)")
-                    font.pointSize: 12
-                    checked: StreamingPreferences.modernHomeScreen
-                    onCheckedChanged: {
-                        if (StreamingPreferences.modernHomeScreen != checked) {
-                            StreamingPreferences.modernHomeScreen = checked
-                        }
-                    }
-                }
-
-                CheckBox {
                     id: detectNetworkBlocking
                     width: parent.width
                     text: qsTr("Automatically detect blocked connections (Recommended)")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.detectNetworkBlocking
                     onCheckedChanged: {
                         StreamingPreferences.detectNetworkBlocking = checked
@@ -1815,7 +2179,7 @@ Flickable {
                     id: showPerformanceOverlay
                     width: parent.width
                     text: qsTr("Show performance stats while streaming")
-                    font.pointSize: 12
+                    font.pointSize: Tokens.sizeBody
                     checked: StreamingPreferences.showPerformanceOverlay
                     onCheckedChanged: {
                         StreamingPreferences.showPerformanceOverlay = checked
@@ -1830,5 +2194,386 @@ Flickable {
                 }
             }
         }
+
+        SettingsSection {
+            width: parent.width - parent.leftPadding - parent.rightPadding
+            padding: Tokens.gutter
+            title: qsTr("Updates")
+
+            Column {
+                anchors.fill: parent
+                spacing: Tokens.gutterTight
+
+                CheckBox {
+                    width: parent.width
+                    text: qsTr("Check for Jochona updates")
+                    checked: AutoUpdateChecker.checkEnabled
+                    onToggled: AutoUpdateChecker.checkEnabled = checked
+                }
+                Label {
+                    width: parent.width
+                    text: qsTr("Release channel")
+                    font.pointSize: Tokens.sizeBody
+                }
+                AutoResizingComboBox {
+                    id: updateChannel
+                    width: parent.width
+                    textRole: "name"
+                    model: ListModel {
+                        ListElement { name: qsTr("Stable"); idValue: "stable" }
+                        ListElement { name: qsTr("Preview"); idValue: "preview" }
+                    }
+                    Component.onCompleted:
+                        currentIndex = AutoUpdateChecker.channel === "preview"
+                                       ? 1 : 0
+                    onActivated:
+                        AutoUpdateChecker.channel =
+                            model.get(currentIndex).idValue
+                }
+                Label {
+                    width: parent.width
+                    text: AutoUpdateChecker.status === "checking"
+                          ? qsTr("Checking…")
+                          : AutoUpdateChecker.status === "available"
+                            ? qsTr("%1 is available.")
+                                .arg(AutoUpdateChecker.availableVersion)
+                          : AutoUpdateChecker.status === "upToDate"
+                            ? qsTr("Jochona is up to date.")
+                          : AutoUpdateChecker.status === "failed"
+                            ? qsTr("The update check could not be completed.")
+                          : qsTr("Not checked yet.")
+                    color: AutoUpdateChecker.status === "failed"
+                           ? Tokens.statusPairing : Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+                Row {
+                    spacing: Tokens.gutterTight
+                    NavigableButton {
+                        text: qsTr("Check now")
+                        enabled: AutoUpdateChecker.status !== "checking"
+                        onClicked: AutoUpdateChecker.checkNow()
+                    }
+                    NavigableButton {
+                        visible: AutoUpdateChecker.status === "available"
+                        text: qsTr("View release")
+                        onClicked: Qt.openUrlExternally(
+                                       AutoUpdateChecker.availableUrl)
+                    }
+                }
+                Label {
+                    width: parent.width
+                    text: qsTr("Stable is the default. Preview releases are opt-in.")
+                    color: Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+
+        SettingsSection {
+            id: beaconSettings
+            width: parent.width - parent.leftPadding - parent.rightPadding
+            padding: Tokens.gutter
+            title: qsTr("Beacon Wake")
+
+            Column {
+                anchors.fill: parent
+                spacing: Tokens.gutterTight
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Pair a Beacon to wake Hosts from another device. "
+                               + "The Client pins each Beacon identity and never "
+                               + "falls back to Direct Wake without asking.")
+                    color: Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+
+                Label {
+                    width: parent.width
+                    visible: beaconManager.discoveredBeacons.length > 0
+                    text: qsTr("Discovered on this LAN")
+                    font.weight: Font.Medium
+                }
+
+                Repeater {
+                    model: beaconManager.discoveredBeacons
+                    delegate: RowLayout {
+                        property var beacon: modelData
+                        width: beaconSettings.width - 2 * beaconSettings.padding
+                        spacing: Tokens.gutterTight
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: beacon.name + "\n" + beacon.url
+                            color: Tokens.textSecondary
+                            elide: Text.ElideRight
+                        }
+                        NavigableButton {
+                            text: qsTr("Use")
+                            onClicked: {
+                                beaconUrl.text = beacon.url
+                                beaconName.text = beacon.name
+                                beaconCode.forceActiveFocus()
+                            }
+                        }
+                    }
+                }
+
+                TextField {
+                    id: beaconUrl
+                    width: parent.width
+                    placeholderText: qsTr("Beacon URL, for example https://beacon.local:47100")
+                    selectByMouse: true
+                    Accessible.name: qsTr("Beacon URL")
+                }
+                TextField {
+                    id: beaconName
+                    width: parent.width
+                    placeholderText: qsTr("Display name (optional)")
+                    selectByMouse: true
+                    Accessible.name: qsTr("Beacon display name")
+                }
+                TextField {
+                    id: beaconCode
+                    width: parent.width
+                    placeholderText: qsTr("One-time pairing code")
+                    selectByMouse: true
+                    Accessible.name: qsTr("Beacon pairing code")
+                }
+                NavigableButton {
+                    text: beaconManager.pairing
+                          ? qsTr("Pairing…") : qsTr("Pair Beacon")
+                    enabled: !beaconManager.pairing
+                             && beaconUrl.text.trim().length > 0
+                             && beaconCode.text.trim().length > 0
+                    onClicked: {
+                        beaconStatus.text = ""
+                        beaconManager.pairBeacon(
+                            beaconUrl.text, beaconCode.text, beaconName.text)
+                    }
+                }
+                Label {
+                    id: beaconStatus
+                    width: parent.width
+                    visible: text.length > 0
+                    color: Tokens.statusPairing
+                    wrapMode: Text.WordWrap
+                }
+
+                Label {
+                    width: parent.width
+                    visible: beaconManager.pairedBeacons.length > 0
+                    text: qsTr("Paired Beacons")
+                    font.weight: Font.Medium
+                }
+
+                Repeater {
+                    model: beaconManager.pairedBeacons
+                    delegate: Rectangle {
+                        property var beacon: modelData
+                        width: beaconSettings.width - 2 * beaconSettings.padding
+                        height: beaconDetails.implicitHeight + 2 * Tokens.gutterTight
+                        radius: Tokens.radiusControl
+                        color: Tokens.surface
+
+                        Column {
+                            id: beaconDetails
+                            x: Tokens.gutterTight
+                            y: Tokens.gutterTight
+                            width: parent.width - 2 * Tokens.gutterTight
+                            spacing: Tokens.dp(4)
+
+                            Label {
+                                width: parent.width
+                                text: beacon.name
+                                font.weight: Font.Medium
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                width: parent.width
+                                text: beacon.url
+                                color: Tokens.textSecondary
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                width: parent.width
+                                text: beacon.identityState === "trusted"
+                                      ? qsTr("Identity pinned: %1")
+                                            .arg(beacon.spkiFingerprint)
+                                      : qsTr("Identity changed — remove and pair again")
+                                color: beacon.identityState === "trusted"
+                                       ? Tokens.textSecondary
+                                       : Tokens.statusPairing
+                                wrapMode: Text.WrapAnywhere
+                                font.pointSize: Tokens.sizeMicro
+                            }
+                            Row {
+                                spacing: Tokens.gutterTight
+                                NavigableButton {
+                                    text: qsTr("Refresh Hosts")
+                                    enabled: beacon.identityState === "trusted"
+                                    onClicked:
+                                        beaconManager.refreshHosts(beacon.id)
+                                }
+                                NavigableButton {
+                                    text: qsTr("Remove")
+                                    onClicked:
+                                        beaconManager.removeBeacon(beacon.id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Connections {
+                target: beaconManager
+                function onPairingFinished(success, error, beaconId) {
+                    beaconStatus.text = success
+                        ? qsTr("Beacon paired. Its permanent identity is pinned.")
+                        : error
+                    if (success)
+                        beaconCode.text = ""
+                }
+                function onHostRefreshFailed(beaconId, error) {
+                    beaconStatus.text = error
+                }
+            }
+        }
+
+        SettingsSection {
+            id: diagnosticsSettings
+            width: parent.width - parent.leftPadding - parent.rightPadding
+            padding: Tokens.gutter
+            title: qsTr("Diagnostics & privacy")
+
+            Column {
+                anchors.fill: parent
+                spacing: Tokens.gutterTight
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Telemetry is disabled in this beta. "
+                               + "Nothing is uploaded automatically.")
+                    color: Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+                Label {
+                    width: parent.width
+                    text: qsTr("Local History retention")
+                    font.pointSize: Tokens.sizeBody
+                }
+                AutoResizingComboBox {
+                    id: historyRetention
+                    width: parent.width
+                    textRole: "name"
+                    model: ListModel {
+                        id: retentionChoices
+                        ListElement { name: qsTr("Disabled"); days: 0 }
+                        ListElement { name: qsTr("30 days"); days: 30 }
+                        ListElement { name: qsTr("90 days"); days: 90 }
+                        ListElement { name: qsTr("180 days"); days: 180 }
+                        ListElement { name: qsTr("1 year"); days: 365 }
+                    }
+                    Component.onCompleted: {
+                        currentIndex = 2
+                        for (var i = 0; i < retentionChoices.count; ++i) {
+                            if (retentionChoices.get(i).days
+                                    === SupportBundleManager
+                                        .historyRetentionDays) {
+                                currentIndex = i
+                                break
+                            }
+                        }
+                    }
+                    onActivated:
+                        SupportBundleManager.historyRetentionDays =
+                            retentionChoices.get(currentIndex).days
+                }
+                CheckBox {
+                    width: parent.width
+                    text: qsTr("Include Host addresses in this export")
+                    checked: SupportBundleManager.includeAddresses
+                    onToggled:
+                        SupportBundleManager.includeAddresses = checked
+                }
+                Label {
+                    width: parent.width
+                    text: qsTr("Support Bundle preview")
+                    font.pointSize: Tokens.sizeBody
+                }
+                TextArea {
+                    width: parent.width
+                    height: Tokens.dp(280)
+                    readOnly: true
+                    text: SupportBundleManager.previewText
+                    font.family: Tokens.familyBody
+                    font.pixelSize: Tokens.tMicro
+                    color: Tokens.textPrimary
+                    selectionColor: Tokens.accentFocus
+                    wrapMode: TextEdit.NoWrap
+                    background: Rectangle {
+                        color: Tokens.night
+                        border.color: Tokens.border
+                        radius: Tokens.radiusControl
+                    }
+                    Accessible.name: qsTr("Support Bundle preview")
+                }
+                Flow {
+                    width: parent.width
+                    spacing: Tokens.gutterTight
+                    NavigableButton {
+                        text: qsTr("Refresh preview")
+                        onClicked: SupportBundleManager.refreshPreview()
+                    }
+                    NavigableButton {
+                        id: exportSupportButton
+                        text: qsTr("Export Support Bundle")
+                        primary: true
+                        onClicked: SupportBundleManager.exportDefaultBundle()
+                    }
+                    NavigableButton {
+                        text: qsTr("Clear Local History")
+                        destructive: true
+                        onClicked: clearHistoryDialog.open()
+                    }
+                }
+                Label {
+                    width: parent.width
+                    visible: SupportBundleManager.exportStatus.length > 0
+                    text: SupportBundleManager.exportStatus
+                    color: Tokens.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+    }
+
+    NavigableMessageDialog {
+        id: profileDeleteDialog
+        title: qsTr("Remove Streaming Profile?")
+        text: qsTr("Remove “%1”? Displays using it will return to their "
+                   + "Settings Baseline.").arg(
+                       settingsPage.profileDeleteName)
+        standardButtons: Dialog.Yes | Dialog.No
+        yesText: qsTr("Remove Profile")
+        noText: qsTr("Keep Profile")
+        onAccepted: {
+            EffectiveSettings.deleteStreamingProfile(
+                settingsPage.profileDeleteId)
+            settingsPage.profileDeleteId = ""
+            settingsPage.profileDeleteName = ""
+        }
+    }
+
+    NavigableMessageDialog {
+        id: clearHistoryDialog
+        title: qsTr("Clear Local History?")
+        text: qsTr("This removes local launch and Session history. "
+                   + "Paired rigs, settings, and saved profiles are kept.")
+        standardButtons: Dialog.Yes | Dialog.No
+        noText: qsTr("Keep history")
+        yesText: qsTr("Clear history")
+        onAccepted: SupportBundleManager.clearHistory()
     }
 }

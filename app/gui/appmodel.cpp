@@ -1,4 +1,6 @@
 #include "appmodel.h"
+#include "settings/effectivesettingsresolver.h"
+#include "library/librarymanager.h"
 
 AppModel::AppModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -39,12 +41,42 @@ QString AppModel::getRunningAppName()
     return nullptr;
 }
 
+int AppModel::indexForAppId(int appId) const
+{
+    for (int i = 0; i < m_VisibleApps.count(); i++) {
+        if (m_VisibleApps[i].id == appId) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+QString AppModel::nameForAppId(int appId) const
+{
+    for (const NvApp& app : m_VisibleApps) {
+        if (app.id == appId) {
+            return app.name;
+        }
+    }
+    return QString();
+}
+
 Session* AppModel::createSessionForApp(int appIndex)
 {
     Q_ASSERT(appIndex < m_VisibleApps.count());
     NvApp app = m_VisibleApps.at(appIndex);
-
-    return new Session(m_Computer, app);
+    const QVariantMap context{
+        {QStringLiteral("hostUuid"), m_Computer->uuid},
+        {QStringLiteral("appId"), app.id},
+        {QStringLiteral("libraryEntryId"),
+         LibraryManager::get()->libraryEntryFor(
+             m_Computer->uuid, app.id)},
+    };
+    StreamingPreferences* resolved =
+            EffectiveSettingsResolver::get()->createPreferences(context);
+    Session* session = new Session(m_Computer, app, resolved);
+    delete resolved;
+    return session;
 }
 
 int AppModel::getDirectLaunchAppIndex()

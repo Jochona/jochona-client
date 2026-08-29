@@ -1,4 +1,5 @@
 #include "streaming/session.h"
+#include "backend/controllerprofilestore.h"
 
 #include <Limelight.h>
 #include "SDL_compat.h"
@@ -33,6 +34,146 @@ const int SdlInputHandler::k_ButtonMap[] = {
     PADDLE1_FLAG, PADDLE2_FLAG, PADDLE3_FLAG, PADDLE4_FLAG,
     TOUCHPAD_FLAG,
 };
+
+namespace {
+const char* const kButtonNames[] = {
+    "a", "b", "x", "y",
+    "back", "guide", "menu",
+    "stick_left", "stick_right",
+    "lb", "rb",
+    "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+    "share",
+    "paddle1", "paddle2", "paddle3", "paddle4",
+    "touchpad",
+};
+
+void applyRadialCurve(short& x, short& y, double deadzone, double curve)
+{
+    const double nx = x / 32767.0;
+    const double ny = y / 32767.0;
+    const double magnitude = qMin(1.0, qSqrt(nx * nx + ny * ny));
+    deadzone = qBound(0.0, deadzone, 0.95);
+    curve = qBound(0.1, curve, 4.0);
+    if (magnitude <= deadzone || magnitude == 0.0) {
+        x = 0;
+        y = 0;
+        return;
+    }
+    const double output =
+        qPow((magnitude - deadzone) / (1.0 - deadzone), curve);
+    const double scale = output / magnitude;
+    x = static_cast<short>(qBound(-32767,
+                                 qRound(nx * scale * 32767.0),
+                                 32767));
+    y = static_cast<short>(qBound(-32767,
+                                 qRound(ny * scale * 32767.0),
+                                 32767));
+}
+
+unsigned char applyTriggerCurve(unsigned char value,
+                                double deadzone,
+                                double curve)
+{
+    deadzone = qBound(0.0, deadzone, 0.95);
+    curve = qBound(0.1, curve, 4.0);
+    const double input = value / 255.0;
+    if (input <= deadzone) return 0;
+    return static_cast<unsigned char>(
+        qBound(0, qRound(qPow((input - deadzone) / (1.0 - deadzone),
+                             curve) * 255.0), 255));
+}
+}
+
+ControllerMapTransform
+SdlInputHandler::compileControllerMap(const QVariantMap& map) const
+{
+    ControllerMapTransform result;
+    const QVariantMap calibration =
+        map.value(QStringLiteral("calibration")).toMap();
+    result.deadzoneLeftStick =
+        calibration.value(QStringLiteral("deadzoneLeftStick"),
+                          result.deadzoneLeftStick).toDouble();
+    result.deadzoneRightStick =
+        calibration.value(QStringLiteral("deadzoneRightStick"),
+                          result.deadzoneRightStick).toDouble();
+    result.deadzoneLeftTrigger =
+        calibration.value(QStringLiteral("deadzoneLeftTrigger"),
+                          result.deadzoneLeftTrigger).toDouble();
+    result.deadzoneRightTrigger =
+        calibration.value(QStringLiteral("deadzoneRightTrigger"),
+                          result.deadzoneRightTrigger).toDouble();
+    result.curveLeftStick =
+        calibration.value(QStringLiteral("curveLeftStick"),
+                          result.curveLeftStick).toDouble();
+    result.curveRightStick =
+        calibration.value(QStringLiteral("curveRightStick"),
+                          result.curveRightStick).toDouble();
+    result.curveLeftTrigger =
+        calibration.value(QStringLiteral("curveLeftTrigger"),
+                          result.curveLeftTrigger).toDouble();
+    result.curveRightTrigger =
+        calibration.value(QStringLiteral("curveRightTrigger"),
+                          result.curveRightTrigger).toDouble();
+
+    const QVariantMap remap =
+        map.value(QStringLiteral("buttonRemap")).toMap();
+    const int buttonCount =
+        qMin(qMin(static_cast<int>(SDL_arraysize(k_ButtonMap)),
+                  static_cast<int>(SDL_arraysize(kButtonNames))),
+             static_cast<int>(SDL_CONTROLLER_BUTTON_MAX));
+    for (int source = 0; source < buttonCount; ++source) {
+        const QString sourceName = QString::fromLatin1(kButtonNames[source]);
+        const QString targetName =
+            remap.value(sourceName, sourceName).toString().toLower();
+        int targetFlag = k_ButtonMap[source];
+        for (int target = 0; target < buttonCount; ++target) {
+            if (targetName == QLatin1String(kButtonNames[target])) {
+                targetFlag = k_ButtonMap[target];
+                break;
+            }
+        }
+        result.targetButtonFlags[source] = targetFlag;
+    }
+    return result;
+}
+
+void
+SdlInputHandler::applyControllerMap(const GamepadState* state,
+                                    int& buttons,
+                                    unsigned char& lt,
+                                    unsigned char& rt,
+                                    short& lsX,
+                                    short& lsY,
+                                    short& rsX,
+                                    short& rsY) const
+{
+    const qsizetype index = state - m_GamepadState;
+    if (index < 0 || index >= MAX_GAMEPADS) return;
+    const ControllerMapTransform& map = m_ControllerMaps[index];
+
+    int knownFlags = 0;
+    int mappedButtons = 0;
+    const int buttonCount =
+        qMin(static_cast<int>(SDL_arraysize(k_ButtonMap)),
+             static_cast<int>(SDL_CONTROLLER_BUTTON_MAX));
+    for (int source = 0; source < buttonCount; ++source) {
+        knownFlags |= k_ButtonMap[source];
+        if (buttons & k_ButtonMap[source]) {
+            mappedButtons |= map.targetButtonFlags[source];
+        }
+    }
+    buttons = (buttons & ~knownFlags) | mappedButtons;
+    applyRadialCurve(lsX, lsY,
+                     map.deadzoneLeftStick, map.curveLeftStick);
+    applyRadialCurve(rsX, rsY,
+                     map.deadzoneRightStick, map.curveRightStick);
+    lt = applyTriggerCurve(lt,
+                           map.deadzoneLeftTrigger,
+                           map.curveLeftTrigger);
+    rt = applyTriggerCurve(rt,
+                           map.deadzoneRightTrigger,
+                           map.curveRightTrigger);
+}
 
 GamepadState*
 SdlInputHandler::findStateForGamepad(SDL_JoystickID id)
@@ -74,29 +215,38 @@ void SdlInputHandler::sendGamepadState(GamepadState* state)
     short lsY = state->lsY;
     short rsX = state->rsX;
     short rsY = state->rsY;
+    applyControllerMap(state, buttons, lt, rt, lsX, lsY, rsX, rsY);
 
-    // When in single controller mode, merge all gamepad state together
+    // In single-controller mode each physical controller keeps its own map;
+    // transformed states are merged only after calibration and remapping.
     if (!m_MultiController) {
         for (int i = 0; i < MAX_GAMEPADS; i++) {
-            if (m_GamepadState[i].index == state->index) {
-                buttons |= m_GamepadState[i].buttons;
-                if (lt < m_GamepadState[i].lt) {
-                    lt = m_GamepadState[i].lt;
-                }
-                if (rt < m_GamepadState[i].rt) {
-                    rt = m_GamepadState[i].rt;
-                }
-
-                // We use abs() here instead of qAbs() for get proper integer promotion to
-                // correctly handle abs(-32768), which is not representable in a short.
-                if (abs(lsX) < abs(m_GamepadState[i].lsX) || abs(lsY) < abs(m_GamepadState[i].lsY)) {
-                    lsX = m_GamepadState[i].lsX;
-                    lsY = m_GamepadState[i].lsY;
-                }
-                if (abs(rsX) < abs(m_GamepadState[i].rsX) || abs(rsY) < abs(m_GamepadState[i].rsY)) {
-                    rsX = m_GamepadState[i].rsX;
-                    rsY = m_GamepadState[i].rsY;
-                }
+            GamepadState* other = &m_GamepadState[i];
+            if (other == state || other->controller == nullptr
+                    || other->index != state->index) {
+                continue;
+            }
+            int otherButtons = other->buttons;
+            unsigned char otherLt = other->lt;
+            unsigned char otherRt = other->rt;
+            short otherLsX = other->lsX;
+            short otherLsY = other->lsY;
+            short otherRsX = other->rsX;
+            short otherRsY = other->rsY;
+            applyControllerMap(other, otherButtons,
+                               otherLt, otherRt,
+                               otherLsX, otherLsY,
+                               otherRsX, otherRsY);
+            buttons |= otherButtons;
+            lt = qMax(lt, otherLt);
+            rt = qMax(rt, otherRt);
+            if (abs(lsX) < abs(otherLsX) || abs(lsY) < abs(otherLsY)) {
+                lsX = otherLsX;
+                lsY = otherLsY;
+            }
+            if (abs(rsX) < abs(otherRsX) || abs(rsY) < abs(otherRsY)) {
+                rsX = otherRsX;
+                rsY = otherRsY;
             }
         }
     }
@@ -219,10 +369,14 @@ void SdlInputHandler::handleControllerAxisEvent(SDL_ControllerAxisEvent* event)
                 state->rsY = -qMax(event->value, (short)-32767);
                 break;
             case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
-                state->lt = (unsigned char)(event->value * 255UL / 32767);
+                state->lt = static_cast<unsigned char>(
+                    qBound(0, static_cast<int>(event->value), 32767)
+                    * 255 / 32767);
                 break;
             case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
-                state->rt = (unsigned char)(event->value * 255UL / 32767);
+                state->rt = static_cast<unsigned char>(
+                    qBound(0, static_cast<int>(event->value), 32767)
+                    * 255 / 32767);
                 break;
             default:
                 SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
@@ -395,6 +549,26 @@ void SdlInputHandler::handleControllerButtonEvent(SDL_ControllerButtonEvent* eve
         return;
     }
 
+    // Back+L1+R1+A opens the controller-driven Session settings.
+    if (state->buttons == (BACK_FLAG | LB_FLAG | RB_FLAG | A_FLAG)) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected Session settings gamepad combo");
+        LiSendMultiControllerEvent(state->index, m_GamepadMask,
+                                   0, 0, 0, 0, 0, 0, 0);
+        Session::get()->requestSessionSettings();
+        return;
+    }
+
+    // Back+L1+R1+Y accepts the display-change reconnect offer.
+    if (state->buttons == (BACK_FLAG | LB_FLAG | RB_FLAG | Y_FLAG)) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected display reconnect gamepad combo");
+        LiSendMultiControllerEvent(state->index, m_GamepadMask,
+                                   0, 0, 0, 0, 0, 0, 0);
+        Session::get()->requestDisplayReconnect();
+        return;
+    }
+
     // Only send the gamepad state to the host if it's not in mouse emulation mode
     if (state->mouseEmulationTimer == 0) {
         sendGamepadState(state);
@@ -481,6 +655,24 @@ void SdlInputHandler::handleJoystickBatteryEvent(SDL_JoyBatteryEvent* event)
 
 #endif
 
+void SdlInputHandler::rescanGamepads()
+{
+    SDL_JoystickUpdate();
+    const int count = SDL_NumJoysticks();
+    for (int deviceIndex = 0; deviceIndex < count; ++deviceIndex) {
+        if (!SDL_IsGameController(deviceIndex)) continue;
+        const SDL_JoystickID instanceId =
+            SDL_JoystickGetDeviceInstanceID(deviceIndex);
+        if (instanceId < 0 || findStateForGamepad(instanceId) != nullptr) {
+            continue;
+        }
+        SDL_ControllerDeviceEvent event = {};
+        event.type = SDL_CONTROLLERDEVICEADDED;
+        event.which = deviceIndex;
+        handleControllerDeviceEvent(&event);
+    }
+}
+
 void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* event)
 {
     GamepadState* state;
@@ -515,32 +707,11 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
             }
         }
 
-        // We used to use SDL_GameControllerGetPlayerIndex() here but that
-        // can lead to strange issues due to bugs in Windows where an Xbox
-        // controller will join as player 2, even though no player 1 controller
-        // is connected at all. This pretty much screws any attempt to use
-        // the gamepad in single player games, so just assign them in order from 0.
-        i = 0;
-
-        for (; i < MAX_GAMEPADS; i++) {
-            SDL_assert(m_GamepadState[i].controller != controller);
-            if (m_GamepadState[i].controller == NULL) {
-                // Found an empty slot
-                break;
-            }
-        }
-
-        if (i == MAX_GAMEPADS) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                         "No open gamepad slots found!");
-            SDL_GameControllerClose(controller);
-            return;
-        }
-
-        SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(SDL_GameControllerGetJoystick(controller)),
-                                  guidStr, sizeof(guidStr));
-        if (m_IgnoreDeviceGuids.contains(guidStr, Qt::CaseInsensitive))
-        {
+        SDL_JoystickGetGUIDString(
+            SDL_JoystickGetGUID(SDL_GameControllerGetJoystick(controller)),
+            guidStr,
+            sizeof(guidStr));
+        if (m_IgnoreDeviceGuids.contains(guidStr, Qt::CaseInsensitive)) {
             SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                         "Skipping ignored device with GUID: %s",
                         guidStr);
@@ -548,7 +719,40 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
             return;
         }
 
+        const QString controllerId =
+            ControllerMapStore::controllerId(controller);
+        const int preferredSlot =
+            ControllerMapStore::get()->playerSlot(controllerId);
+        i = -1;
+        if (preferredSlot >= 0 && preferredSlot < MAX_GAMEPADS
+                && m_GamepadState[preferredSlot].controller == nullptr) {
+            i = preferredSlot;
+        } else {
+            for (int candidate = 0; candidate < MAX_GAMEPADS; ++candidate) {
+                SDL_assert(m_GamepadState[candidate].controller != controller);
+                if (m_GamepadState[candidate].controller == nullptr) {
+                    i = candidate;
+                    break;
+                }
+            }
+        }
+        if (i < 0) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                         "No open gamepad slots found!");
+            SDL_GameControllerClose(controller);
+            return;
+        }
+        if (preferredSlot < 0) {
+            ControllerMapStore::get()->setPlayerSlot(controllerId, i);
+        }
+
         state = &m_GamepadState[i];
+        m_ControllerIds[i] = controllerId;
+        m_ControllerMaps[i] = compileControllerMap(
+            ControllerMapStore::get()->mapFor(
+                controllerId,
+                m_LibraryEntryId,
+                m_HostApplicationKey));
         if (m_MultiController) {
             state->index = i;
 
@@ -785,6 +989,9 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
 
             // Clear all remaining state from this slot
             SDL_memset(state, 0, sizeof(*state));
+            const qsizetype storageIndex = state - m_GamepadState;
+            m_ControllerIds[storageIndex].clear();
+            m_ControllerMaps[storageIndex] = ControllerMapTransform();
         }
     }
 }

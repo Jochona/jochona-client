@@ -1,43 +1,36 @@
-import QtQuick 2.0
+import QtQuick 2.15
 import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.3
 
 import ComputerManager 1.0
 
+import "style"
+
 Item {
+    id: cliPair
+
     function onSearchingComputer() {
-        stageLabel.text = qsTr("Establishing connection to PC...")
+        stageLabel.text = qsTr("Finding the rig…")
     }
-
-    function onPairing(pcName, pin) {
-        stageLabel.text = qsTr("Pairing... Please enter '%1' on %2.").arg(pin).arg(pcName)
+    function onPairing(rigName, pin) {
+        stageLabel.text = qsTr("Enter %1 on %2.").arg(pin).arg(rigName)
     }
-
     function onFailed(message) {
         stageIndicator.visible = false
         errorDialog.text = message
         errorDialog.open()
     }
-
     function onSuccess(appName) {
         stageIndicator.visible = false
         pairCompleteDialog.open()
     }
 
-    // Allow user to back out of pairing
-    Keys.onEscapePressed: {
-        Qt.quit()
-    }
-    Keys.onBackPressed: {
-        Qt.quit()
-    }
-    Keys.onCancelPressed: {
-        Qt.quit()
-    }
+    Keys.onEscapePressed: Qt.quit()
+    Keys.onBackPressed: Qt.quit()
+    Keys.onCancelPressed: Qt.quit()
 
     StackView.onActivated: {
         if (!launcher.isExecuted()) {
-            toolBar.visible = false
-
             launcher.searchingComputer.connect(onSearchingComputer)
             launcher.pairing.connect(onPairing)
             launcher.failed.connect(onFailed)
@@ -46,42 +39,46 @@ Item {
         }
     }
 
-    Row {
-        anchors.centerIn: parent
-        spacing: 5
+    Rectangle { anchors.fill: parent; color: Tokens.night }
+
+    ColumnLayout {
         id: stageIndicator
+        anchors.centerIn: parent
+        width: Math.min(parent.width - Tokens.gutter * 2, Tokens.dp(720))
+        spacing: Tokens.gutter
 
         BusyIndicator {
-            id: stageSpinner
+            Layout.alignment: Qt.AlignHCenter
             running: visible
+            width: Tokens.dp(48)
+            height: width
         }
 
         Label {
             id: stageLabel
-            height: stageSpinner.height
-            font.pointSize: 20
-            verticalAlignment: Text.AlignVCenter
-
-            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+            text: qsTr("Preparing pairing…")
+            font.family: Tokens.familyDisplay
+            font.pixelSize: Tokens.tTitle
+            font.weight: Font.Medium
+            color: Tokens.textPrimary
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            Accessible.role: Accessible.Heading
         }
     }
 
     ErrorMessageDialog {
         id: errorDialog
-
-        onClosed: {
-            Qt.quit();
-        }
+        onClosed: Qt.quit()
     }
 
     NavigableMessageDialog {
         id: pairCompleteDialog
         closePolicy: Popup.CloseOnEscape
-
-        text:qsTr("Pairing completed successfully")
+        text: qsTr("Pairing is complete.")
         standardButtons: Dialog.Ok
-        onClosed: {
-            Qt.quit()
-        }
+        okText: qsTr("Done")
+        onClosed: Qt.quit()
     }
 }

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //
 #include "controllermanager.h"
+#include "controllerprofilestore.h"
 
 #include <QtGlobal>
 
@@ -162,14 +163,23 @@ ControllerManager::controllerSlots() const
 bool
 ControllerManager::assignSlot(int deviceId, int slot)
 {
+    if (slot < 0 || slot >= 16) return false;
     for (ControllerState& state : m_Controllers) {
-        if (state.deviceId == deviceId) {
-            state.slot = slot;
-            emit controllersChanged();
-            return true;
+        if (state.deviceId != deviceId) continue;
+        const int oldSlot = state.slot;
+        for (ControllerState& other : m_Controllers) {
+            if (&other != &state && other.slot == slot) {
+                other.slot = oldSlot;
+                ControllerMapStore::get()->setPlayerSlot(other.path,
+                                                         other.slot);
+                break;
+            }
         }
+        state.slot = slot;
+        ControllerMapStore::get()->setPlayerSlot(state.path, slot);
+        emit controllersChanged();
+        return true;
     }
-
     return false;
 }
 
@@ -178,8 +188,8 @@ ControllerManager::renumberSlots()
 {
     for (int i = 0; i < m_Controllers.size(); i++) {
         m_Controllers[i].slot = i;
+        ControllerMapStore::get()->setPlayerSlot(m_Controllers[i].path, i);
     }
-
     emit controllersChanged();
 }
 
@@ -224,13 +234,23 @@ ControllerManager::poll()
         state.handle = gc;
         state.instanceId = instanceId;
         state.deviceId = i;
-        state.slot = m_Controllers.size();
         state.name = QString::fromUtf8(SDL_GameControllerName(gc));
         if (state.name.isEmpty()) {
             state.name = QStringLiteral("Unknown Controller");
         }
         state.family = detectFamily(gc);
         state.path = controllerPath(gc, state.name);
+        state.slot = ControllerMapStore::get()->playerSlot(state.path);
+        QSet<int> occupiedSlots;
+        for (const ControllerState& existing : std::as_const(m_Controllers)) {
+            occupiedSlots.insert(existing.slot);
+        }
+        if (state.slot < 0 || state.slot >= 16
+                || occupiedSlots.contains(state.slot)) {
+            state.slot = 0;
+            while (occupiedSlots.contains(state.slot)) ++state.slot;
+            ControllerMapStore::get()->setPlayerSlot(state.path, state.slot);
+        }
 
         m_Controllers.append(state);
         topologyChanged = true;
@@ -305,19 +325,10 @@ ControllerManager::detectFamily(SDL_GameController* gc) const
 }
 
 QString
-ControllerManager::controllerPath(SDL_GameController* gc, const QString& fallbackName) const
+ControllerManager::controllerPath(SDL_GameController* gc,
+                                  const QString&) const
 {
-#if SDL_VERSION_ATLEAST(2, 24, 0)
-    const char* path = SDL_GameControllerPath(gc);
-    if (path != nullptr && path[0] != '\0') {
-        return QString::fromUtf8(path);
-    }
-#endif
-
-    SDL_JoystickGUID guid = SDL_JoystickGetGUID(SDL_GameControllerGetJoystick(gc));
-    char guidStr[64] = {};
-    SDL_JoystickGetGUIDString(guid, guidStr, sizeof(guidStr));
-    return fallbackName + QStringLiteral(":") + QString::fromLatin1(guidStr);
+    return ControllerMapStore::controllerId(gc);
 }
 
 void

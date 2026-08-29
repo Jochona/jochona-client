@@ -35,6 +35,11 @@ public:
 
     Q_INVOKABLE QString getRunningAppName();
 
+    // Jochona: Resume route resolves a stored appId back to a visible app
+    // index/name. -1/empty when the app is no longer visible.
+    Q_INVOKABLE int indexForAppId(int appId) const;
+    Q_INVOKABLE QString nameForAppId(int appId) const;
+
     Q_INVOKABLE void quitRunningApp();
 
     Q_INVOKABLE void setAppHidden(int appIndex, bool hidden);

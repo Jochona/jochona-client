@@ -3,22 +3,19 @@
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
-// Jochona: theme + personalization bridge. Persists the active theme id,
-// accent, and legibility/motion preferences to QSettings and exposes them
-// live to QML (ThemeEngine.qml, Tokens.qml), which own the actual palettes
-// and metrics. QML has no QSettings access, so this is the thin durable-
-// state half of IThemeManager (proposal §7.3).
+// Jochona theme and personalization bridge. SQLite stores the active theme,
+// accent, density, text scale, and motion preference. ThemeEngine.qml owns
+// the live palettes and metrics.
 //
-// Theme ids are stable strings: a built-in id ("system", "light", "dark",
-// "oled", "highcontrast") or "custom:<id>" for a user-installed, data-only
-// theme package (see docs/theme-packages.md). This class does not know or
-// validate palettes — ThemeEngine resolves and fails safe to "dark".
+// Theme ids are stable built-in ids or custom:<id>. reloadThemes() validates
+// installed data-only packages before it exposes them to QML.
 //
 #pragma once
 
 #include <QObject>
 #include <QSettings>
 #include <QStringList>
+#include <QMap>
 
 class ThemeManager : public QObject
 {
@@ -30,6 +27,8 @@ class ThemeManager : public QObject
     Q_PROPERTY(bool compactDensity READ compactDensity WRITE setCompactDensity NOTIFY compactDensityChanged)
     Q_PROPERTY(bool reducedMotion READ reducedMotion WRITE setReducedMotion NOTIFY reducedMotionChanged)
     Q_PROPERTY(QStringList builtinThemeIds READ builtinThemeIds CONSTANT)
+    Q_PROPERTY(QStringList availableThemeIds READ availableThemeIds
+               NOTIFY themesChanged)
 
 public:
     static const QStringList s_BuiltinThemeIds;
@@ -55,7 +54,7 @@ public:
     void
     setAccent(const QString& accent);
 
-    // 0.8–1.6; clamped. Scales every type token in Tokens.qml.
+    // 0.8–2.0; clamped. Scales every type token in Tokens.qml.
     double
     fontScale() const
     {
@@ -90,6 +89,9 @@ public:
     {
         return s_BuiltinThemeIds;
     }
+    QStringList availableThemeIds() const { return m_AvailableThemeIds; }
+    Q_INVOKABLE QString themeName(const QString& themeId) const;
+    Q_INVOKABLE void reloadThemes();
 
     // Well-formed built-in or custom:<id> string; anything else reads as
     // "system" at load time (garbage never reaches QML).
@@ -116,6 +118,7 @@ signals:
 
     void
     reducedMotionChanged();
+    void themesChanged();
 
 private:
     ThemeManager(QObject* parent = nullptr);
@@ -129,4 +132,6 @@ private:
     double m_FontScale;
     bool m_CompactDensity;
     bool m_ReducedMotion;
+    QStringList m_AvailableThemeIds;
+    QMap<QString, QString> m_CustomThemeNames;
 };

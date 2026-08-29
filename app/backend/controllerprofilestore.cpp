@@ -4,6 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //
 #include "controllerprofilestore.h"
+#include "core/settingsdatabase.h"
+#include <QCryptographicHash>
+#include <QUuid>
 
 #include <QDir>
 #include <QFile>
@@ -46,10 +49,10 @@ ControllerCalibration::fromVariantMap(const QVariantMap& map)
     return cal;
 }
 
-// --- ControllerProfile -------------------------------------------------------
+// --- ControllerMap -------------------------------------------------------
 
 QVariantMap
-ControllerProfile::toVariantMap() const
+ControllerMap::toVariantMap() const
 {
     QVariantMap map;
     map.insert(QStringLiteral("controllerPath"), controllerPath);
@@ -65,10 +68,10 @@ ControllerProfile::toVariantMap() const
     return map;
 }
 
-ControllerProfile
-ControllerProfile::fromVariantMap(const QString& controllerPath, const QString& appId, const QVariantMap& map)
+ControllerMap
+ControllerMap::fromVariantMap(const QString& controllerPath, const QString& appId, const QVariantMap& map)
 {
-    ControllerProfile profile;
+    ControllerMap profile;
     profile.controllerPath = controllerPath;
     profile.appId = appId;
     profile.calibration = ControllerCalibration::fromVariantMap(map.value(QStringLiteral("calibration")).toMap());
@@ -81,27 +84,33 @@ ControllerProfile::fromVariantMap(const QString& controllerPath, const QString& 
     return profile;
 }
 
-// --- JsonControllerProfileBackend --------------------------------------------
+// --- JsonControllerMapBackend --------------------------------------------
 
 namespace {
     const QString kControllerPrefix = QStringLiteral("controller:");
     const QString kGamePrefix = QStringLiteral("game:");
 }
 
-JsonControllerProfileBackend::JsonControllerProfileBackend(const QString& filePath)
+JsonControllerMapBackend::JsonControllerMapBackend(const QString& filePath)
     : m_FilePath(filePath.isEmpty() ? defaultFilePath() : filePath)
 {
 }
 
 QString
-JsonControllerProfileBackend::defaultFilePath()
+JsonControllerMapBackend::defaultFilePath()
 {
     QString dir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     return dir + QStringLiteral("/controller-profiles.json");
 }
 
+QVariantMap
+JsonControllerMapBackend::allProfiles() const
+{
+    return readAll().value(QStringLiteral("profiles")).toMap();
+}
+
 QString
-JsonControllerProfileBackend::key(const QString& controllerPath, const QString& appId)
+JsonControllerMapBackend::key(const QString& controllerPath, const QString& appId)
 {
     if (appId.isEmpty()) {
         return kControllerPrefix + controllerPath;
@@ -111,7 +120,7 @@ JsonControllerProfileBackend::key(const QString& controllerPath, const QString& 
 }
 
 QVariantMap
-JsonControllerProfileBackend::readAll() const
+JsonControllerMapBackend::readAll() const
 {
     QFile file(m_FilePath);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -124,7 +133,7 @@ JsonControllerProfileBackend::readAll() const
 
     if (doc.isNull() || !doc.isObject()) {
         if (error.error != QJsonParseError::NoError) {
-            qWarning() << "ControllerProfileStore: malformed profile store" << m_FilePath
+            qWarning() << "ControllerMapStore: malformed profile store" << m_FilePath
                        << "-" << error.errorString() << "; treating as empty";
         }
         return QVariantMap();
@@ -134,18 +143,18 @@ JsonControllerProfileBackend::readAll() const
 }
 
 void
-JsonControllerProfileBackend::writeAll(const QVariantMap& root) const
+JsonControllerMapBackend::writeAll(const QVariantMap& root) const
 {
     QFileInfo info(m_FilePath);
     QDir dir = info.dir();
     if (!dir.exists() && !dir.mkpath(QStringLiteral("."))) {
-        qWarning() << "ControllerProfileStore: failed to create" << dir.absolutePath();
+        qWarning() << "ControllerMapStore: failed to create" << dir.absolutePath();
         return;
     }
 
     QFile file(m_FilePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        qWarning() << "ControllerProfileStore: failed to open" << m_FilePath << "for writing";
+        qWarning() << "ControllerMapStore: failed to open" << m_FilePath << "for writing";
         return;
     }
 
@@ -154,14 +163,14 @@ JsonControllerProfileBackend::writeAll(const QVariantMap& root) const
 }
 
 QVariantMap
-JsonControllerProfileBackend::load(const QString& controllerPath, const QString& appId) const
+JsonControllerMapBackend::load(const QString& controllerPath, const QString& appId) const
 {
     QVariantMap profiles = readAll().value(QStringLiteral("profiles")).toMap();
     return profiles.value(key(controllerPath, appId)).toMap();
 }
 
 void
-JsonControllerProfileBackend::save(const QString& controllerPath, const QString& appId, const QVariantMap& config)
+JsonControllerMapBackend::save(const QString& controllerPath, const QString& appId, const QVariantMap& config)
 {
     QVariantMap root = readAll();
     QVariantMap profiles = root.value(QStringLiteral("profiles")).toMap();
@@ -172,7 +181,7 @@ JsonControllerProfileBackend::save(const QString& controllerPath, const QString&
 }
 
 void
-JsonControllerProfileBackend::remove(const QString& controllerPath, const QString& appId)
+JsonControllerMapBackend::remove(const QString& controllerPath, const QString& appId)
 {
     QVariantMap root = readAll();
     QVariantMap profiles = root.value(QStringLiteral("profiles")).toMap();
@@ -182,7 +191,7 @@ JsonControllerProfileBackend::remove(const QString& controllerPath, const QStrin
 }
 
 QStringList
-JsonControllerProfileBackend::knownControllerPaths() const
+JsonControllerMapBackend::knownControllerPaths() const
 {
     QVariantMap profiles = readAll().value(QStringLiteral("profiles")).toMap();
 
@@ -196,116 +205,282 @@ JsonControllerProfileBackend::knownControllerPaths() const
     return paths;
 }
 
-// --- ControllerProfileStore ---------------------------------------------------
+// --- SqliteControllerMapBackend -------------------------------------------
 
-ControllerProfileStore* ControllerProfileStore::s_Instance = nullptr;
+QString
+SqliteControllerMapBackend::scopeForContext(const QString& contextKey)
+{
+    if (contextKey.isEmpty()) return QStringLiteral("controller");
+    const qsizetype separator = contextKey.indexOf(QLatin1Char(':'));
+    return separator > 0 ? contextKey.left(separator)
+                         : QStringLiteral("host_application");
+}
 
-ControllerProfileStore*
-ControllerProfileStore::get()
+QString
+SqliteControllerMapBackend::keyWithoutScope(const QString& contextKey)
+{
+    const qsizetype separator = contextKey.indexOf(QLatin1Char(':'));
+    return separator > 0 ? contextKey.mid(separator + 1) : contextKey;
+}
+
+QVariantMap
+SqliteControllerMapBackend::load(const QString& controllerId,
+                                 const QString& contextKey) const
+{
+    SettingsDatabase* database = SettingsDatabase::get();
+    return database
+        ? database->controllerMap(controllerId,
+                                  scopeForContext(contextKey),
+                                  keyWithoutScope(contextKey))
+        : QVariantMap();
+}
+
+void
+SqliteControllerMapBackend::save(const QString& controllerId,
+                                 const QString& contextKey,
+                                 const QVariantMap& config)
+{
+    if (SettingsDatabase* database = SettingsDatabase::get()) {
+        database->setControllerMap(controllerId,
+                                   scopeForContext(contextKey),
+                                   keyWithoutScope(contextKey),
+                                   config);
+    }
+}
+
+void
+SqliteControllerMapBackend::remove(const QString& controllerId,
+                                   const QString& contextKey)
+{
+    if (SettingsDatabase* database = SettingsDatabase::get()) {
+        database->removeControllerMap(controllerId,
+                                      scopeForContext(contextKey),
+                                      keyWithoutScope(contextKey));
+    }
+}
+
+QStringList
+SqliteControllerMapBackend::knownControllerPaths() const
+{
+    SettingsDatabase* database = SettingsDatabase::get();
+    return database ? database->knownControllerIds() : QStringList();
+}
+
+// --- ControllerMapStore ---------------------------------------------------
+
+namespace {
+constexpr int kMaxPlayerSlots = 16;
+QVariantMap mergeMap(const QVariantMap& base, const QVariantMap& patch)
+{
+    QVariantMap merged = base;
+    for (auto it = patch.constBegin(); it != patch.constEnd(); ++it) {
+        if ((it.key() == QStringLiteral("calibration")
+             || it.key() == QStringLiteral("buttonRemap"))
+                && it.value().canConvert<QVariantMap>()) {
+            QVariantMap nested = merged.value(it.key()).toMap();
+            const QVariantMap nestedPatch = it.value().toMap();
+            for (auto nestedIt = nestedPatch.constBegin();
+                 nestedIt != nestedPatch.constEnd(); ++nestedIt) {
+                nested.insert(nestedIt.key(), nestedIt.value());
+            }
+            merged.insert(it.key(), nested);
+        } else {
+            merged.insert(it.key(), it.value());
+        }
+    }
+    return merged;
+}
+
+QString scopedContext(const QString& scope, const QString& contextKey)
+{
+    return scope == QStringLiteral("controller")
+        ? QString()
+        : scope + QLatin1Char(':') + contextKey;
+}
+
+QString playerSlotKey(const QString& controllerId)
+{
+    return QStringLiteral("controller.player_slot.")
+        + QString::fromLatin1(
+            QCryptographicHash::hash(controllerId.toUtf8(),
+                                     QCryptographicHash::Sha256).toHex());
+}
+}
+
+ControllerMapStore* ControllerMapStore::s_Instance = nullptr;
+
+ControllerMapStore*
+ControllerMapStore::get()
 {
     if (s_Instance == nullptr) {
-        s_Instance = new ControllerProfileStore(new JsonControllerProfileBackend());
+        if (SettingsDatabase* database = SettingsDatabase::get()) {
+            JsonControllerMapBackend legacy;
+            database->importLegacyControllerMaps(
+                legacy.allProfiles(),
+                QStringLiteral("migration.controller_maps_json_v1"));
+        }
+        s_Instance = new ControllerMapStore(new SqliteControllerMapBackend());
     }
-
     return s_Instance;
 }
 
-ControllerProfileStore::ControllerProfileStore(IControllerProfileBackend* backend, QObject* parent)
+ControllerMapStore::ControllerMapStore(IControllerMapBackend* backend,
+                                       QObject* parent)
     : QObject(parent)
     , m_Backend(backend)
 {
     Q_ASSERT(m_Backend != nullptr);
 }
 
-ControllerProfileStore::~ControllerProfileStore()
+ControllerMapStore::~ControllerMapStore()
 {
     delete m_Backend;
 }
 
+QString
+ControllerMapStore::controllerId(SDL_GameController* controller)
+{
+    if (controller == nullptr) return {};
+#if SDL_VERSION_ATLEAST(2, 24, 0)
+    const char* path = SDL_GameControllerPath(controller);
+    if (path != nullptr && path[0] != '\0') {
+        return QString::fromUtf8(path);
+    }
+#endif
+
+    SDL_Joystick* joystick = SDL_GameControllerGetJoystick(controller);
+    char guidText[64] = {};
+    SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(joystick),
+                              guidText,
+                              sizeof(guidText));
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+    const char* serial = SDL_GameControllerGetSerial(controller);
+    if (serial != nullptr && serial[0] != '\0') {
+        return QStringLiteral("serial:")
+            + QString::fromLatin1(guidText) + QLatin1Char(':')
+            + QString::fromUtf8(serial);
+    }
+#endif
+
+    const QString name = QString::fromUtf8(
+        SDL_GameControllerName(controller)
+            ? SDL_GameControllerName(controller)
+            : "unknown");
+    const QString fingerprint =
+        QStringLiteral("%1|%2|%3|%4")
+            .arg(name)
+            .arg(SDL_GameControllerGetVendor(controller))
+            .arg(SDL_GameControllerGetProduct(controller))
+            .arg(QString::fromLatin1(guidText));
+    const QString fingerprintHash = QString::fromLatin1(
+        QCryptographicHash::hash(fingerprint.toUtf8(),
+                                 QCryptographicHash::Sha256).toHex());
+    const QString settingKey =
+        QStringLiteral("controller.identity.") + fingerprintHash;
+    if (SettingsDatabase* database = SettingsDatabase::get()) {
+        QString minted = database->setting(settingKey).toString();
+        if (minted.isEmpty()) {
+            minted = QUuid::createUuid().toString(QUuid::WithoutBraces);
+            database->setSetting(settingKey, minted);
+        }
+        return QStringLiteral("minted:") + minted;
+    }
+    return QStringLiteral("minted:") + fingerprintHash;
+}
+
 QVariantMap
-ControllerProfileStore::profileFor(const QString& controllerPath, const QString& appId) const
+ControllerMapStore::mapFor(const QString& controllerId,
+                           const QString& libraryEntryId,
+                           const QString& hostApplicationKey) const
 {
-    ControllerProfile base = ControllerProfile::fromVariantMap(controllerPath, QString(),
-                                                                m_Backend->load(controllerPath, QString()));
+    ControllerMap defaults;
+    defaults.controllerPath = controllerId;
+    QVariantMap effective = defaults.toVariantMap();
+    effective = mergeMap(effective, m_Backend->load(controllerId, QString()));
 
-    if (appId.isEmpty()) {
-        return base.toVariantMap();
+    if (!libraryEntryId.isEmpty()) {
+        effective = mergeMap(
+            effective,
+            m_Backend->load(controllerId,
+                            QStringLiteral("library_entry:") + libraryEntryId));
+    }
+    if (!hostApplicationKey.isEmpty()) {
+        const qsizetype separator =
+            hostApplicationKey.lastIndexOf(QLatin1Char('|'));
+        if (separator >= 0 && separator + 1 < hostApplicationKey.size()) {
+            effective = mergeMap(
+                effective,
+                m_Backend->load(
+                    controllerId,
+                    QStringLiteral("host_application:")
+                        + hostApplicationKey.mid(separator + 1)));
+        }
+        effective = mergeMap(
+            effective,
+            m_Backend->load(controllerId,
+                            QStringLiteral("host_application:")
+                                + hostApplicationKey));
     }
 
-    QVariantMap overrideMap = m_Backend->load(controllerPath, appId);
-    if (overrideMap.isEmpty()) {
-        // No per-game override yet: report the controller-wide profile
-        // under this appId so callers can save a delta on top of it later.
-        ControllerProfile forGame = base;
-        forGame.appId = appId;
-        return forGame.toVariantMap();
-    }
-
-    // Layer the per-game override on top of the controller-wide profile:
-    // any field the override doesn't specify keeps the controller-wide
-    // value rather than falling back to ControllerCalibration's defaults.
-    QVariantMap mergedCalibration = base.calibration.toVariantMap();
-    QVariantMap overrideCalibration = overrideMap.value(QStringLiteral("calibration")).toMap();
-    for (auto it = overrideCalibration.constBegin(); it != overrideCalibration.constEnd(); ++it) {
-        mergedCalibration.insert(it.key(), it.value());
-    }
-
-    QMap<QString, QString> mergedRemap = base.buttonRemap;
-    QVariantMap overrideRemap = overrideMap.value(QStringLiteral("buttonRemap")).toMap();
-    for (auto it = overrideRemap.constBegin(); it != overrideRemap.constEnd(); ++it) {
-        mergedRemap.insert(it.key(), it.value().toString());
-    }
-
-    ControllerProfile merged;
-    merged.controllerPath = controllerPath;
-    merged.appId = appId;
-    merged.calibration = ControllerCalibration::fromVariantMap(mergedCalibration);
-    merged.buttonRemap = mergedRemap;
-    return merged.toVariantMap();
+    ControllerMap normalized =
+        ControllerMap::fromVariantMap(controllerId,
+                                      hostApplicationKey,
+                                      effective);
+    return normalized.toVariantMap();
 }
 
 void
-ControllerProfileStore::saveProfile(const QString& controllerPath, const QVariantMap& config, const QString& appId)
+ControllerMapStore::saveMap(const QString& controllerId,
+                            const QString& scope,
+                            const QString& contextKey,
+                            const QVariantMap& patch)
 {
-    ControllerProfile profile = ControllerProfile::fromVariantMap(controllerPath, appId, config);
-    m_Backend->save(controllerPath, appId, profile.toVariantMap());
-    emit profileChanged(controllerPath, appId);
-}
-
-void
-ControllerProfileStore::setDeadzone(const QString& controllerPath, const QString& stick, double value, const QString& appId)
-{
-    QString field;
-    if (stick == QStringLiteral("leftStick")) {
-        field = QStringLiteral("deadzoneLeftStick");
-    } else if (stick == QStringLiteral("rightStick")) {
-        field = QStringLiteral("deadzoneRightStick");
-    } else if (stick == QStringLiteral("leftTrigger")) {
-        field = QStringLiteral("deadzoneLeftTrigger");
-    } else if (stick == QStringLiteral("rightTrigger")) {
-        field = QStringLiteral("deadzoneRightTrigger");
-    } else {
-        qWarning() << "ControllerProfileStore::setDeadzone: unknown stick" << stick;
+    if (controllerId.isEmpty()
+            || (scope != QStringLiteral("controller")
+                && scope != QStringLiteral("library_entry")
+                && scope != QStringLiteral("host_application"))
+            || (scope != QStringLiteral("controller")
+                && contextKey.isEmpty())) {
+        qWarning() << "ControllerMapStore: refusing invalid map scope"
+                   << controllerId << scope << contextKey;
         return;
     }
-
-    QVariantMap current = profileFor(controllerPath, appId);
-    QVariantMap calibration = current.value(QStringLiteral("calibration")).toMap();
-    calibration.insert(field, qBound(0.0, value, 0.9));
-    current.insert(QStringLiteral("calibration"), calibration);
-
-    saveProfile(controllerPath, current, appId);
+    m_Backend->save(controllerId, scopedContext(scope, contextKey), patch);
+    emit mapChanged(controllerId, scope, contextKey);
 }
 
 void
-ControllerProfileStore::resetProfile(const QString& controllerPath, const QString& appId)
+ControllerMapStore::resetMap(const QString& controllerId,
+                             const QString& scope,
+                             const QString& contextKey)
 {
-    m_Backend->remove(controllerPath, appId);
-    emit profileChanged(controllerPath, appId);
+    m_Backend->remove(controllerId, scopedContext(scope, contextKey));
+    emit mapChanged(controllerId, scope, contextKey);
 }
 
 QStringList
-ControllerProfileStore::knownControllerPaths() const
+ControllerMapStore::knownControllerIds() const
 {
     return m_Backend->knownControllerPaths();
+}
+
+int
+ControllerMapStore::playerSlot(const QString& controllerId) const
+{
+    SettingsDatabase* database = SettingsDatabase::get();
+    return database
+        ? database->setting(playerSlotKey(controllerId), -1).toInt()
+        : -1;
+}
+
+bool
+ControllerMapStore::setPlayerSlot(const QString& controllerId, int slot)
+{
+    SettingsDatabase* database = SettingsDatabase::get();
+    if (database == nullptr || controllerId.isEmpty()
+            || slot < 0 || slot >= kMaxPlayerSlots) {
+        return false;
+    }
+    database->setSetting(playerSlotKey(controllerId), slot);
+    return database->setting(playerSlotKey(controllerId), -1).toInt() == slot;
 }

@@ -19,11 +19,32 @@
 
 IAudioRenderer* Session::createAudioRenderer(const POPUS_MULTISTREAM_CONFIGURATION opusConfig)
 {
+    auto createSdlRenderer = [this, opusConfig]() -> IAudioRenderer* {
+        auto* renderer =
+            new SdlAudioRenderer(m_Preferences->audioDevice);
+        if (!renderer->prepareForPlayback(opusConfig)) {
+            delete renderer;
+            return nullptr;
+        }
+        if (renderer->usedFallbackDevice()) {
+            const QString requested = renderer->requestedDevice();
+            m_Preferences->audioDevice.clear();
+            QMetaObject::invokeMethod(
+                this,
+                [this, requested]() {
+                    emitLaunchWarning(
+                        tr("Audio output “%1” is unavailable. Jochona "
+                           "switched this Session to the system default output.")
+                            .arg(requested));
+                },
+                Qt::QueuedConnection);
+        }
+        return renderer;
+    };
     // Handle explicit ML_AUDIO setting and fail if the requested backend fails
     QString mlAudio = qgetenv("ML_AUDIO").toLower();
     if (mlAudio == "sdl") {
-        TRY_INIT_RENDERER(SdlAudioRenderer, opusConfig)
-        return nullptr;
+        return createSdlRenderer();
     }
 #if defined(HAVE_SLAUDIO)
     else if (mlAudio == "slaudio") {
@@ -45,8 +66,9 @@ IAudioRenderer* Session::createAudioRenderer(const POPUS_MULTISTREAM_CONFIGURATI
     TRY_INIT_RENDERER(SLAudioRenderer, opusConfig)
 #endif
 
-    // Default to SDL
-    TRY_INIT_RENDERER(SdlAudioRenderer, opusConfig)
+    // Default to SDL. A removed explicit output falls back to the current
+    // system default and records a visible Session warning.
+    if (IAudioRenderer* renderer = createSdlRenderer()) return renderer;
 
     return nullptr;
 }
@@ -211,6 +233,32 @@ void Session::arDecodeAndPlaySample(char* sampleData, int sampleLength)
                                                      (short*)buffer,
                                                      desiredBufferSize / frameSize,
                                                      0);
+        }
+        if (samplesDecoded > 0) {
+            const float gain =
+                s_ActiveSession->m_AudioVolumeGain.load(
+                    std::memory_order_relaxed);
+            const int sampleCount =
+                samplesDecoded
+                * s_ActiveSession->m_ActiveAudioConfig.channelCount;
+            if (!qFuzzyCompare(gain, 1.0f)) {
+                if (s_ActiveSession->m_AudioRenderer
+                        ->getAudioBufferFormat()
+                        == IAudioRenderer::AudioFormat::Float32NE) {
+                    float* samples = static_cast<float*>(buffer);
+                    for (int i = 0; i < sampleCount; ++i) {
+                        samples[i] *= gain;
+                    }
+                } else {
+                    short* samples = static_cast<short*>(buffer);
+                    for (int i = 0; i < sampleCount; ++i) {
+                        samples[i] = static_cast<short>(
+                            qBound(-32768,
+                                   qRound(samples[i] * gain),
+                                   32767));
+                    }
+                }
+            }
         }
 
         // Update desiredSize with the number of bytes actually populated by the decoding operation

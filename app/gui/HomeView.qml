@@ -1,85 +1,154 @@
-import QtQuick 2.9
+// Night Route Home. Resume owns first focus; Rigs and Library are explicit
+// destinations selected by the root route bar. No passive hero or shelf wall:
+// the stage is an action and each list is a visible connection segment.
+import QtQuick
 import QtQuick.Controls 2.2
 import QtQuick.Layouts 1.3
 
 import ComputerModel 1.0
-
 import ComputerManager 1.0
-import StreamingPreferences 1.0
-import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
+import LibraryManager 1.0
+import EffectiveSettings 1.0
 
 import "style"
+import "session"
 
-// Jochona: M1 modern home screen (ADR-0001). Feature-flagged replacement for
-// PcView (StreamingPreferences.modernHomeScreen). Controller-first host list:
-// one full-width row per Host, status expressed by color plus text (never color
-// alone), all PcView actions preserved (apps, pairing, wake, test, rename,
-// delete, details). Dialogs are duplicated from PcView deliberately; they are
-// deleted with it when the flag is retired.
-CenteredGridView {
-    property ComputerModel computerModel : createModel()
+pragma ComponentBehavior: Bound
 
-    id: homeGrid
-    focus: true
-    activeFocusOnTab: true
-    // Clearance for the shell's floating title + ghost actions (ShellChrome)
-    topMargin: 112
-    bottomMargin: 8
-    // Single centered column of wide rows
-    cellWidth: homeGrid.availableWidth > 0 ? Math.min(homeGrid.availableWidth, Tokens.listMaxWidth) : Tokens.listMaxWidth
-    cellHeight: Tokens.rowHeight
+Item {
+    id: home
     objectName: qsTr("Home")
 
-    Component.onCompleted: {
-        // Match PcView: no highlighted row until the user interacts.
-        currentIndex = -1
-    }
+    property ComputerModel computerModel: createModel()
+    property string destination: "resume" // resume | rigs | library
+    property int actionsHostIndex: -1
+    property var recentEntries: []
 
-    // Note: Any initialization done here that is critical for streaming must
-    // also be done in CliStartStreamSegue.qml, since this code does not run
-    // for command-line initiated streams.
-    StackView.onActivated: {
-        ComputerManager.computerAddCompleted.connect(addComplete)
-
-        if (currentIndex === -1 && SdlGamepadKeyNavigation.getConnectedGamepads() > 0) {
-            currentIndex = 0
-        }
-    }
-
-    StackView.onDeactivating: {
-        ComputerManager.computerAddCompleted.disconnect(addComplete)
-    }
-
-    function addComplete(success, detectedPortBlocking)
-    {
-        if (!success) {
-            errorDialog.text = qsTr("Unable to connect to the specified PC.")
-
-            if (detectedPortBlocking) {
-                errorDialog.text += "\n\n" + qsTr("This PC's Internet connection is blocking Jochona. Streaming over the Internet may not work while connected to this network.")
-            }
-            else {
-                errorDialog.helpText = qsTr("Click the Help button for possible solutions.")
-            }
-
-            errorDialog.open()
-        }
-    }
+    focus: true
+    activeFocusOnTab: true
 
     function createModel()
     {
-        var model = Qt.createQmlObject('import ComputerModel 1.0; ComputerModel {}', parent, '')
+        var model = Qt.createQmlObject(
+                    'import ComputerModel 1.0; ComputerModel {}', parent, '')
         model.initialize(ComputerManager)
         model.connectionTestCompleted.connect(testConnectionDialog.connectionTestComplete)
         return model
     }
 
-    // One-line availability description; state is never conveyed by color alone.
-    function statusText(online, paired, statusUnknown, wakeable, waking)
+    Connections {
+        target: home.computerModel
+        function onWakeReady(computerIndex, appId) {
+            home.openHost(computerIndex,
+                          home.computerModel.uuidForIndex(computerIndex),
+                          home.computerModel.nameForIndex(computerIndex),
+                          appId)
+        }
+    }
+
+    readonly property var resumeSource: {
+        if (recentEntries.length === 0)
+            return null
+        var entry = recentEntries[0]
+        var hostIndex = home.computerModel.indexOfUuid(entry.uuid)
+        return {
+            heroPlayable: hostIndex >= 0,
+            heroTitle: entry.name,
+            heroSubtitle: qsTr("Recent"),
+            heroArt: "",
+            heroMeta: hostIndex >= 0
+                      ? home.computerModel.nameForIndex(hostIndex) : "",
+            heroHost: hostIndex >= 0
+                      ? home.computerModel.nameForIndex(hostIndex) : "",
+            heroDestination: entry.name,
+            heroAction: qsTr("Resume"),
+            heroActivate: function() {
+                if (hostIndex < 0)
+                    return
+                if (home.computerModel.isOnlinePaired(hostIndex)) {
+                    home.openHost(hostIndex, entry.uuid,
+                                  home.computerModel.nameForIndex(hostIndex),
+                                  entry.appid)
+                } else {
+                    home.computerModel.wakeComputer(hostIndex, true,
+                                                    entry.appid)
+                    home.showDestination("rigs")
+                }
+            }
+        }
+    }
+
+    readonly property var heroSource: {
+        if (destination === "library")
+            return libraryShelf.focusedItem
+        if (destination === "rigs")
+            return rigsShelf.focusedItem
+        return resumeSource !== null ? resumeSource : rigsShelf.focusedItem
+    }
+
+    function showDestination(nextDestination) {
+        destination = ["resume", "rigs", "library"].indexOf(nextDestination) >= 0
+                      ? nextDestination : "resume"
+        Qt.callLater(function() {
+            if (destination === "resume") {
+                resumeStage.forceActiveFocus()
+            } else if (destination === "rigs") {
+                if (!rigsShelf.takeFocus())
+                    addRigAction.forceActiveFocus()
+            } else if (!libraryShelf.takeFocus()) {
+                resumeStage.forceActiveFocus()
+            }
+        })
+    }
+
+    function grabFirstFocus() {
+        showDestination(destination)
+        return true
+    }
+
+    StackView.onActivated: {
+        ComputerManager.computerAddCompleted.connect(home.addComplete)
+        RecentApps.entriesChanged.connect(home.invalidateContinue)
+        home.invalidateContinue()
+        home.showDestination(home.destination)
+    }
+
+    StackView.onDeactivating: {
+        ComputerManager.computerAddCompleted.disconnect(home.addComplete)
+        RecentApps.entriesChanged.disconnect(home.invalidateContinue)
+    }
+
+    function invalidateContinue() {
+        recentEntries = RecentApps.visibleEntries(home.computerModel, 10)
+    }
+
+    function addComplete(success, detectedPortBlocking)
     {
-        if (waking)
-            return qsTr("Waking…")
+        if (!success) {
+            errorDialog.text = qsTr("Jochona could not reach that rig.")
+            if (detectedPortBlocking) {
+                errorDialog.text += "\n\n" + qsTr(
+                            "This network blocks incoming streaming connections. "
+                            + "Try the same local network or review the router rules.")
+            } else {
+                errorDialog.helpText = qsTr(
+                            "Check the address and confirm the host service is running.")
+            }
+            errorDialog.open()
+        }
+    }
+
+    function statusText(online, paired, statusUnknown, wakeable, wakeState)
+    {
+        if (wakeState === "sending")
+            return qsTr("Sending wake packets…")
+        if (wakeState === "sent")
+            return qsTr("Sent — waiting for the rig")
+        if (wakeState === "failed")
+            return qsTr("Failed — check Wake settings")
+        if (wakeState === "ready")
+            return qsTr("Ready")
         if (statusUnknown)
             return qsTr("Checking…")
         if (!online)
@@ -100,394 +169,422 @@ CenteredGridView {
         return Tokens.statusOnline
     }
 
-    model: computerModel
-
-    delegate: NavigableItemDelegate {
-        id: hostRow
-        width: homeGrid.cellWidth
-        height: homeGrid.cellHeight
-        grid: homeGrid
-
-        property alias pcContextMenu : pcContextMenuLoader.item
-
-        // Visible waking state (M1 WOL): wakeComputer() is fire-and-forget in
-        // the model, so we show an optimistic Waking state until the poller
-        // flips the host online, with a timeout so a dead host recovers the row.
-        readonly property bool waking: wakeTimer.running && !model.online
-        Timer {
-            id: wakeTimer
-            interval: 45000
-        }
-
-        // Card background; the base ItemDelegate style is left untouched so the
-        // rest of the app is visually unaffected by this screen's existence.
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 4
-            radius: Tokens.radiusCard
-            color: parent.highlighted ? Tokens.surfaceFocus : Tokens.surface
-            border.width: parent.highlighted ? 2 : 1
-            border.color: parent.highlighted ? Tokens.borderFocus : Tokens.border
-        }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: Tokens.gutter
-            anchors.rightMargin: 16
-            spacing: 18
-
-            // Status well: spinner / lock / dot
-            Item {
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                Layout.alignment: Qt.AlignVCenter
-
-                Rectangle {
-                    anchors.centerIn: parent
-                    width: 20
-                    height: 20
-                    radius: 10
-                    visible: !model.statusUnknown && !hostRow.waking
-                    color: homeGrid.statusColor(model.online, model.paired, model.statusUnknown)
-                }
-
-                Image {
-                    anchors.centerIn: parent
-                    visible: !model.statusUnknown && model.online && !model.paired
-                    source: "qrc:/res/baseline-lock-24px.svg"
-                    sourceSize { width: 20; height: 20 }
-                }
-
-                BusyIndicator {
-                    anchors.centerIn: parent
-                    width: 30
-                    height: 30
-                    visible: model.statusUnknown || hostRow.waking
-                    running: visible
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.alignment: Qt.AlignVCenter
-                spacing: 2
-
-                Label {
-                    text: model.name
-                    font.pointSize: Tokens.sizeSection
-                    font.family: Tokens.familyDisplay
-                    font.bold: true
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-
-                Label {
-                    // Availability, plus the connection path for reachable
-                    // paired hosts (proposal §6.5: show which network path
-                    // the stream would take).
-                    text: homeGrid.statusText(model.online, model.paired, model.statusUnknown,
-                                              model.wakeable, hostRow.waking)
-                          + (model.online && model.paired && model.connectionPath !== "Unknown"
-                             ? " · " + model.connectionPath : "")
-                    font.pointSize: Tokens.sizeBody
-                    color: Tokens.textSecondary
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-            }
-
-            // Offline rows offer the contextual action inline; online rows show
-            // a chevron hinting at the app list.
-            Label {
-                Layout.alignment: Qt.AlignVCenter
-                visible: !model.online && model.wakeable && !hostRow.waking
-                text: qsTr("Wake")
-                font.pointSize: Tokens.sizeBody
-                font.bold: true
-                color: parent.parent.highlighted ? Tokens.accentFocus : Tokens.accent
-            }
-
-            Label {
-                Layout.alignment: Qt.AlignVCenter
-                visible: model.online && model.paired
-                text: "›"
-                font.pointSize: 28
-                color: Tokens.accent
-            }
-        }
-
-        Loader {
-            id: pcContextMenuLoader
-            asynchronous: true
-            sourceComponent: NavigableMenu {
-                id: pcContextMenu
-                initiator: pcContextMenuLoader.parent
-                MenuItem {
-                    text: qsTr("PC Status: %1").arg(model.online ? qsTr("Online") : qsTr("Offline"))
-                    font.bold: true
-                    enabled: false
-                }
-                NavigableMenuItem {
-                    text: qsTr("View All Apps")
-                    onTriggered: {
-                        var component = Qt.createComponent("AppView.qml")
-                        var appView = component.createObject(stackView, {"computerIndex": index, "objectName": model.name, "showHiddenGames": true})
-                        stackView.push(appView)
-                    }
-                    visible: model.online && model.paired
-                }
-                NavigableMenuItem {
-                    // ADR-0004: Direct Wake only — the magic packet cannot cross
-                    // an overlay like Tailscale, so the constraint is stated here.
-                    text: qsTr("Wake PC") + (model.online ? "" : "\n" + qsTr("(Wake-on-LAN; only reaches hosts on the same local network)"))
-                    onTriggered: {
-                        computerModel.wakeComputer(index)
-                        wakeTimer.restart()
-                    }
-                    visible: !model.online && model.wakeable
-                }
-                NavigableMenuItem {
-                    text: qsTr("Test Network")
-                    onTriggered: {
-                        computerModel.testConnectionForComputer(index)
-                        testConnectionDialog.open()
-                    }
-                }
-
-                NavigableMenuItem {
-                    text: qsTr("Rename PC")
-                    onTriggered: {
-                        renamePcDialog.pcIndex = index
-                        renamePcDialog.originalName = model.name
-                        renamePcDialog.open()
-                    }
-                }
-                NavigableMenuItem {
-                    text: qsTr("Delete PC")
-                    onTriggered: {
-                        deletePcDialog.pcIndex = index
-                        deletePcDialog.pcName = model.name
-                        deletePcDialog.open()
-                    }
-                }
-                NavigableMenuItem {
-                    text: qsTr("View Details")
-                    onTriggered: {
-                        showPcDetailsDialog.pcDetails = model.details
-                        showPcDetailsDialog.open()
-                    }
-                }
-            }
-        }
-
-        onClicked: {
-            if (model.online) {
-                if (!model.serverSupported) {
-                    errorDialog.text = qsTr("The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.").arg(model.name)
-                    errorDialog.helpText = ""
-                    errorDialog.open()
-                }
-                else if (model.paired) {
-                    var component = Qt.createComponent("AppView.qml")
-                    var appView = component.createObject(stackView, {"computerIndex": index, "objectName": model.name})
-                    stackView.push(appView)
-                }
-                else {
-                    // Jochona M2: the pairing ceremony is a full surface, not
-                    // a dialog; PairView owns PIN display, host mirroring,
-                    // success, and recoverable failure.
-                    stackView.push("qrc:/gui/PairView.qml", {
-                        "computerModel": computerModel,
-                        "computerIndex": index
-                    })
-                }
-            } else if (model.wakeable && !hostRow.waking) {
-                // Gamepad-first: Enter on an offline wakeable host is the
-                // primary action (wake), not the menu. Menu stays on hold.
-                computerModel.wakeComputer(index)
-                wakeTimer.restart()
-            } else {
-                // Using open() here because it may be activated by keyboard
-                pcContextMenu.open()
-            }
-        }
-
-        onPressAndHold: {
-            if (pcContextMenu.popup) {
-                pcContextMenu.popup()
-            }
-            else {
-                pcContextMenu.open()
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.RightButton;
-            onClicked: {
-                parent.pressAndHold()
-            }
-        }
-
-        Keys.onMenuPressed: {
-            pcContextMenu.open()
-        }
-
-        Keys.onDeletePressed: {
-            deletePcDialog.pcIndex = index
-            deletePcDialog.pcName = model.name
-            deletePcDialog.open()
+    Keys.onDownPressed: function(event) {
+        if (!resumeStage.activeFocus)
+            return
+        if (destination === "rigs") {
+            if (!rigsShelf.takeFocus())
+                addRigAction.forceActiveFocus()
+            event.accepted = true
+        } else if (destination === "library" && libraryShelf.count > 0) {
+            libraryShelf.takeFocus()
+            event.accepted = true
         }
     }
 
-    // Empty state
+    Keys.onUpPressed: function(event) {
+        if (!resumeStage.activeFocus) {
+            resumeStage.forceActiveFocus()
+            event.accepted = true
+        }
+    }
+
+    Keys.onRightPressed: function(event) {
+        if (destination === "rigs" && rigsShelf.count > 0
+                && rigsShelf.currentIndex === rigsShelf.count - 1) {
+            addRigAction.forceActiveFocus()
+            event.accepted = true
+        }
+    }
+
     ColumnLayout {
-        anchors.centerIn: parent
-        spacing: 12
-        visible: homeGrid.count === 0
+        anchors.fill: parent
+        spacing: Tokens.gutter
 
-        RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 10
+        Hero {
+            id: resumeStage
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: Tokens.dp(Tokens.handheld ? 260 : 330)
+            title: home.heroSource && home.heroSource.heroTitle !== undefined
+                   ? home.heroSource.heroTitle : ""
+            subtitle: home.heroSource && home.heroSource.heroSubtitle !== undefined
+                      ? home.heroSource.heroSubtitle : ""
+            art: home.heroSource && home.heroSource.heroArt !== undefined
+                 ? home.heroSource.heroArt : ""
+            metaLine: home.heroSource && home.heroSource.heroMeta !== undefined
+                      ? home.heroSource.heroMeta : ""
+            hostLabel: home.heroSource && home.heroSource.heroHost !== undefined
+                       ? home.heroSource.heroHost : ""
+            destinationLabel: home.heroSource
+                              && home.heroSource.heroDestination !== undefined
+                              ? home.heroSource.heroDestination : ""
+            actionLabel: home.heroSource && home.heroSource.heroAction !== undefined
+                         ? home.heroSource.heroAction : qsTr("Open")
+            playable: home.heroSource !== null
+            emptyHint: home.heroSource !== null ? ""
+                       : home.destination === "library"
+                         ? qsTr("Games appear here after Jochona reads a paired rig.")
+                         : qsTr("Add a rig running Sunshine, Vibepollo, or Apollo.")
 
-            BusyIndicator {
-                id: searchSpinner
-                visible: StreamingPreferences.enableMdns
-                running: visible
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-            }
-
-            Label {
-                text: StreamingPreferences.enableMdns ? qsTr("Looking for hosts on your network…")
-                                                      : qsTr("No hosts yet")
-                font.pointSize: 22
-                font.family: "Space Grotesk"
-                font.bold: true
-                Layout.alignment: Qt.AlignVCenter
+            onActivate: {
+                if (home.heroSource && home.heroSource.heroActivate)
+                    home.heroSource.heroActivate()
+                else
+                    home.openAddRigFlow()
             }
         }
+
+        RowLayout {
+            visible: home.destination === "rigs"
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible
+                                    ? Math.max(rigsShelf.height,
+                                               addRigAction.implicitHeight) : 0
+            spacing: Tokens.gutter
+
+            Shelf {
+                id: rigsShelf
+                Layout.fillWidth: true
+                Layout.preferredHeight: height
+                label: qsTr("Rigs")
+                emptyText: qsTr("No rigs yet.")
+                itemHeight: Tokens.dp(150)
+                model: home.computerModel
+
+                delegate: HostCard {
+                    id: hostStop
+                    objectName: name
+
+                    required property string name
+                    required property bool online
+                    required property bool paired
+                    required property bool statusUnknown
+                    required property bool wakeable
+                    required property string connectionPath
+                    required property string wakeState
+
+                    hostName: name
+                    availability: home.statusText(online, paired, statusUnknown,
+                                                  wakeable, wakeState)
+                    connectionLabel: online && paired && connectionPath !== "Unknown"
+                                     ? connectionPath : ""
+                    actionText: wakeState === "sending" ? qsTr("Sending…")
+                                : wakeState === "sent" ? qsTr("Sent")
+                                : wakeState === "failed" ? qsTr("Failed — retry")
+                                : wakeState === "ready" ? qsTr("Ready")
+                                : statusUnknown ? qsTr("Checking…")
+                                : !online ? wakeable ? qsTr("Wake") : qsTr("Actions")
+                                : !paired ? qsTr("Pair") : qsTr("Browse apps")
+                    statusColor: home.statusColor(online, paired, statusUnknown)
+                    unknown: statusUnknown
+                    waking: wakeState === "sending" || wakeState === "sent"
+
+                    onCardActivate: {
+                        if (wakeState === "sending" || wakeState === "sent")
+                            return
+                        if (!online && wakeable) {
+                            home.computerModel.wakeComputer(index, false, -1)
+                        } else if (!online) {
+                            home.hostActionsSheet_forIndex(index)
+                        } else if (!paired) {
+                            home.openPairing(index)
+                        } else {
+                            home.openHost(index,
+                                          home.computerModel.uuidForIndex(index),
+                                          name)
+                        }
+                    }
+                    onPressHold: home.hostActionsSheet_forIndex(index)
+                }
+            }
+
+            NavigableButton {
+                id: addRigAction
+                Layout.alignment: Qt.AlignBottom
+                text: qsTr("Add a rig")
+                description: ""
+                primary: rigsShelf.count === 0
+                onClicked: home.openAddRigFlow()
+                Keys.onLeftPressed: {
+                    if (rigsShelf.count > 0)
+                        rigsShelf.takeFocus(rigsShelf.count - 1)
+                }
+                Keys.onUpPressed: resumeStage.forceActiveFocus()
+            }
+        }
+
+        Shelf {
+            id: libraryShelf
+            visible: home.destination === "library" && count > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? height : 0
+            label: qsTr("Library")
+            emptyText: qsTr("Pair a rig to build the unified Library.")
+            itemHeight: Tokens.dp(158)
+            model: LibraryManager.entries
+
+            delegate: AppTile {
+                required property var modelData
+                objectName: modelData.title
+                titleText: modelData.title
+                artUrl: modelData.artwork || ""
+                hostText: modelData.available
+                          ? qsTr("%1 ready").arg(modelData.readyHostCount)
+                          : qsTr("Offline")
+                hidden: modelData.hidden
+
+                onCardActivate: home.openLibraryEntry(modelData.id)
+            }
+        }
+    }
+
+    function openLibraryEntry(entryId)
+    {
+        var chosen = LibraryManager.bestHostCandidate(entryId)
+        if (chosen.hostUuid === undefined)
+            return
+        var hostIndex = home.computerModel.indexOfUuid(chosen.hostUuid)
+        if (hostIndex < 0)
+            return
+        if (chosen.available) {
+            home.openHost(hostIndex, chosen.hostUuid, chosen.hostName,
+                          chosen.appId)
+        } else if (chosen.wakeable) {
+            home.computerModel.wakeComputer(hostIndex, true, chosen.appId)
+            home.destination = "rigs"
+            home.showDestination("rigs")
+        } else {
+            home.openHost(hostIndex, chosen.hostUuid, chosen.hostName,
+                          chosen.appId)
+        }
+    }
+
+    // --- Navigation ---
+    function openHost(hostIndex, hostUuid, hostName, autoLaunchAppId)
+    {
+        var component = Qt.createComponent("AppView.qml")
+        if (component.status !== Component.Ready) {
+            console.log("Jochona: AppView load failed:", component.errorString())
+            return
+        }
+        var view = component.createObject(stackView, {
+                                              "computerIndex": hostIndex,
+                                              "objectName": hostName,
+                                              "showHiddenGames": true,
+                                              "hostUuid": hostUuid,
+                                              "hostDisplayName": hostName,
+                                              "pendingAutoLaunchAppId": autoLaunchAppId !== undefined ? autoLaunchAppId : -1
+                                          })
+        stackView.push(view)
+    }
+
+    // Verification hook (main.qml uiShotNavigate): open the first rig's
+    // host detail exactly like activating its card would.
+    function shotOpenFirstHost()
+    {
+        if (home.computerModel.rowCount() === 0) {
+            return
+        }
+        openHost(0, home.computerModel.uuidForIndex(0), home.computerModel.nameForIndex(0), -1)
+    }
+
+    function shotOpenFirstHostActions()
+    {
+        if (home.computerModel.rowCount() > 0)
+            hostActionsSheet_forIndex(0)
+    }
+
+    function shotOpenFirstPairing()
+    {
+        if (home.computerModel.rowCount() > 0)
+            openPairing(0)
+    }
+
+    function hostActionsSheet_forIndex(idx)
+    {
+        home.actionsHostIndex = idx
+        hostActionsSheet.title = home.computerModel.nameForIndex(idx)
+        hostActionsSheet.open()
+    }
+
+    function openAddRigFlow()
+    {
+        stackView.push("qrc:/gui/WelcomeView.qml", {"step": 1})
+    }
+
+    function openPairing(idx)
+    {
+        stackView.push("qrc:/gui/PairView.qml", {
+                           "computerModel": home.computerModel,
+                           "computerIndex": idx
+                       })
+    }
+
+    function openRename(idx)
+    {
+        var component = Qt.createComponent("TextEntryView.qml")
+        if (component.status !== Component.Ready) {
+            console.warn("Jochona: text entry load failed:", component.errorString())
+            return
+        }
+        var view = component.createObject(stackView, {
+                                              "title": qsTr("Rename rig"),
+                                              "prompt": qsTr("Choose the name shown in Jochona."),
+                                              "initialText": home.computerModel.nameForIndex(idx),
+                                              "submitLabel": qsTr("Rename")
+                                          })
+        view.accepted.connect(function(value) {
+            home.computerModel.renameComputer(idx, value)
+            stackView.pop()
+        })
+        view.cancelled.connect(function() { stackView.pop() })
+        stackView.push(view)
+    }
+
+    function removeSheet_forIndex(idx)
+    {
+        removeSheet.targetIndex = idx
+        removeSheet.open()
+    }
+
+    // --- Host actions (Quick Sheets) ---
+    QuickSheet {
+        id: hostActionsSheet
+        title: ""
+
+        Column {
+            spacing: Tokens.gutterTight
+            width: parent.width
+
+            Repeater {
+                model: ["apps", "wake", "test", "manage"]
+
+                delegate: NavigableButton {
+                    required property var modelData
+
+                    text: modelData === "apps" ? qsTr("View apps")
+                          : modelData === "wake" ? qsTr("Wake")
+                          : modelData === "test" ? qsTr("Test connection")
+                                                 : qsTr("Manage rig")
+                    description: modelData === "wake"
+                                 ? qsTr("Available on the same local network")
+                                 : modelData === "test"
+                                   ? qsTr("Check the paths required for streaming")
+                                   : ""
+
+                    onClicked: {
+                        hostActionsSheet.close()
+                        var idx = home.actionsHostIndex
+                        if (idx < 0)
+                            return
+                        if (modelData === "apps") {
+                            home.openHost(idx, home.computerModel.uuidForIndex(idx),
+                                          home.computerModel.nameForIndex(idx))
+                        } else if (modelData === "wake") {
+                            home.computerModel.wakeComputer(idx)
+                        } else if (modelData === "test") {
+                            testConnectionDialog.returnFocusItem =
+                                    rigsShelf.focusedItem !== null
+                                    ? rigsShelf.focusedItem : resumeStage
+                            testConnectionDialog.pairKey =
+                                EffectiveSettings.clientDeviceId + "|"
+                                + home.computerModel.uuidForIndex(idx)
+                            home.computerModel.testConnectionForComputer(idx)
+                            testConnectionDialog.open()
+                        } else {
+                            Qt.callLater(function() { manageHostPanel.open() })
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    QuickSheet {
+        id: manageHostPanel
+        title: home.actionsHostIndex >= 0
+               ? home.computerModel.nameForIndex(home.actionsHostIndex) : ""
+        initialFocusItem: renameRigButton
+
+        NavigableButton {
+            id: renameRigButton
+            text: qsTr("Rename rig")
+            primary: true
+            onClicked: {
+                manageHostPanel.close()
+                home.openRename(home.actionsHostIndex)
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Remove rig")
+            destructive: true
+            onClicked: {
+                manageHostPanel.close()
+                home.removeSheet_forIndex(home.actionsHostIndex)
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Cancel")
+            onClicked: manageHostPanel.close()
+        }
+    }
+
+
+
+    QuickSheet {
+        id: removeSheet
+        title: qsTr("Remove this rig?")
+        initialFocusItem: keepButton
+
+        property int targetIndex: -1
+        property string targetUuid: ""
 
         Label {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.maximumWidth: 600
-            horizontalAlignment: Text.AlignHCenter
-            text: StreamingPreferences.enableMdns ?
-                      qsTr("Add a PC with the + button above. Hosts running Sunshine, Apollo, or Vibepollo appear here automatically.") :
-                      qsTr("Automatic discovery is off. Add a PC with the + button above.")
-            font.pointSize: 12
-            color: "#9fa8ba"
-            wrapMode: Text.Wrap
+            width: parent.width
+            text: qsTr("Jochona will forget %1. You can add it again at any time.")
+                  .arg(home.computerModel.nameForIndex(removeSheet.targetIndex))
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            spacing: Tokens.gutter
+
+            NavigableButton {
+                text: qsTr("Remove rig")
+                destructive: true
+                onClicked: removeSheet.accept()
+            }
+            NavigableButton {
+                id: keepButton
+                text: qsTr("Keep rig")
+                primary: true
+                onClicked: removeSheet.reject()
+            }
+        }
+
+        onOpened: targetUuid = home.computerModel.uuidForIndex(targetIndex)
+        onAccepted: {
+            RecentApps.forgetHost(targetUuid)
+            home.computerModel.deleteComputer(targetIndex)
         }
     }
 
-    ScrollBar.vertical: ScrollBar {}
 
     ErrorMessageDialog {
         id: errorDialog
-
-        // Using Setup-Guide here instead of Troubleshooting because it's likely that users
-        // will arrive here by forgetting to enable GameStream or not forwarding ports.
-        helpUrl: "https://github.com/moonlight-stream/moonlight-docs/wiki/Setup-Guide"
     }
 
-    NavigableMessageDialog {
-        id: deletePcDialog
-        // don't allow edits to the rest of the window while open
-        property int pcIndex : -1
-        property string pcName : ""
-        text: qsTr("Are you sure you want to remove '%1'?").arg(pcName)
-        standardButtons: Dialog.Yes | Dialog.No
-
-        onAccepted: {
-            computerModel.deleteComputer(pcIndex)
-        }
-    }
-
-    NavigableMessageDialog {
+    ConnectionTestDialog {
         id: testConnectionDialog
-        closePolicy: Popup.CloseOnEscape
-        standardButtons: Dialog.Ok
-
-        onAboutToShow: {
-            testConnectionDialog.text = qsTr("Jochona is testing your network connection to determine if any required ports are blocked.") + "\n\n" + qsTr("This may take a few seconds…")
-            showSpinner = true
+        onRetryRequested: {
+            if (home.actionsHostIndex >= 0)
+                home.computerModel.testConnectionForComputer(
+                            home.actionsHostIndex)
         }
-
-        function connectionTestComplete(result, blockedPorts)
-        {
-            if (result === -1) {
-                text = qsTr("The network test could not be performed because none of Moonlight's connection testing servers were reachable from this PC. Check your Internet connection or try again later.")
-                imageSrc = "qrc:/res/baseline-warning-24px.svg"
-            }
-            else if (result === 0) {
-                // Jochona: first clause is this app; "Moonlight Internet Hosting Tool" is
-                // upstream's separately-named tool and its testing servers, kept as-is.
-                text = qsTr("This network does not appear to be blocking Jochona. If you still have trouble connecting, check your PC's firewall settings.") + "\n\n" + qsTr("If you are trying to stream over the Internet, install the Moonlight Internet Hosting Tool on your gaming PC and run the included Internet Streaming Tester to check your gaming PC's Internet connection.")
-                imageSrc = "qrc:/res/baseline-check_circle_outline-24px.svg"
-            }
-            else {
-                text = qsTr("Your PC's current network connection seems to be blocking Jochona. Streaming over the Internet may not work while connected to this network.") + "\n\n" + qsTr("The following network ports were blocked:") + "\n"
-                text += blockedPorts
-                imageSrc = "qrc:/res/baseline-error_outline-24px.svg"
-            }
-
-            // Stop showing the spinner and show the image instead
-            showSpinner = false
-        }
-    }
-
-    NavigableDialog {
-        id: renamePcDialog
-        property string label: qsTr("Enter the new name for this PC:")
-        property string originalName
-        property int pcIndex : -1;
-
-        standardButtons: Dialog.Ok | Dialog.Cancel
-
-        onOpened: {
-            // Force keyboard focus on the textbox so keyboard navigation works
-            editText.forceActiveFocus()
-        }
-
-        onClosed: {
-            editText.clear()
-        }
-
-        onAccepted: {
-            if (editText.text) {
-                computerModel.renameComputer(pcIndex, editText.text)
-            }
-        }
-
-        ColumnLayout {
-            Label {
-                text: renamePcDialog.label
-                font.bold: true
-            }
-
-            TextField {
-                id: editText
-                placeholderText: renamePcDialog.originalName
-                Layout.fillWidth: true
-                focus: true
-
-                Keys.onReturnPressed: {
-                    renamePcDialog.accept()
-                }
-
-                Keys.onEnterPressed: {
-                    renamePcDialog.accept()
-                }
-            }
-        }
-    }
-
-    NavigableMessageDialog {
-        id: showPcDetailsDialog
-        property string pcDetails : "";
-        text: showPcDetailsDialog.pcDetails
-        imageSrc: "qrc:/res/baseline-help_outline-24px.svg"
-        standardButtons: Dialog.Ok
     }
 }

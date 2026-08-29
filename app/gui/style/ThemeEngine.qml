@@ -19,79 +19,100 @@ QtObject {
     // OS appearance; "system" resolves through this. Qt 6.5+ style hint.
     readonly property bool osDark: Qt.styleHints.colorScheme === Qt.Dark
 
+    // Night Route roles: `night` is the environment, `surface` a raised route
+    // field, `moon` the narrow active cue, `link` the live connection line,
+    // and `scrim` the scene-preserving modal veil. Classic role names remain
+    // part of schema 1 so existing data-only theme packages still merge.
     readonly property var palettes: ({
-        // Shipped Jochona dark — the incumbent look
+        // Dark: the default living-room and desktop night scene.
         "dark": {
-            surface:       "#262b38",
-            surfaceFocus:  "#323a4d",
-            border:        "#3a4152",
-            borderFocus:   "#7986cb",
-            textPrimary:   "#ffffff",
-            textSecondary: "#9fa8ba",
-            accent:        "#7986cb",
-            accentFocus:   "#9fa8ff",
-            statusOnline:  "#4caf50",
-            statusPairing: "#ffb300",
-            statusOffline: "#757575",
-            statusUnknown: "#9e9e9e"
+            night:         "#08101C",
+            surface:       "#111D2E",
+            surfaceFocus:  "#192A43",
+            border:        "#2A3A52",
+            borderFocus:   "#AFC8E8",
+            textPrimary:   "#EAF0F7",
+            textSecondary: "#A6B4C6",
+            moon:          "#B7A7FF",
+            moonDim:       "#96A8C0",
+            link:          "#88B7DA",
+            scrim:         "#02060CD9",
+            accent:        "#88B7DA",
+            accentFocus:   "#B7A7FF",
+            statusOnline:  "#65C58A",
+            statusPairing: "#E0B968",
+            statusOffline: "#7F8A9C",
+            statusUnknown: "#A0ABBC"
         },
-        // Pure black surfaces; borders strengthened to keep structure without
-        // glow. OLED panels: black pixels are off, so no painted surface tint.
+        // OLED: black is structural, not a tinted card color.
         "oled": {
-            surface:       "#000000",
-            surfaceFocus:  "#141a26",
-            border:        "#2a3140",
-            borderFocus:   "#9fa8ff",
-            textPrimary:   "#ffffff",
-            textSecondary: "#aab3c5",
-            accent:        "#8ea2ff",
-            accentFocus:   "#b3c1ff",
-            statusOnline:  "#66bb6a",
-            statusPairing: "#ffc233",
-            statusOffline: "#8a8a8a",
-            statusUnknown: "#a3a3a3"
+            night:         "#000000",
+            surface:       "#05070B",
+            surfaceFocus:  "#101A2A",
+            border:        "#2C3544",
+            borderFocus:   "#BFD7F2",
+            textPrimary:   "#F1F5FA",
+            textSecondary: "#AEB9C8",
+            moon:          "#C1B5FF",
+            moonDim:       "#9BA9BC",
+            link:          "#92C4E8",
+            scrim:         "#000000EB",
+            accent:        "#92C4E8",
+            accentFocus:   "#C1B5FF",
+            statusOnline:  "#6BD695",
+            statusPairing: "#F0C66E",
+            statusOffline: "#929CAA",
+            statusUnknown: "#BAC3CF"
         },
-        // Daylight rooms / projection: cool paper, ink navy text, all pairs
-        // at or above 4.5:1 against their surface.
+        // Light: fogged glass and blue-black ink for bright rooms.
         "light": {
-            surface:       "#f2f4fa",
-            surfaceFocus:  "#e2e7f5",
-            border:        "#c3c9dd",
-            borderFocus:   "#3949ab",
-            textPrimary:   "#131a2e",
-            textSecondary: "#4c5670",
-            accent:        "#3949ab",
-            accentFocus:   "#2c3a96",
-            statusOnline:  "#2e7d32",
-            statusPairing: "#8a5a00",
-            statusOffline: "#5c5c5c",
-            statusUnknown: "#6e6e6e"
+            night:         "#E8EDF3",
+            surface:       "#F7F9FC",
+            surfaceFocus:  "#DCE8F3",
+            border:        "#B5C4D3",
+            borderFocus:   "#536F91",
+            textPrimary:   "#111B2B",
+            textSecondary: "#465972",
+            moon:          "#66569D",
+            moonDim:       "#596A80",
+            link:          "#365F82",
+            scrim:         "#111B2BBF",
+            accent:        "#365F82",
+            accentFocus:   "#66569D",
+            statusOnline:  "#237A46",
+            statusPairing: "#805D12",
+            statusOffline: "#59616D",
+            statusUnknown: "#4E6074"
         },
-        // High contrast: pure ground, saturated ink, thick-focus-friendly
-        // bright edges. Status colors are always paired with labels by rule.
+        // High contrast favors discrimination over brand nuance.
         "highcontrast": {
+            night:         "#000000",
             surface:       "#000000",
-            surfaceFocus:  "#0b0b0b",
-            border:        "#ffffff",
-            borderFocus:   "#ffd60a",
-            textPrimary:   "#ffffff",
-            textSecondary: "#f2f2f2",
-            accent:        "#ffd60a",
-            accentFocus:   "#ffe45c",
-            statusOnline:  "#00e676",
-            statusPairing: "#ffd60a",
-            statusOffline: "#d0d0d0",
-            statusUnknown: "#e0e0e0"
+            surfaceFocus:  "#111111",
+            border:        "#FFFFFF",
+            borderFocus:   "#FFD60A",
+            textPrimary:   "#FFFFFF",
+            textSecondary: "#FFFFFF",
+            moon:          "#FFD60A",
+            moonDim:       "#FFFFFF",
+            link:          "#6EC1FF",
+            scrim:         "#000000F2",
+            accent:        "#6EC1FF",
+            accentFocus:   "#FFD60A",
+            statusOnline:  "#00E676",
+            statusPairing: "#FFD60A",
+            statusOffline: "#FFFFFF",
+            statusUnknown: "#FFFFFF"
         }
     })
 
-    // Palette roles a custom theme may override. Anything else in a package's
-    // colors object voids the whole package (schema strictness beats partial
-    // application — a typo'd role must not half-theme the shell).
+    // Palette roles a custom theme may override. Anything else voids the
+    // package; typos never create a half-themed interface.
     readonly property var overridableRoles: [
         "surface", "surfaceFocus", "border", "borderFocus",
         "textPrimary", "textSecondary", "accent", "accentFocus",
-        "statusOnline", "statusPairing", "statusOffline", "statusUnknown"
+        "statusOnline", "statusPairing", "statusOffline", "statusUnknown",
+        "night", "moon", "moonDim", "link", "scrim"
     ]
 
     // --- Custom theme package loading (data-only; docs/theme-packages.md) ---
@@ -195,6 +216,13 @@ QtObject {
         return a.length > 0 ? Qt.lighter(a, 1.25) : _palette.accentFocus
     }
 
+    function readableInk(colorValue) {
+        var brightness = colorValue.r * 0.299 + colorValue.g * 0.587
+                         + colorValue.b * 0.114
+        return brightness > 0.58 ? "#07101C" : "#FFFFFF"
+    }
+    readonly property color focusInk: readableInk(accentFocus)
+
     readonly property color surface:        _palette.surface
     readonly property color surfaceFocus:   _palette.surfaceFocus
     readonly property color border:         _palette.border
@@ -204,5 +232,13 @@ QtObject {
     readonly property color statusOnline:   _palette.statusOnline
     readonly property color statusPairing:  _palette.statusPairing
     readonly property color statusOffline:  _palette.statusOffline
-    readonly property color statusUnknown:  _palette.statusUnknown
+
+    // Night Route roles. Schema-1 packages may omit them; every missing role
+    // falls back to a classic role or a safe scene veil.
+    readonly property color night:     _palette.night !== undefined ? _palette.night : _palette.surface
+    readonly property color moon:      _palette.moon !== undefined ? _palette.moon : _palette.accent
+    readonly property color moonDim:   _palette.moonDim !== undefined ? _palette.moonDim : _palette.textSecondary
+    readonly property color link:      _palette.link !== undefined ? _palette.link : _palette.accent
+    readonly property color scrim:     _palette.scrim !== undefined ? _palette.scrim : "#000000D9"
+    readonly property color statusUnknown: _palette.statusUnknown
 }
