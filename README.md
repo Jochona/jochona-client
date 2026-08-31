@@ -9,14 +9,14 @@ This repository is a history-preserving import of [moonlight-stream/moonlight-qt
 ## What Jochona adds in Milestone 2
 
 - A controller-first Night Route interface for desktop, handheld, and television layouts
-- Unified Library Entries with Host scoring, favorites, hidden entries, recents, and offline cache data
+- Unified Library Entries with Host scoring, favorites, hidden entries, recents, offline cache data, and user-confirmed merge/split grouping
 - Settings Baseline, Streaming Profiles, sparse contextual patches, provenance, pins, and quality floors
 - Controller Maps with calibration, remapping, persistent Player Slot Order, and streamed-input transforms
 - Bounded Wake recovery, display contexts, audio-output recovery, Session settings, and reconnect controls
-- Local History controls and previewed Support Bundle export with address redaction
+- Local History controls and previewed Support Bundle export with address redaction, Wake route and Beacon route state, and recent session outcomes
 - Stable and preview update channels for Jochona releases
 
-The separate Jochona Host project remains planned. Its first target is strict AV1 encoding on Windows with an NVIDIA RTX 5090.
+The separate Jochona Host project is under active development in its own repository: a Sunshine-derived fork that preserves baseline GameStream while exposing authenticated, versioned Jochona extensions (`/jochona/v1/...` — Host Volume control, Encoder Tuple preflight, and more) that this client already speaks. Its first hosting-hardware target is strict AV1 encoding on Windows with an NVIDIA RTX 5090.
 
 ## Upstream features inherited today
 

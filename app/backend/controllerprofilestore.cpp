@@ -1,10 +1,11 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
 #include "controllerprofilestore.h"
 #include "core/settingsdatabase.h"
+#include <Limelight.h>
 #include <QCryptographicHash>
 #include <QUuid>
 
@@ -51,6 +52,48 @@ ControllerCalibration::fromVariantMap(const QVariantMap& map)
 
 // --- ControllerMap -------------------------------------------------------
 
+QString
+ControllerMap::transmissionModeToString(ControllerTransmissionMode mode)
+{
+    switch (mode) {
+    case ControllerTransmissionMode::Compatible:
+        return QStringLiteral("compatible");
+    case ControllerTransmissionMode::Native:
+    default:
+        return QStringLiteral("native");
+    }
+}
+
+ControllerTransmissionMode
+ControllerMap::transmissionModeFromString(const QString& value)
+{
+    return value.compare(QStringLiteral("compatible"), Qt::CaseInsensitive) == 0
+        ? ControllerTransmissionMode::Compatible
+        : ControllerTransmissionMode::Native;
+}
+
+void
+ControllerMap::applyCompatibleTransmission(ControllerTransmissionMode mode,
+                                           uint8_t& type,
+                                           uint32_t& capabilities,
+                                           uint32_t& supportedButtonFlags)
+{
+    if (mode != ControllerTransmissionMode::Compatible) {
+        return;
+    }
+    // Report the lowest-common-denominator controller profile (a standard
+    // Xbox-style pad) instead of this device's exact type/capabilities,
+    // for hosts/games that mishandle exotic extras (touchpad, motion
+    // sensors, RGB, paddles).
+    type = LI_CTYPE_XBOX;
+    capabilities &= (LI_CCAP_ANALOG_TRIGGERS | LI_CCAP_RUMBLE |
+                     LI_CCAP_TRIGGER_RUMBLE | LI_CCAP_BATTERY_STATE);
+    supportedButtonFlags &= (A_FLAG | B_FLAG | X_FLAG | Y_FLAG |
+                             BACK_FLAG | SPECIAL_FLAG | PLAY_FLAG |
+                             LS_CLK_FLAG | RS_CLK_FLAG | LB_FLAG | RB_FLAG |
+                             UP_FLAG | DOWN_FLAG | LEFT_FLAG | RIGHT_FLAG);
+}
+
 QVariantMap
 ControllerMap::toVariantMap() const
 {
@@ -64,6 +107,9 @@ ControllerMap::toVariantMap() const
         remap.insert(it.key(), it.value());
     }
     map.insert(QStringLiteral("buttonRemap"), remap);
+    map.insert(QStringLiteral("rawPassthrough"), rawPassthrough);
+    map.insert(QStringLiteral("transmissionMode"),
+              transmissionModeToString(transmissionMode));
 
     return map;
 }
@@ -80,6 +126,11 @@ ControllerMap::fromVariantMap(const QString& controllerPath, const QString& appI
     for (auto it = remap.constBegin(); it != remap.constEnd(); ++it) {
         profile.buttonRemap.insert(it.key(), it.value().toString());
     }
+    profile.rawPassthrough =
+        map.value(QStringLiteral("rawPassthrough"), false).toBool();
+    profile.transmissionMode = ControllerMap::transmissionModeFromString(
+        map.value(QStringLiteral("transmissionMode"),
+                 QStringLiteral("native")).toString());
 
     return profile;
 }

@@ -23,7 +23,11 @@ Item {
     property ComputerModel computerModel: createModel()
     property string destination: "resume" // resume | rigs | library
     property int actionsHostIndex: -1
+    property int actionsLibraryEntryIndex: -1
     property var recentEntries: []
+    readonly property var actionsLibraryEntry: home.actionsLibraryEntryIndex >= 0
+            && home.actionsLibraryEntryIndex < LibraryManager.entries.length
+            ? LibraryManager.entries[home.actionsLibraryEntryIndex] : null
 
     focus: true
     activeFocusOnTab: true
@@ -176,8 +180,9 @@ Item {
             if (!rigsShelf.takeFocus())
                 addRigAction.forceActiveFocus()
             event.accepted = true
-        } else if (destination === "library" && libraryShelf.count > 0) {
-            libraryShelf.takeFocus()
+        } else if (destination === "library") {
+            if (!libraryShelf.takeFocus())
+                librarySearchAction.forceActiveFocus()
             event.accepted = true
         }
     }
@@ -193,6 +198,10 @@ Item {
         if (destination === "rigs" && rigsShelf.count > 0
                 && rigsShelf.currentIndex === rigsShelf.count - 1) {
             addRigAction.forceActiveFocus()
+            event.accepted = true
+        } else if (destination === "library" && libraryShelf.count > 0
+                && libraryShelf.currentIndex === libraryShelf.count - 1) {
+            librarySearchAction.forceActiveFocus()
             event.accepted = true
         }
     }
@@ -314,27 +323,70 @@ Item {
             }
         }
 
-        Shelf {
-            id: libraryShelf
-            visible: home.destination === "library" && count > 0
+        RowLayout {
+            visible: home.destination === "library"
             Layout.fillWidth: true
-            Layout.preferredHeight: visible ? height : 0
-            label: qsTr("Library")
-            emptyText: qsTr("Pair a rig to build the unified Library.")
-            itemHeight: Tokens.dp(158)
-            model: LibraryManager.entries
+            Layout.preferredHeight: visible
+                                    ? Math.max(libraryShelf.height,
+                                               libraryActions.implicitHeight) : 0
+            spacing: Tokens.gutter
 
-            delegate: AppTile {
-                required property var modelData
-                objectName: modelData.title
-                titleText: modelData.title
-                artUrl: modelData.artwork || ""
-                hostText: modelData.available
-                          ? qsTr("%1 ready").arg(modelData.readyHostCount)
-                          : qsTr("Offline")
-                hidden: modelData.hidden
+            Shelf {
+                id: libraryShelf
+                visible: count > 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: height
+                label: qsTr("Library")
+                emptyText: qsTr("Pair a rig to build the unified Library.")
+                itemHeight: Tokens.dp(158)
+                model: LibraryManager.entries
 
-                onCardActivate: home.openLibraryEntry(modelData.id)
+                delegate: AppTile {
+                    required property var modelData
+                    objectName: modelData.title
+                    titleText: modelData.title
+                    artUrl: modelData.artwork || ""
+                    hostText: modelData.available
+                              ? qsTr("%1 ready").arg(modelData.readyHostCount)
+                              : qsTr("Offline")
+                    hidden: modelData.hidden
+
+                    onCardActivate: home.openLibraryEntry(modelData.id)
+                    onPressHold: home.libraryEntryActionsSheet_forIndex(index)
+                }
+            }
+
+            ColumnLayout {
+                id: libraryActions
+                Layout.alignment: Qt.AlignBottom
+                spacing: Tokens.gutterTight
+
+                NavigableButton {
+                    id: librarySearchAction
+                    compact: true
+                    text: LibraryManager.search.length > 0
+                          ? qsTr("Search: “%1”").arg(LibraryManager.search)
+                          : qsTr("Search library")
+                    onClicked: home.openLibrarySearch()
+                    Keys.onLeftPressed: {
+                        if (libraryShelf.count > 0)
+                            libraryShelf.takeFocus(libraryShelf.count - 1)
+                    }
+                    Keys.onUpPressed: resumeStage.forceActiveFocus()
+                }
+
+                NavigableButton {
+                    checkable: true
+                    checked: LibraryManager.showHidden
+                    compact: true
+                    text: checked ? qsTr("Showing hidden") : qsTr("Show hidden")
+                    onClicked: LibraryManager.setShowHidden(checked)
+                    Keys.onLeftPressed: {
+                        if (libraryShelf.count > 0)
+                            libraryShelf.takeFocus(libraryShelf.count - 1)
+                    }
+                    Keys.onUpPressed: resumeStage.forceActiveFocus()
+                }
             }
         }
     }
@@ -358,6 +410,65 @@ Item {
             home.openHost(hostIndex, chosen.hostUuid, chosen.hostName,
                           chosen.appId)
         }
+    }
+
+    function openLibrarySearch()
+    {
+        var component = Qt.createComponent("TextEntryView.qml")
+        if (component.status !== Component.Ready) {
+            console.warn("Jochona: text entry load failed:", component.errorString())
+            return
+        }
+        var view = component.createObject(stackView, {
+                                              "title": qsTr("Search library"),
+                                              "prompt": qsTr("Filter titles across every paired rig."),
+                                              "initialText": LibraryManager.search,
+                                              "placeholderText": qsTr("Game title"),
+                                              "allowEmpty": true,
+                                              "submitLabel": qsTr("Search")
+                                          })
+        view.accepted.connect(function(value) {
+            LibraryManager.setSearch(value)
+            stackView.pop()
+        })
+        view.cancelled.connect(function() { stackView.pop() })
+        stackView.push(view)
+    }
+
+    function libraryEntryActionsSheet_forIndex(idx)
+    {
+        home.actionsLibraryEntryIndex = idx
+        if (home.actionsLibraryEntry === null)
+            return
+        libraryEntryActionsSheet.title = home.actionsLibraryEntry.title
+        libraryEntryActionsSheet.open()
+    }
+
+    function openLibraryGroupingPanel()
+    {
+        if (home.actionsLibraryEntry === null)
+            return
+        libraryGroupingPanel.title = home.actionsLibraryEntry.title
+        libraryGroupingPanel.open()
+    }
+
+    function openMergePicker()
+    {
+        libraryMergePickerSheet.open()
+    }
+
+    function confirmMergeLibraryEntry(targetEntryId, targetTitle)
+    {
+        libraryMergeConfirmSheet.targetEntryId = targetEntryId
+        libraryMergeConfirmSheet.targetTitle = targetTitle
+        libraryMergeConfirmSheet.open()
+    }
+
+    function confirmSplitHostApplication(hostAppId, label)
+    {
+        librarySplitConfirmSheet.hostAppId = hostAppId
+        librarySplitConfirmSheet.label = label
+        librarySplitConfirmSheet.open()
     }
 
     // --- Navigation ---
@@ -442,6 +553,51 @@ Item {
         stackView.push(view)
     }
 
+    // Push a full-screen text entry for one wake override field, matching
+    // openRename's controller-driven text-entry pattern. Reopens the wake
+    // overrides panel afterward so the other fields stay reachable.
+    function openWakeOverrideField(idx, field, title, prompt, initialValue)
+    {
+        wakeOverridesPanel.close()
+        var component = Qt.createComponent("TextEntryView.qml")
+        if (component.status !== Component.Ready) {
+            console.warn("Jochona: text entry load failed:", component.errorString())
+            return
+        }
+        var view = component.createObject(stackView, {
+                                              "title": title,
+                                              "prompt": prompt,
+                                              "initialText": initialValue,
+                                              "submitLabel": qsTr("Save"),
+                                              "allowEmpty": true
+                                          })
+        function reopenPanel() {
+            home.actionsHostIndex = idx
+            Qt.callLater(function() { wakeOverridesPanel.open() })
+        }
+        view.accepted.connect(function(value) {
+            var info = home.computerModel.hostInfoForIndex(idx)
+            var mac = field === "mac" ? value : (info.manualMac || "")
+            var port = field === "port" ? (parseInt(value, 10) || 0)
+                                        : (info.wakePort || 0)
+            var broadcast = field === "broadcast" ? value : (info.wakeBroadcast || "")
+            home.computerModel.setWakeOverrides(idx, mac, port, broadcast)
+            stackView.pop()
+            reopenPanel()
+        })
+        view.cancelled.connect(function() {
+            stackView.pop()
+            reopenPanel()
+        })
+        stackView.push(view)
+    }
+
+    function openWakeOverridesPanel_forIndex(idx)
+    {
+        home.actionsHostIndex = idx
+        wakeOverridesPanel.open()
+    }
+
     function removeSheet_forIndex(idx)
     {
         removeSheet.targetIndex = idx
@@ -468,7 +624,12 @@ Item {
                           : modelData === "test" ? qsTr("Test connection")
                                                  : qsTr("Manage rig")
                     description: modelData === "wake"
-                                 ? qsTr("Available on the same local network")
+                                 ? (home.actionsHostIndex >= 0
+                                    && home.computerModel.hostInfoForIndex(
+                                           home.actionsHostIndex).wakeProvider === "Beacon"
+                                    ? qsTr("Beacon accepts one request and owns "
+                                           + "the LAN Wake burst")
+                                    : qsTr("Available on the same local network"))
                                  : modelData === "test"
                                    ? qsTr("Check the paths required for streaming")
                                    : ""
@@ -518,6 +679,17 @@ Item {
         }
 
         NavigableButton {
+            text: qsTr("Wake overrides")
+            description: qsTr("Manual MAC, port, broadcast, and re-probe")
+            onClicked: {
+                manageHostPanel.close()
+                Qt.callLater(function() {
+                    home.openWakeOverridesPanel_forIndex(home.actionsHostIndex)
+                })
+            }
+        }
+
+        NavigableButton {
             text: qsTr("Remove rig")
             destructive: true
             onClicked: {
@@ -530,6 +702,308 @@ Item {
             text: qsTr("Cancel")
             onClicked: manageHostPanel.close()
         }
+    }
+
+    QuickSheet {
+        id: wakeOverridesPanel
+        title: qsTr("Wake overrides")
+        initialFocusItem: editMacButton
+
+        property var wakeInfo: ({})
+
+        function refresh() {
+            wakeInfo = home.actionsHostIndex >= 0
+                       ? home.computerModel.hostInfoForIndex(home.actionsHostIndex)
+                       : ({})
+        }
+
+        onAboutToShow: refresh()
+
+        Label {
+            width: parent.width
+            text: qsTr("Manual overrides beat the auto-detected wake details — "
+                       + "the escape hatch for a Tailscale-cached MAC address. "
+                       + "Leave a field blank to go back to automatic.")
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        NavigableButton {
+            id: editMacButton
+            width: parent.width
+            text: qsTr("MAC address")
+            description: wakeOverridesPanel.wakeInfo.manualMac
+                         ? wakeOverridesPanel.wakeInfo.manualMac
+                         : qsTr("Auto-detected")
+            onClicked: home.openWakeOverrideField(
+                           home.actionsHostIndex, "mac",
+                           qsTr("MAC address override"),
+                           qsTr("Enter the rig's MAC address, or leave blank to auto-detect."),
+                           wakeOverridesPanel.wakeInfo.manualMac || "")
+        }
+
+        NavigableButton {
+            width: parent.width
+            text: qsTr("Wake-on-LAN port")
+            description: wakeOverridesPanel.wakeInfo.wakePort
+                         ? String(wakeOverridesPanel.wakeInfo.wakePort)
+                         : qsTr("Automatic")
+            onClicked: home.openWakeOverrideField(
+                           home.actionsHostIndex, "port",
+                           qsTr("Wake port override"),
+                           qsTr("Enter the UDP port for wake packets, or leave blank for automatic."),
+                           wakeOverridesPanel.wakeInfo.wakePort
+                           ? String(wakeOverridesPanel.wakeInfo.wakePort) : "")
+        }
+
+        NavigableButton {
+            width: parent.width
+            text: qsTr("Broadcast address")
+            description: wakeOverridesPanel.wakeInfo.wakeBroadcast
+                         ? wakeOverridesPanel.wakeInfo.wakeBroadcast
+                         : qsTr("All network interfaces")
+            onClicked: home.openWakeOverrideField(
+                           home.actionsHostIndex, "broadcast",
+                           qsTr("Broadcast address override"),
+                           qsTr("Enter a broadcast address, or leave blank to sweep every interface."),
+                           wakeOverridesPanel.wakeInfo.wakeBroadcast || "")
+        }
+
+        NavigableButton {
+            width: parent.width
+            text: qsTr("Re-probe from LAN")
+            description: qsTr("Skip the wait and check this rig right now")
+            onClicked: {
+                if (home.actionsHostIndex >= 0)
+                    home.computerModel.reprobeComputer(home.actionsHostIndex)
+                wakeOverridesPanel.close()
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Done")
+            primary: true
+            onClicked: wakeOverridesPanel.close()
+        }
+    }
+
+    QuickSheet {
+        id: libraryEntryActionsSheet
+        title: ""
+        initialFocusItem: libraryFavoriteAction
+
+        NavigableButton {
+            id: libraryFavoriteAction
+            checkable: true
+            checked: home.actionsLibraryEntry !== null
+                     ? home.actionsLibraryEntry.favorite : false
+            text: checked ? qsTr("Favorited") : qsTr("Add to favorites")
+            onClicked: {
+                if (home.actionsLibraryEntry !== null)
+                    LibraryManager.setFavorite(home.actionsLibraryEntry.id, checked)
+                libraryEntryActionsSheet.close()
+            }
+        }
+
+        NavigableButton {
+            checkable: true
+            checked: home.actionsLibraryEntry !== null
+                     ? home.actionsLibraryEntry.hidden : false
+            text: checked ? qsTr("Hidden") : qsTr("Hide from library")
+            onClicked: {
+                if (home.actionsLibraryEntry !== null)
+                    LibraryManager.setHidden(home.actionsLibraryEntry.id, checked)
+                libraryEntryActionsSheet.close()
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Manage grouping")
+            description: qsTr("Split a rig out, or merge with another entry")
+            onClicked: {
+                libraryEntryActionsSheet.close()
+                Qt.callLater(function() { home.openLibraryGroupingPanel() })
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Cancel")
+            onClicked: libraryEntryActionsSheet.close()
+        }
+    }
+
+    QuickSheet {
+        id: libraryGroupingPanel
+        title: ""
+
+        property var candidates: home.actionsLibraryEntry !== null
+                                 ? LibraryManager.hostCandidates(
+                                       home.actionsLibraryEntry.id) : []
+
+        onAboutToShow: candidates = home.actionsLibraryEntry !== null
+                                    ? LibraryManager.hostCandidates(
+                                          home.actionsLibraryEntry.id) : []
+
+        Label {
+            width: parent.width
+            text: qsTr("Jochona grouped these into one Library Entry. Split "
+                       + "one back out, or merge this entry into another.")
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        Repeater {
+            model: libraryGroupingPanel.candidates
+
+            delegate: NavigableButton {
+                id: groupingCandidateButton
+                required property var modelData
+                width: parent.width
+                enabled: libraryGroupingPanel.candidates.length > 1
+                text: modelData.hostName + " — " + modelData.appName
+                description: groupingCandidateButton.enabled
+                             ? qsTr("Split out into its own Library Entry")
+                             : qsTr("The only rig in this entry")
+                onClicked: {
+                    libraryGroupingPanel.close()
+                    Qt.callLater(function() {
+                        home.confirmSplitHostApplication(
+                                    groupingCandidateButton.modelData.hostAppId,
+                                    groupingCandidateButton.modelData.hostName
+                                    + " — " + groupingCandidateButton.modelData.appName)
+                    })
+                }
+            }
+        }
+
+        NavigableButton {
+            width: parent.width
+            text: qsTr("Merge with another entry…")
+            onClicked: {
+                libraryGroupingPanel.close()
+                Qt.callLater(function() { home.openMergePicker() })
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Done")
+            primary: true
+            onClicked: libraryGroupingPanel.close()
+        }
+    }
+
+    QuickSheet {
+        id: libraryMergePickerSheet
+        title: qsTr("Merge into…")
+
+        Repeater {
+            model: home.actionsLibraryEntry !== null
+                   ? LibraryManager.entries.filter(function(entry) {
+                         return entry.id !== home.actionsLibraryEntry.id
+                     })
+                   : []
+
+            delegate: NavigableButton {
+                required property var modelData
+                width: parent.width
+                text: modelData.title
+                onClicked: {
+                    libraryMergePickerSheet.close()
+                    Qt.callLater(function() {
+                        home.confirmMergeLibraryEntry(modelData.id, modelData.title)
+                    })
+                }
+            }
+        }
+
+        NavigableButton {
+            text: qsTr("Cancel")
+            onClicked: libraryMergePickerSheet.close()
+        }
+    }
+
+    QuickSheet {
+        id: libraryMergeConfirmSheet
+        title: qsTr("Merge entries?")
+        initialFocusItem: keepSeparateButton
+
+        property string targetEntryId: ""
+        property string targetTitle: ""
+
+        Label {
+            width: parent.width
+            text: home.actionsLibraryEntry !== null
+                  ? qsTr("Merge “%1” into “%2”? Their apps will appear "
+                        + "together across every rig; you can split any of "
+                        + "them back out later.")
+                        .arg(home.actionsLibraryEntry.title)
+                        .arg(libraryMergeConfirmSheet.targetTitle)
+                  : ""
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            spacing: Tokens.gutter
+
+            NavigableButton {
+                text: qsTr("Merge")
+                primary: true
+                onClicked: libraryMergeConfirmSheet.accept()
+            }
+            NavigableButton {
+                id: keepSeparateButton
+                text: qsTr("Keep separate")
+                onClicked: libraryMergeConfirmSheet.reject()
+            }
+        }
+
+        onAccepted: {
+            if (home.actionsLibraryEntry !== null) {
+                LibraryManager.mergeEntries(targetEntryId,
+                                           [home.actionsLibraryEntry.id])
+            }
+        }
+    }
+
+    QuickSheet {
+        id: librarySplitConfirmSheet
+        title: qsTr("Split out?")
+        initialFocusItem: keepGroupedButton
+
+        property var hostAppId: 0
+        property string label: ""
+
+        Label {
+            width: parent.width
+            text: qsTr("Split “%1” into its own Library Entry? It stops "
+                       + "sharing favorites, categories, and Library-level "
+                       + "settings with the rest of this group.")
+                  .arg(librarySplitConfirmSheet.label)
+            font.pixelSize: Tokens.tMeta
+            color: Tokens.textSecondary
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            spacing: Tokens.gutter
+
+            NavigableButton {
+                text: qsTr("Split")
+                primary: true
+                onClicked: librarySplitConfirmSheet.accept()
+            }
+            NavigableButton {
+                id: keepGroupedButton
+                text: qsTr("Keep grouped")
+                onClicked: librarySplitConfirmSheet.reject()
+            }
+        }
+
+        onAccepted: LibraryManager.splitHostApplication(hostAppId)
     }
 
 

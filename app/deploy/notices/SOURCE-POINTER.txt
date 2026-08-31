@@ -1,0 +1,32 @@
+Jochona Client — Corresponding Source
+
+Jochona Client is licensed under the GNU General Public License, version 3
+or later (see the "LICENSE" file included alongside this notice). The GPL
+requires that anyone who receives this binary also be able to get the
+complete corresponding source: this project's own source plus the pinned
+commits of every statically linked submodule (moonlight-common-c,
+qmdnsengine, SDL_GameControllerDB) and vendored source (h264bitstream/,
+AntiHooking/), plus the build inputs needed to reproduce this binary
+(scripts/, the libplacebo patch under app/deploy/linux/appimage/, and the
+exact third-party library configuration recorded in
+THIRD-PARTY-NOTICES.txt).
+
+Source is published at:
+
+    https://github.com/Jochona/jochona-client
+
+This package was built from the version recorded in "VERSION.txt" next to
+this file. The matching source tree for that version is the commit tagged
+(or otherwise identified) with that version number in the repository above.
+
+To produce a complete, self-contained source archive for any checked-out
+commit (superproject plus all submodules), run:
+
+    scripts/generate-src.sh
+
+from the root of a checkout of that commit. This is the same tool used to
+build the official "JochonaSrc-<version>.tar.gz" source releases.
+
+If you cannot reach the repository above and need a physical copy of the
+corresponding source, contact the maintainers listed in the repository's
+README for a written offer under GPL-3.0 section 6(b).

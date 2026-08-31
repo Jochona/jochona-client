@@ -59,6 +59,15 @@ pushd $BUILD_FOLDER
 make install || fail "Make install failed!"
 popd
 
+echo Adding license and third-party notices to AppDir
+DOC_DIR=$DEPLOY_FOLDER/usr/share/doc/jochona
+mkdir -p $DOC_DIR
+cp $SOURCE_ROOT/LICENSE $DOC_DIR/LICENSE.txt || fail "LICENSE copy failed!"
+cp $SOURCE_ROOT/app/deploy/notices/THIRD-PARTY-NOTICES.txt $DOC_DIR/ || fail "Notices copy failed!"
+cp $SOURCE_ROOT/app/deploy/notices/SOURCE-POINTER.txt $DOC_DIR/ || fail "Source pointer copy failed!"
+cp -R $SOURCE_ROOT/app/deploy/notices/licenses $DOC_DIR/ || fail "License texts copy failed!"
+echo $VERSION > $DOC_DIR/VERSION.txt
+
 export QML_SOURCES_PATHS=$SOURCE_ROOT/app/gui
 export QMAKE=qmake6
 

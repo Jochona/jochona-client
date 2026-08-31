@@ -1,6 +1,8 @@
 #include "identitymanager.h"
 #include "utils.h"
 
+#include "core/settingsdatabase.h"
+
 #include <QDebug>
 
 #include <openssl/pem.h>
@@ -9,8 +11,15 @@
 #include <openssl/rand.h>
 
 #define SER_UNIQUEID "uniqueid"
+// Legacy QSettings keys, read (never written) only for the one-time import
+// into CredentialStore below -- see IdentityManager's class comment.
 #define SER_CERT "certificate"
 #define SER_KEY "key"
+
+#define VAULT_SERVICE "com.jochona.client.identity"
+#define VAULT_ACCOUNT_CERT "certificate"
+#define VAULT_ACCOUNT_KEY "privatekey"
+#define IDENTITY_MIGRATION_MARKER "migration.qsettings_identity_imported_v1"
 
 IdentityManager* IdentityManager::s_Im = nullptr;
 
@@ -26,7 +35,7 @@ IdentityManager::get()
     return s_Im;
 }
 
-void IdentityManager::createCredentials(QSettings& settings)
+void IdentityManager::createCredentials()
 {
     X509* cert = X509_new();
     THROW_BAD_ALLOC_IF_NULL(cert);
@@ -100,30 +109,103 @@ void IdentityManager::createCredentials(QSettings& settings)
         qFatal("Newly generated private key is unreadable");
     }
 
-    settings.setValue(SER_CERT, m_CachedPemCert);
-    settings.setValue(SER_KEY, m_CachedPrivateKey);
+    if (!m_Vault.setSecret(VAULT_SERVICE, VAULT_ACCOUNT_CERT, m_CachedPemCert)
+            || !m_Vault.setSecret(VAULT_SERVICE, VAULT_ACCOUNT_KEY, m_CachedPrivateKey)) {
+        // The vault is expected to be durable here (callers only reach
+        // createCredentials() when it is, or when regenerating an
+        // unreadable existing identity); a write failure means we cannot
+        // safely continue with an identity that would silently rotate on
+        // the next launch.
+        qFatal("Failed to persist the newly generated pairing identity to %s; refusing to continue "
+               "with an identity that could not survive a restart",
+               qPrintable(m_Vault.backendName()));
+    }
 
-    qInfo() << "Wrote new identity credentials to settings";
+    qInfo() << "Wrote new identity credentials to" << m_Vault.backendName();
 }
 
 IdentityManager::IdentityManager()
 {
     QSettings settings;
 
-    m_CachedPemCert = settings.value(SER_CERT).toByteArray();
-    m_CachedPrivateKey = settings.value(SER_KEY).toByteArray();
+    SettingsDatabase* database = SettingsDatabase::get();
+    const bool alreadyImported = database && database->isOpen()
+            && database->setting(QStringLiteral(IDENTITY_MIGRATION_MARKER), false).toBool();
+    const bool vaultIsDurable = m_Vault.backendName() != QStringLiteral("in-memory fallback");
+    bool migrationRecorded = alreadyImported;
+
+    qInfo() << "Loading Client identity from" << m_Vault.backendName();
+    m_CachedPemCert = m_Vault.getSecret(VAULT_SERVICE, VAULT_ACCOUNT_CERT);
+    m_CachedPrivateKey = m_Vault.getSecret(VAULT_SERVICE, VAULT_ACCOUNT_KEY);
+    qInfo() << "Finished loading Client identity from the credential vault";
+    bool fromVault = !m_CachedPemCert.isEmpty() && !m_CachedPrivateKey.isEmpty();
+
+    if (!fromVault) {
+        // The vault has no identity yet. This is either the one-time
+        // migration off QSettings or a missing persistent vault. A durable
+        // vault is mandatory: continuing from plaintext every launch would
+        // violate the Credential Vault contract, while generating an
+        // in-memory identity would silently rotate it after restart.
+        const QByteArray legacyCert = settings.value(SER_CERT).toByteArray();
+        const QByteArray legacyKey = settings.value(SER_KEY).toByteArray();
+
+        if (!legacyCert.isEmpty() && !legacyKey.isEmpty()) {
+            m_CachedPemCert = legacyCert;
+            m_CachedPrivateKey = legacyKey;
+
+            if (vaultIsDurable) {
+                if (m_Vault.setSecret(VAULT_SERVICE, VAULT_ACCOUNT_CERT, legacyCert)
+                        && m_Vault.setSecret(VAULT_SERVICE, VAULT_ACCOUNT_KEY, legacyKey)) {
+                    fromVault = true;
+                    qInfo() << "Migrated pairing identity credentials from QSettings to" << m_Vault.backendName();
+                }
+                else {
+                    qFatal("Failed to migrate pairing identity credentials into %s; refusing to "
+                           "continue with plaintext QSettings credentials",
+                           qPrintable(m_Vault.backendName()));
+                }
+            }
+            else {
+                qFatal("No persistent OS credential vault is available (%s); install or start "
+                       "the platform credential service before launching Jochona",
+                       qPrintable(m_Vault.backendName()));
+            }
+        }
+        else if (alreadyImported) {
+            // The vault previously held a durably-verified identity (the
+            // marker below is only ever set once a durable vault write is
+            // confirmed) but now returns nothing, and there is no legacy
+            // copy to recover it from. Regenerating here would silently
+            // replace every paired Host's pinned trust with a brand new
+            // identity, so refuse to start instead.
+            qFatal("The OS credential vault lost the previously verified pairing identity and no "
+                   "QSettings fallback is available; refusing to generate a new identity");
+        }
+    }
+
+    // Regenerating a missing or corrupt identity is only safe when the
+    // vault can durably hold the replacement; otherwise it would just
+    // rotate again on the next launch.
+    auto regenerateOrFail = [&](const char* reason) {
+        if (!vaultIsDurable) {
+            qFatal("%s and no persistent OS credential vault is available to safely generate a "
+                   "replacement that would survive a restart", reason);
+        }
+        createCredentials();
+        fromVault = true;
+    };
 
     if (m_CachedPemCert.isEmpty() || m_CachedPrivateKey.isEmpty()) {
         qInfo() << "No existing credentials found";
-        createCredentials(settings);
+        regenerateOrFail("No existing pairing identity was found");
     }
     else if (getSslCertificate().isNull()) {
         qWarning() << "Certificate is unreadable";
-        createCredentials(settings);
+        regenerateOrFail("The stored pairing certificate is unreadable");
     }
     else if (getSslKey().isNull()) {
         qWarning() << "Private key is unreadable";
-        createCredentials(settings);
+        regenerateOrFail("The stored pairing private key is unreadable");
     }
 
     // We should have valid credentials now. If not, we're screwed
@@ -134,10 +216,31 @@ IdentityManager::IdentityManager()
         qFatal("Private key is unreadable");
     }
 
+    // Commit the marker only after a durable vault holds a valid identity.
+    // Then remove plaintext legacy keys. If the process crashes before the
+    // marker or removal, the next launch safely retries the idempotent import.
+    if (!migrationRecorded && vaultIsDurable && fromVault
+            && database && database->isOpen()) {
+        database->setSetting(QStringLiteral(IDENTITY_MIGRATION_MARKER), true);
+        // setSetting() has no return value; read the marker back to
+        // confirm it was actually persisted before treating the legacy
+        // QSettings bytes below as safe to remove.
+        migrationRecorded =
+            database->setting(QStringLiteral(IDENTITY_MIGRATION_MARKER), false).toBool();
+    }
+    if (migrationRecorded && vaultIsDurable && fromVault) {
+        settings.remove(QStringLiteral(SER_CERT));
+        settings.remove(QStringLiteral(SER_KEY));
+        settings.sync();
+        if (settings.status() != QSettings::NoError) {
+            qWarning() << "Could not remove legacy plaintext pairing credentials from QSettings";
+        }
+    }
+
     // Load the unique ID from settings
     m_CachedUniqueId = settings.value(SER_UNIQUEID).toString();
     if (!m_CachedUniqueId.isEmpty()) {
-        qInfo() << "Loaded unique ID from settings:" << m_CachedUniqueId;
+        qInfo() << "Loaded existing Client identity";
     }
     else {
         // Generate a new unique ID in base 16
@@ -145,7 +248,7 @@ IdentityManager::IdentityManager()
         RAND_bytes(reinterpret_cast<unsigned char*>(&uid), sizeof(uid));
         m_CachedUniqueId = QString::number(uid, 16);
 
-        qInfo() << "Generated new unique ID:" << m_CachedUniqueId;
+        qInfo() << "Generated new Client identity";
 
         settings.setValue(SER_UNIQUEID, m_CachedUniqueId);
     }

@@ -9,4 +9,8 @@ class TestControllerMapStore : public QObject
 private slots:
     void layersSparseMapsInDeclaredOrder();
     void saveAndResetUseExplicitScopes();
+    void roundTripsControllerTransmissionMode();
+    void preservesRawPassthroughAndTransmissionModeAcrossLayers();
+    void compatibleTransmissionMasksToGenericPad();
+    void nativeTransmissionLeavesReportedProfileUnchanged();
 };

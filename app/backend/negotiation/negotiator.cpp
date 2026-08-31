@@ -39,9 +39,18 @@ Negotiator::get()
 
 Negotiator::Negotiator()
 {
-    // Screen hotplug changes the device profile
-    connect(qApp, &QGuiApplication::screenAdded, this, &Negotiator::handleScreenCountChanged);
-    connect(qApp, &QGuiApplication::screenRemoved, this, &Negotiator::handleScreenCountChanged);
+    // Screen hotplug changes the device profile. qApp's compile-time type
+    // here is QGuiApplication* (redefined by <QGuiApplication>'s header),
+    // but the live instance is only ever a real QGuiApplication in the
+    // streaming client itself -- the core test binary constructs a bare
+    // QCoreApplication to exercise EffectiveSettingsResolver's Capability
+    // Safety layer (which calls into Negotiator) without a GUI event loop.
+    // qobject_cast is the safe way to tell the two apart; a blind cast via
+    // the qApp macro would be undefined behavior in that context.
+    if (auto* guiApp = qobject_cast<QGuiApplication*>(QCoreApplication::instance())) {
+        connect(guiApp, &QGuiApplication::screenAdded, this, &Negotiator::handleScreenCountChanged);
+        connect(guiApp, &QGuiApplication::screenRemoved, this, &Negotiator::handleScreenCountChanged);
+    }
 }
 
 void

@@ -16,4 +16,8 @@ private slots:
     void legacyImportsAreOneTimeTransactions();
     void localHistoryRetentionPrunesRows();
     void beaconRepositoryEnforcesIdentityAndRoutes();
+    void hostRecordsSurviveAsExactRecords();
+    void legacyHostRecordsImportIsOneTimeTransaction();
+    void failedMigrationRestoresPriorDatabase();
+    void boundedSnapshotPruningKeepsRecentBackups();
 };

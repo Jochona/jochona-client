@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
@@ -121,8 +121,10 @@ public:
         int fps = 0;
         bool hdr = false;
         QStringList capture;
+        QJsonObject proof;
 
         int videoFormat() const;
+        static EncoderTuple fromVideoFormat(int videoFormat);
         bool supportsCapture(bool virtualDisplay) const;
         QJsonObject toJson() const;
         static EncoderTuple fromJson(const QJsonObject& object, bool* ok = nullptr);

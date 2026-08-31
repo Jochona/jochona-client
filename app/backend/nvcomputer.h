@@ -124,6 +124,16 @@ public:
     bool hasCustomName;
     QString uuid;
     QSslCertificate serverCert;
+    // ADR-0007: an unexpected change to the pinned certificate enters Trust
+    // state Identity Changed and hard-blocks Sessions until the user
+    // deliberately re-pairs (NvPairingManager::pair() writes serverCert
+    // directly and is the only path that may clear this). update() sets
+    // this instead of silently overwriting serverCert when a live probe
+    // observes a different certificate for an already-established host;
+    // pendingServerCert holds that newly observed certificate so the UI can
+    // show the old/new identity facts before an explicit re-pair.
+    bool identityChanged = false;
+    QSslCertificate pendingServerCert;
     QVector<NvApp> appList;
     bool isNvidiaServerSoftware;
     // Remember to update isEqualSerialized() when adding fields here!

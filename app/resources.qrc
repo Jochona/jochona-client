@@ -17,7 +17,7 @@
         <file>res/baseline-help_outline-24px.svg</file>
         <file>res/baseline-error_outline-24px.svg</file>
         <file>res/baseline-check_circle_outline-24px.svg</file>
-        <file>res/discord.svg</file>
+        <file>res/LICENSE-MaterialIcons.txt</file>
         <file>languages/qml_de.ts</file>
         <file>languages/qml_de.qm</file>
         <file>languages/qml_fr.ts</file>
@@ -81,7 +81,6 @@
     </qresource>
     <qresource prefix="/data">
         <file alias="gamecontrollerdb.txt">SDL_GameControllerDB/gamecontrollerdb.txt</file>
-        <file alias="ModeSeven.ttf">ModeSeven.ttf</file>
         <file alias="egl_nv12.frag">shaders/egl_nv12.frag</file>
         <file alias="egl_opaque.frag">shaders/egl_opaque.frag</file>
         <file alias="egl_overlay.frag">shaders/egl_overlay.frag</file>

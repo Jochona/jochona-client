@@ -91,7 +91,11 @@ void TestSettingsDatabase::backupSnapshotIsCreatedBeforeMigration()
     SettingsDatabase db;
     QVERIFY2(db.open(path), qPrintable(db.lastError()));
 
-    QVERIFY(QFile::exists(path + QStringLiteral(".bak-1")));
+    // Bounded pruning (see boundedSnapshotPruningKeepsRecentBackups) only
+    // guarantees the most recently applied migration's snapshot survives;
+    // that is always the one every open() actually needs to roll back to.
+    QVERIFY(QFile::exists(
+        path + QStringLiteral(".bak-%1").arg(SettingsDatabase::latestKnownSchemaVersion())));
 }
 
 void TestSettingsDatabase::refusesSchemaNewerThanKnown()
@@ -419,4 +423,183 @@ void TestSettingsDatabase::localHistoryRetentionPrunesRows()
         QCOMPARE(db.historyRetentionDays(), 0);
     }
     QSqlDatabase::removeDatabase(connectionName);
+}
+
+void TestSettingsDatabase::hostRecordsSurviveAsExactRecords()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("jochona.db"));
+
+    const QVariantMap record{
+        {QStringLiteral("uuid"), QStringLiteral("host-uuid-1")},
+        {QStringLiteral("name"), QStringLiteral("Living Room PC")},
+        {QStringLiteral("hasCustomName"), true},
+        {QStringLiteral("mac"), QStringLiteral("AABBCCDDEEFF")},
+        {QStringLiteral("localAddress"), QStringLiteral("192.168.1.50")},
+        {QStringLiteral("localPort"), 47989},
+        {QStringLiteral("serverCert"), QStringLiteral("-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----\n")},
+        {QStringLiteral("identityChanged"), true},
+        {QStringLiteral("pendingServerCert"), QStringLiteral("-----BEGIN CERTIFICATE-----\npending\n-----END CERTIFICATE-----\n")},
+        {QStringLiteral("apps"), QVariantList{
+            QVariantMap{{QStringLiteral("id"), 1234},
+                       {QStringLiteral("name"), QStringLiteral("Some Game")},
+                       {QStringLiteral("hdrSupported"), true}},
+        }},
+    };
+
+    {
+        SettingsDatabase db;
+        QVERIFY2(db.open(path), qPrintable(db.lastError()));
+        QVERIFY(db.replaceHostRecords(QVariantList{record}));
+    }
+
+    // Paired Hosts must survive a restart from SQLite alone.
+    SettingsDatabase reopened;
+    QVERIFY2(reopened.open(path), qPrintable(reopened.lastError()));
+    const QVariantList records = reopened.hostRecords();
+    QCOMPARE(records.size(), 1);
+    const QVariantMap roundTripped = records.first().toMap();
+    QCOMPARE(roundTripped, record);
+
+    // The normalized hosts table is a projection: a placeholder row must
+    // exist so host_records' foreign key is satisfiable, without this
+    // call having invented Host content LibraryManager owns.
+    const QString connectionName = QStringLiteral("host-record-projection-check");
+    {
+        QSqlDatabase raw =
+            QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        raw.setDatabaseName(path);
+        QVERIFY(raw.open());
+        QSqlQuery hostQuery(raw);
+        QVERIFY(hostQuery.exec(
+            QStringLiteral("SELECT id FROM hosts WHERE id = 'host-uuid-1'")));
+        QVERIFY(hostQuery.next());
+        raw.close();
+    }
+    QSqlDatabase::removeDatabase(connectionName);
+
+    // A subsequent replace must drop records no longer present, mirroring
+    // the in-memory Host set exactly (e.g. after a deleteHost()).
+    {
+        SettingsDatabase db;
+        QVERIFY2(db.open(path), qPrintable(db.lastError()));
+        QVERIFY(db.replaceHostRecords(QVariantList{}));
+        QVERIFY(db.hostRecords().isEmpty());
+    }
+}
+
+void TestSettingsDatabase::legacyHostRecordsImportIsOneTimeTransaction()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    SettingsDatabase db;
+    QVERIFY2(db.open(dir.filePath(QStringLiteral("jochona.db"))),
+             qPrintable(db.lastError()));
+
+    const QString marker = QStringLiteral("test.host_record_import");
+    const QVariantMap firstRecord{
+        {QStringLiteral("uuid"), QStringLiteral("host-legacy")},
+        {QStringLiteral("name"), QStringLiteral("Legacy PC")},
+        {QStringLiteral("wakePort"), 0},
+    };
+    QVERIFY(db.importLegacyHostRecords(QVariantList{firstRecord}, marker));
+    QCOMPARE(db.hostRecords().size(), 1);
+    QCOMPARE(db.hostRecords().first().toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("Legacy PC"));
+
+    // A second import attempt (e.g. a retried migration) must not touch
+    // the already-imported Host set.
+    const QVariantMap secondRecord{
+        {QStringLiteral("uuid"), QStringLiteral("host-legacy")},
+        {QStringLiteral("name"), QStringLiteral("Renamed Elsewhere")},
+        {QStringLiteral("wakePort"), 0},
+    };
+    QVERIFY(db.importLegacyHostRecords(QVariantList{secondRecord}, marker));
+    QCOMPARE(db.hostRecords().size(), 1);
+    QCOMPARE(db.hostRecords().first().toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("Legacy PC"));
+}
+
+void TestSettingsDatabase::failedMigrationRestoresPriorDatabase()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("jochona.db"));
+
+    const int latest = SettingsDatabase::latestKnownSchemaVersion();
+
+    {
+        SettingsDatabase db;
+        QVERIFY2(db.open(path), qPrintable(db.lastError()));
+        db.setSetting(QStringLiteral("survivesRollback"), QStringLiteral("yes"));
+    }
+
+    // Simulate a migration that failed part-way through: rewind the
+    // recorded schema version without undoing the schema objects it
+    // created, so the next open() reapplies the latest migration and hits
+    // a real "already exists" failure from SQLite.
+    {
+        const QString connectionName = QStringLiteral("rollback-rewind");
+        QSqlDatabase raw = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        raw.setDatabaseName(path);
+        QVERIFY(raw.open());
+        QSqlQuery query(raw);
+        query.prepare(QStringLiteral("DELETE FROM migrations WHERE version = ?"));
+        query.addBindValue(latest);
+        QVERIFY2(query.exec(), qPrintable(query.lastError().text()));
+        raw.close();
+    }
+    QSqlDatabase::removeDatabase(QStringLiteral("rollback-rewind"));
+
+    {
+        SettingsDatabase failing;
+        QVERIFY(!failing.open(path));
+        QVERIFY(!failing.isOpen());
+        QVERIFY(!failing.lastError().isEmpty());
+    }
+
+    // The database must still be usable and show the earlier (pre-rewind)
+    // recorded schema version, with pre-existing data intact -- the failed
+    // migration attempt must not have corrupted it.
+    {
+        const QString connectionName = QStringLiteral("rollback-verify");
+        QSqlDatabase raw = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), connectionName);
+        raw.setDatabaseName(path);
+        QVERIFY(raw.open());
+
+        QSqlQuery versionQuery(raw);
+        QVERIFY(versionQuery.exec(QStringLiteral("SELECT COALESCE(MAX(version),0) FROM migrations")));
+        QVERIFY(versionQuery.next());
+        QCOMPARE(versionQuery.value(0).toInt(), latest - 1);
+
+        QSqlQuery settingQuery(raw);
+        settingQuery.prepare(QStringLiteral("SELECT value FROM settings WHERE key = ?"));
+        settingQuery.addBindValue(QStringLiteral("survivesRollback"));
+        QVERIFY(settingQuery.exec());
+        QVERIFY(settingQuery.next());
+        QCOMPARE(settingQuery.value(0).toString(), QStringLiteral("yes"));
+        raw.close();
+    }
+    QSqlDatabase::removeDatabase(QStringLiteral("rollback-verify"));
+}
+
+void TestSettingsDatabase::boundedSnapshotPruningKeepsRecentBackups()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("jochona.db"));
+
+    SettingsDatabase db;
+    QVERIFY2(db.open(path), qPrintable(db.lastError()));
+
+    const int latest = SettingsDatabase::latestKnownSchemaVersion();
+    QVERIFY(latest > 3);
+
+    for (int version = 1; version <= latest - 3; version++) {
+        QVERIFY(!QFile::exists(path + QStringLiteral(".bak-%1").arg(version)));
+    }
+    for (int version = latest - 2; version <= latest; version++) {
+        QVERIFY(QFile::exists(path + QStringLiteral(".bak-%1").arg(version)));
+    }
 }

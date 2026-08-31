@@ -25,6 +25,7 @@ jobs:
           fetch-depth: 1
 
       - name: Checkout Steam Link SDK
+        if: vars.STEAMLINK_LICENSE_CONFIRMED == 'true'
         uses: actions/checkout@v5
         with:
           repository: ValveSoftware/steamlink-sdk
@@ -32,11 +33,18 @@ jobs:
           fetch-depth: 1
 
       - name: Build binaries
-        run: STEAMLINK_SDK_PATH=$PWD/steamlink-sdk scripts/build-steamlink-app.sh
+        if: vars.STEAMLINK_LICENSE_CONFIRMED == 'true'
+        run: STEAMLINK_SDK_PATH=$PWD/steamlink-sdk STEAMLINK_LICENSE_CONFIRMED=1 scripts/build-steamlink-app.sh
 
       - name: Upload Binaries
+        if: vars.STEAMLINK_LICENSE_CONFIRMED == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: Jochona-SteamLink-${{ env.CI_VERSION }}
           path: build/deploy-release/*
           if-no-files-found: error
+
+      - name: Steam Link build skipped (SDK license unresolved)
+        if: vars.STEAMLINK_LICENSE_CONFIRMED != 'true'
+        run: |
+          echo "::warning::Steam Link build/publish skipped — the steamlink-sdk repo carries no LICENSE file (see docs/research/dependency-license-inventory.md §5, U1). Set the 'STEAMLINK_LICENSE_CONFIRMED' repository variable to 'true' only after obtaining/recording a Valve license grant."

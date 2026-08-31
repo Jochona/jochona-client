@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
@@ -11,6 +11,7 @@
 #include <QJsonObject>
 #include <QSettings>
 #include <QThreadPool>
+#include <utility>
 
 #define SER_GROUP "capabilities"
 
@@ -138,6 +139,46 @@ HostAdapterManager::refreshAll()
         const ConnectionInfo& info = m_ConnectionInfo.value(uuid);
         refresh(uuid, info.address, info.httpsPort, info.serverCert);
     }
+}
+
+void
+HostAdapterManager::recordProbedEncoderTuple(const QString& uuid, const HostCapabilities::EncoderTuple& tuple)
+{
+    // Session calls this from its background connection worker thread
+    // (AsyncConnectionStartThread, same non-GUI thread capabilities()
+    // above is read from); persist() touches SettingsDatabase's
+    // QSqlDatabase connection, which -- like every other persist() call
+    // in this class -- may only be used from the GUI thread it was
+    // opened on. Hop over with a queued invocation instead of mutating
+    // the cache or the database here directly.
+    QMetaObject::invokeMethod(this, [this, uuid, tuple]() {
+        HostCapabilities updated;
+        {
+            QWriteLocker lock(&m_CacheLock);
+            auto it = m_Cache.find(uuid);
+            if (it == m_Cache.end()
+                    || it->manifestStatus != HostCapabilities::ManifestStatus::Compatible) {
+                // No Compatible-manifest state on file to attach a
+                // freshly probed tuple to -- discard rather than caching
+                // a tuple with nothing to validate it against next launch.
+                return;
+            }
+            bool alreadyCached = false;
+            for (const HostCapabilities::EncoderTuple& existing : std::as_const(it->encoderTuples)) {
+                if (existing.id == tuple.id) {
+                    alreadyCached = true;
+                    break;
+                }
+            }
+            if (!alreadyCached) {
+                it->encoderTuples.append(tuple);
+            }
+            updated = it.value();
+        }
+        persist(uuid, updated);
+
+        emit capabilitiesChanged(uuid);
+    }, Qt::QueuedConnection);
 }
 
 void

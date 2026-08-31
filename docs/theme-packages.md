@@ -13,9 +13,12 @@ fails safe: Jochona ignores it, logs a warning, and renders the built-in
 ```
 
 `<AppDataLocation>` is Qt's per-user app data directory
-(`~/Library/Preferences` domain on macOS, `%APPDATA%\Jochona` on Windows,
-`~/.local/share/Jochona` on Linux). Additional files (backgrounds, badges)
-may sit next to `theme.json`; the client loads only `theme.json` today.
+(`~/Library/Application Support/Jochona` on macOS, `%APPDATA%\Jochona` on
+Windows, `~/.local/share/Jochona` on Linux — the exact leaf segment follows
+Qt's `QStandardPaths::AppDataLocation`, which is organization/application-
+name-dependent; these are Jochona's current org/app identifiers, not a
+hardcoded Qt default). Additional files (backgrounds, badges) may sit next
+to `theme.json`; the client loads only `theme.json` today.
 
 ## theme.json — schema version 1
 
@@ -45,7 +48,8 @@ may sit next to `theme.json`; the client loads only `theme.json` today.
 Overridable roles (all values `#rrggbb` or `#rrggbbaa` hex strings):
 `surface`, `surfaceFocus`, `border`, `borderFocus`, `textPrimary`,
 `textSecondary`, `accent`, `accentFocus`, `statusOnline`, `statusPairing`,
-`statusOffline`, `statusUnknown`.
+`statusOffline`, `statusUnknown`, `night`, `moon`, `moonDim`, `link`,
+`scrim`.
 
 ## Validation (all must pass, or the package is ignored)
 
@@ -58,7 +62,9 @@ Overridable roles (all values `#rrggbb` or `#rrggbbaa` hex strings):
 
 Validation lives in `app/gui/style/ThemeEngine.qml` (`loadCustom`). The
 selection itself is persisted by `app/backend/thememanager.{h,cpp}` as the
-string `custom:<id>` in `QSettings` (`ui.theme`).
+string `custom:<id>` in the SQLite `settings` table (key `ui.theme`,
+`core/settingsdatabase.{h,cpp}`); a one-time legacy import reads a prior
+`QSettings` value on first launch and never dual-writes afterward.
 
 ## Notes for authors
 

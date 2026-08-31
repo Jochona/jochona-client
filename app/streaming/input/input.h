@@ -49,6 +49,11 @@ struct ControllerMapTransform {
     double curveLeftTrigger = 1.0;
     double curveRightTrigger = 1.0;
     int targetButtonFlags[SDL_CONTROLLER_BUTTON_MAX] = {};
+
+    // Raw Passthrough: forward SDL's button/axis state completely
+    // unmodified (bypasses both calibration reshaping and button remap).
+    // Compiled from the Controller Map's "rawPassthrough" field.
+    bool rawPassthrough = false;
 };
 
 

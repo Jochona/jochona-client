@@ -7,6 +7,11 @@
     <IntermediateOutputPath>$(BUILD_FOLDER)\</IntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup>
+    <!-- Jochona: output artifact renamed from Moonlight.msi to Jochona.msi,
+         matching app.pro's Windows TARGET and Product.wxs's File Source. -->
+    <OutputName>Jochona</OutputName>
+  </PropertyGroup>
+  <PropertyGroup>
     <DefineConstants>DeployDir=$(DEPLOY_FOLDER);BuildDir=$(BUILD_FOLDER)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>

@@ -209,8 +209,9 @@ the video plane; overlay is a separate surface, opacity ≤ 85 %.
 ## 7. Navigation model
 
 - **Screen stack** (push/pop), not flags. `Home → HostDetail → AppDetail`.
-  B pops; holding B at root does nothing scary. The `modernHomeScreen`
-  feature-flag soup retires once this stack ships — one shell, no flag.
+  B pops; holding B at root does nothing scary. The Night Route shell
+  (`app/gui/HomeView.qml`) is the one shipped shell; the earlier
+  `modernHomeScreen` feature flag has been retired.
 - Every screen focuses exactly one control on entry; focus restore on pop.
 - Mouse coexists: hover = preview (no focus steal), click = activate + move
   focus.

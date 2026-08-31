@@ -5,6 +5,7 @@
 #include "beaconmanager.h"
 
 #include "backend/identitymanager.h"
+#include "beaconprotocol.h"
 #include "core/settingsdatabase.h"
 #include "spake2client.h"
 
@@ -107,6 +108,26 @@ HttpResult request(const QUrl& url,
 
     QByteArray observedDuringHandshake;
     bool pinMismatch = false;
+
+    // Shared by both handlers below: accepts a peer's SPKI fingerprint
+    // under bootstrap TOFU (first-observed-wins, flagging any later
+    // disagreement within this same request) or, once paired, exact
+    // match against expectedSpki.
+    auto acceptFingerprint = [&](const QByteArray& fingerprint) {
+        if (fingerprint.isEmpty()) {
+            return false;
+        }
+        if (bootstrap) {
+            if (!observedDuringHandshake.isEmpty()
+                    && observedDuringHandshake != fingerprint) {
+                return false;
+            }
+            observedDuringHandshake = fingerprint;
+            return true;
+        }
+        return fingerprint == expectedSpki;
+    };
+
     QObject::connect(
         &manager, &QNetworkAccessManager::sslErrors,
         &manager,
@@ -120,20 +141,40 @@ HttpResult request(const QUrl& url,
                     }
                 }
             }
-            const QByteArray fingerprint = spkiFingerprint(leaf);
-            if (fingerprint.isEmpty()) return;
-            if (bootstrap) {
-                if (observedDuringHandshake.isEmpty()
-                        || observedDuringHandshake == fingerprint) {
-                    observedDuringHandshake = fingerprint;
-                    reply->ignoreSslErrors(errors);
-                } else {
-                    pinMismatch = true;
-                }
-            } else if (fingerprint == expectedSpki) {
+            if (acceptFingerprint(spkiFingerprint(leaf))) {
+                // Beacon presents a self-signed certificate outside
+                // bootstrap TOFU, so chain-trust failure here is expected;
+                // let the handshake continue now that the pin matches. A
+                // peer whose certificate chains to a public CA never
+                // raises sslErrors at all -- encrypted() below is what
+                // actually stops that case, before any request data is
+                // sent, so pinning cannot be bypassed by presenting a
+                // CA-trusted impostor certificate.
                 reply->ignoreSslErrors(errors);
             } else {
                 pinMismatch = true;
+            }
+        });
+
+    QObject::connect(
+        &manager, &QNetworkAccessManager::encrypted,
+        &manager,
+        [&](QNetworkReply* reply) {
+            if (pinMismatch) {
+                // Already rejected in sslErrors above, which did not call
+                // ignoreSslErrors -- Qt will fail the handshake on its own.
+                return;
+            }
+            const QByteArray fingerprint =
+                spkiFingerprint(reply->sslConfiguration().peerCertificate());
+            if (!acceptFingerprint(fingerprint)) {
+                // The handshake just completed -- no user data has been
+                // transmitted yet -- but the peer's SPKI does not match
+                // what we pinned. Abort now, before any HTTP request data
+                // (headers or body, including SPAKE2 shares/pairing codes)
+                // leaves the socket.
+                pinMismatch = true;
+                reply->abort();
             }
         });
 
@@ -234,6 +275,18 @@ public:
                           {});
             return;
         }
+        if (!matchesSha256Fingerprint(
+                    pairingObject.value(QStringLiteral("beacon_fingerprint")),
+                    pairing.peerSpkiFingerprint)) {
+            // The Beacon's own claimed identity disagrees with (or is
+            // malformed relative to) what its TLS certificate actually
+            // presented on this connection -- refuse rather than trust
+            // either value alone.
+            emit finished(false,
+                          QStringLiteral("Beacon pairing response identity does not match its certificate"),
+                          {});
+            return;
+        }
 
         const QByteArray clientSpki = spkiFingerprint(clientCertificate());
         BeaconSpake2Client spake(
@@ -294,7 +347,10 @@ public:
                 || confirmObject.value(QStringLiteral("status")).toString()
                     != QLatin1String("authorized")
                 || QUuid(confirmObject.value(QStringLiteral("beacon_id")).toString())
-                    != beaconId) {
+                    != beaconId
+                || !matchesSha256Fingerprint(
+                        confirmObject.value(QStringLiteral("authorized_client_fingerprint")),
+                        clientSpki)) {
             emit finished(false,
                           responseError(confirm,
                                         QStringLiteral("Beacon pairing confirmation failed")),

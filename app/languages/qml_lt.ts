@@ -453,42 +453,42 @@ Launch with the safe values?</source>
 <context>
     <name>BeaconManager</name>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="465"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="521"/>
         <source>Enter the Beacon pairing code.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="472"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="528"/>
         <source>Another Beacon pairing is already running.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="507"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="563"/>
         <source>Could not save the paired Beacon.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="553"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="609"/>
         <source>Beacon must be trusted before reading Hosts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="665"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="721"/>
         <source>No Beacon Wake route is configured for this Host.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="669"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="725"/>
         <source>Beacon identity changed — re-pair required.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="689"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="745"/>
         <source>Beacon rejected the Wake request.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/beacon/beaconmanager.cpp" line="699"/>
+        <location filename="../backend/beacon/beaconmanager.cpp" line="755"/>
         <source>Beacon returned an invalid Wake receipt.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -608,13 +608,13 @@ Launch with the safe values?</source>
     <name>ComputerModel</name>
     <message>
         <location filename="../gui/computermodel.cpp" line="76"/>
-        <location filename="../gui/computermodel.cpp" line="270"/>
+        <location filename="../gui/computermodel.cpp" line="275"/>
         <source>Online</source>
         <translation>Online</translation>
     </message>
     <message>
         <location filename="../gui/computermodel.cpp" line="79"/>
-        <location filename="../gui/computermodel.cpp" line="272"/>
+        <location filename="../gui/computermodel.cpp" line="277"/>
         <source>Offline</source>
         <translation>Offline</translation>
     </message>
@@ -631,19 +631,19 @@ Launch with the safe values?</source>
     </message>
     <message>
         <location filename="../gui/computermodel.cpp" line="63"/>
-        <location filename="../gui/computermodel.cpp" line="292"/>
+        <location filename="../gui/computermodel.cpp" line="297"/>
         <source>Direct (LAN)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/computermodel.cpp" line="65"/>
-        <location filename="../gui/computermodel.cpp" line="295"/>
+        <location filename="../gui/computermodel.cpp" line="300"/>
         <source>VPN</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/computermodel.cpp" line="67"/>
-        <location filename="../gui/computermodel.cpp" line="298"/>
+        <location filename="../gui/computermodel.cpp" line="303"/>
         <source>Tailnet</source>
         <translation type="unfinished"></translation>
     </message>
@@ -748,27 +748,27 @@ Launch with the safe values?</source>
         <translation>HTTPS Prievadas: %1</translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="274"/>
+        <location filename="../gui/computermodel.cpp" line="279"/>
         <source>Checking…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="402"/>
+        <location filename="../gui/computermodel.cpp" line="407"/>
         <source>Direct Wake</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="407"/>
+        <location filename="../gui/computermodel.cpp" line="412"/>
         <source>%1 is not configured for this Host.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="460"/>
+        <location filename="../gui/computermodel.cpp" line="465"/>
         <source>The Host did not become ready within one minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/computermodel.cpp" line="487"/>
+        <location filename="../gui/computermodel.cpp" line="492"/>
         <source>%1: %2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -924,174 +924,224 @@ Launch with the safe values?</source>
 <context>
     <name>ControllerManagerView</name>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="15"/>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="182"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="16"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="234"/>
         <source>Controllers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="37"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="45"/>
         <source>PlayStation layout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="39"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="47"/>
         <source>Nintendo layout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="41"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="49"/>
         <source>Steam layout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="43"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="51"/>
         <source>Xbox layout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="44"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="52"/>
         <source>Generic SDL layout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="137"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="189"/>
         <source>Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="137"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="189"/>
         <source>Disconnected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="356"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="408"/>
         <source>No controllers detected. Connect one to identify it and test live input.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="446"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="498"/>
         <source>Player Slot Order</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="459"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="511"/>
         <source>Player %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="472"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="524"/>
         <source>Live input</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="517"/>
-        <source>Controller Map calibration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="523"/>
-        <source>Left deadzone · %1%</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="537"/>
-        <source>Right deadzone · %1%</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="548"/>
-        <source>Right stick deadzone</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="551"/>
-        <source>Left response curve · %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="562"/>
-        <source>Left stick response curve</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="565"/>
-        <source>Right response curve · %1</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="569"/>
+        <source>Controller Map scope</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/controller/ControllerManagerView.qml" line="576"/>
-        <source>Right stick response curve</source>
+        <source>Calibration, button remap, Raw Passthrough, and transmission mode below apply to the scope selected here.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="580"/>
-        <source>Save calibration</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="590"/>
+        <source>This controller (every game)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="585"/>
-        <source>Button remap</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="597"/>
+        <source>This game</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="622"/>
-        <source>Save button remap</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="631"/>
+        <source>Controller Map calibration</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="664"/>
-        <source>Controller route waiting</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="637"/>
+        <source>Left deadzone · %1%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="651"/>
+        <source>Right deadzone · %1%</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="662"/>
+        <source>Right stick deadzone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/controller/ControllerManagerView.qml" line="665"/>
-        <source>Choose a controller</source>
+        <source>Left response curve · %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="674"/>
-        <source>Connect a controller to identify its layout, assign its Player Slot, and edit its Controller Map.</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="676"/>
+        <source>Left stick response curve</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="677"/>
-        <source>Select a controller to inspect live input.</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="679"/>
+        <source>Right response curve · %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="692"/>
-        <source>Button mapping conflict</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="690"/>
+        <source>Right stick response curve</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="696"/>
-        <source>%1 already reaches %2. Swap their targets, let both buttons reach %2, or cancel?</source>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="694"/>
+        <source>Save calibration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="699"/>
+        <source>Raw Passthrough &amp; transmission mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/controller/ControllerManagerView.qml" line="707"/>
+        <source>Raw Passthrough (bypass calibration and button remap)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="714"/>
+        <source>Sends this controller&apos;s raw button and stick state to the host exactly as SDL reports it, ignoring the deadzone/curve/remap settings above.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="717"/>
+        <source>Transmission mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="725"/>
+        <source>Native — report this controller&apos;s real type and capabilities</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="726"/>
+        <source>Compatible — report as a standard pad for maximum host support</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="733"/>
+        <source>Button remap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="770"/>
+        <source>Save button remap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="812"/>
+        <source>Controller route waiting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="813"/>
+        <source>Choose a controller</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="822"/>
+        <source>Connect a controller to identify its layout, assign its Player Slot, and edit its Controller Map.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="825"/>
+        <source>Select a controller to inspect live input.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="840"/>
+        <source>Button mapping conflict</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="844"/>
+        <source>%1 already reaches %2. Swap their targets, let both buttons reach %2, or cancel?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="855"/>
         <source>Swap</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="715"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="863"/>
         <source>Keep Both</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="722"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="870"/>
         <source>Cancel</source>
         <translation type="unfinished">Atšaukti</translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="241"/>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="307"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="293"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="359"/>
         <source>Slot %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/controller/ControllerManagerView.qml" line="534"/>
+        <location filename="../gui/controller/ControllerManagerView.qml" line="648"/>
         <source>Left stick deadzone</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1099,42 +1149,58 @@ Launch with the safe values?</source>
 <context>
     <name>EffectiveSettingsResolver</name>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="34"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="101"/>
         <source>This device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="99"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="180"/>
+        <source>Pinned for this Session: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="268"/>
+        <source>%1 would select &quot;%2&quot;, but &quot;%3&quot; is pinned from %4</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="289"/>
+        <source>Pinned via %1 scope binding: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="290"/>
+        <source>Selected via %1 scope binding: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="308"/>
         <source>Inherited from the Settings Baseline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="118"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="339"/>
         <source>Settings for this Client Device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="135"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="356"/>
         <source>Settings for the active display and dock topology</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="152"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="401"/>
         <source>Explicit sparse Settings Patch</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="186"/>
-        <source>Selected Streaming Profile: %1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="196"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="419"/>
         <source>Changed for this Session</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../settings/effectivesettingsresolver.cpp" line="298"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="538"/>
+        <location filename="../settings/effectivesettingsresolver.cpp" line="546"/>
         <source>The active display does not report HDR output capability</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1203,223 +1269,458 @@ Launch with the safe values?</source>
         <translation type="obsolete">Paspauskite Pagalbos mygtuką, kad surasti galimus problemos sprendimus.</translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="58"/>
+        <location filename="../gui/HomeView.qml" line="62"/>
         <source>Recent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="65"/>
+        <location filename="../gui/HomeView.qml" line="69"/>
         <source>Resume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="129"/>
+        <location filename="../gui/HomeView.qml" line="133"/>
         <source>Jochona could not reach that rig.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="131"/>
+        <location filename="../gui/HomeView.qml" line="135"/>
         <source>This network blocks incoming streaming connections. Try the same local network or review the router rules.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="135"/>
+        <location filename="../gui/HomeView.qml" line="139"/>
         <source>Check the address and confirm the host service is running.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="145"/>
+        <location filename="../gui/HomeView.qml" line="149"/>
         <source>Sending wake packets…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="147"/>
+        <location filename="../gui/HomeView.qml" line="151"/>
         <source>Sent — waiting for the rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="149"/>
+        <location filename="../gui/HomeView.qml" line="153"/>
         <source>Failed — check Wake settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="151"/>
-        <location filename="../gui/HomeView.qml" line="275"/>
+        <location filename="../gui/HomeView.qml" line="155"/>
+        <location filename="../gui/HomeView.qml" line="284"/>
         <source>Ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="153"/>
-        <location filename="../gui/HomeView.qml" line="276"/>
+        <location filename="../gui/HomeView.qml" line="157"/>
+        <location filename="../gui/HomeView.qml" line="285"/>
         <source>Checking…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="155"/>
+        <location filename="../gui/HomeView.qml" line="159"/>
         <source>Offline — wakeable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="155"/>
-        <location filename="../gui/HomeView.qml" line="334"/>
+        <location filename="../gui/HomeView.qml" line="159"/>
+        <location filename="../gui/HomeView.qml" line="351"/>
         <source>Offline</source>
         <translation type="unfinished">Offline</translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="157"/>
+        <location filename="../gui/HomeView.qml" line="161"/>
         <source>Ready to pair</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="158"/>
+        <location filename="../gui/HomeView.qml" line="162"/>
         <source>Online — ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="223"/>
+        <location filename="../gui/HomeView.qml" line="232"/>
         <source>Open</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="227"/>
+        <location filename="../gui/HomeView.qml" line="236"/>
         <source>Games appear here after Jochona reads a paired rig.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="228"/>
+        <location filename="../gui/HomeView.qml" line="237"/>
         <source>Add a rig running Sunshine, Vibepollo, or Apollo.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="250"/>
+        <location filename="../gui/HomeView.qml" line="259"/>
         <source>Rigs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="251"/>
+        <location filename="../gui/HomeView.qml" line="260"/>
         <source>No rigs yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="272"/>
+        <location filename="../gui/HomeView.qml" line="281"/>
         <source>Sending…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="273"/>
+        <location filename="../gui/HomeView.qml" line="282"/>
         <source>Sent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="274"/>
+        <location filename="../gui/HomeView.qml" line="283"/>
         <source>Failed — retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="277"/>
-        <location filename="../gui/HomeView.qml" line="467"/>
+        <location filename="../gui/HomeView.qml" line="286"/>
+        <location filename="../gui/HomeView.qml" line="623"/>
         <source>Wake</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="277"/>
+        <location filename="../gui/HomeView.qml" line="286"/>
         <source>Actions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="278"/>
+        <location filename="../gui/HomeView.qml" line="287"/>
         <source>Pair</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="278"/>
+        <location filename="../gui/HomeView.qml" line="287"/>
         <source>Browse apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="305"/>
+        <location filename="../gui/HomeView.qml" line="314"/>
         <source>Add a rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="322"/>
+        <location filename="../gui/HomeView.qml" line="339"/>
         <source>Library</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="323"/>
+        <location filename="../gui/HomeView.qml" line="340"/>
         <source>Pair a rig to build the unified Library.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="333"/>
+        <location filename="../gui/HomeView.qml" line="350"/>
         <source>%1 ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="432"/>
-        <location filename="../gui/HomeView.qml" line="512"/>
+        <location filename="../gui/HomeView.qml" line="368"/>
+        <source>Search: “%1”</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="369"/>
+        <location filename="../gui/HomeView.qml" line="423"/>
+        <source>Search library</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="382"/>
+        <source>Showing hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="382"/>
+        <source>Show hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="424"/>
+        <source>Filter titles across every paired rig.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="426"/>
+        <source>Game title</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="428"/>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="543"/>
+        <location filename="../gui/HomeView.qml" line="673"/>
         <source>Rename rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="433"/>
+        <location filename="../gui/HomeView.qml" line="544"/>
         <source>Choose the name shown in Jochona.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="435"/>
+        <location filename="../gui/HomeView.qml" line="546"/>
         <source>Rename</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="466"/>
+        <location filename="../gui/HomeView.qml" line="571"/>
+        <source>Save</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="622"/>
         <source>View apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="468"/>
+        <location filename="../gui/HomeView.qml" line="624"/>
         <source>Test connection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="469"/>
+        <location filename="../gui/HomeView.qml" line="625"/>
         <source>Manage rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="471"/>
+        <location filename="../gui/HomeView.qml" line="630"/>
+        <source>Beacon accepts one request and owns the LAN Wake burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="632"/>
         <source>Available on the same local network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="473"/>
+        <location filename="../gui/HomeView.qml" line="634"/>
         <source>Check the paths required for streaming</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="521"/>
-        <location filename="../gui/HomeView.qml" line="558"/>
+        <location filename="../gui/HomeView.qml" line="682"/>
+        <location filename="../gui/HomeView.qml" line="709"/>
+        <source>Wake overrides</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="683"/>
+        <source>Manual MAC, port, broadcast, and re-probe</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="693"/>
+        <location filename="../gui/HomeView.qml" line="1032"/>
         <source>Remove rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="530"/>
+        <location filename="../gui/HomeView.qml" line="702"/>
+        <location filename="../gui/HomeView.qml" line="831"/>
+        <location filename="../gui/HomeView.qml" line="922"/>
         <source>Cancel</source>
         <translation type="unfinished">Atšaukti</translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="539"/>
+        <location filename="../gui/HomeView.qml" line="724"/>
+        <source>Manual overrides beat the auto-detected wake details — the escape hatch for a Tailscale-cached MAC address. Leave a field blank to go back to automatic.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="735"/>
+        <source>MAC address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="738"/>
+        <source>Auto-detected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="741"/>
+        <source>MAC address override</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="742"/>
+        <source>Enter the rig&apos;s MAC address, or leave blank to auto-detect.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="748"/>
+        <source>Wake-on-LAN port</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="751"/>
+        <source>Automatic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="754"/>
+        <source>Wake port override</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="755"/>
+        <source>Enter the UDP port for wake packets, or leave blank for automatic.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="762"/>
+        <source>Broadcast address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="765"/>
+        <source>All network interfaces</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="768"/>
+        <source>Broadcast address override</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="769"/>
+        <source>Enter a broadcast address, or leave blank to sweep every interface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="775"/>
+        <source>Re-probe from LAN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="776"/>
+        <source>Skip the wait and check this rig right now</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="785"/>
+        <location filename="../gui/HomeView.qml" line="891"/>
+        <source>Done</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="801"/>
+        <source>Favorited</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="801"/>
+        <source>Add to favorites</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="813"/>
+        <source>Hidden</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="813"/>
+        <source>Hide from library</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="822"/>
+        <source>Manage grouping</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="823"/>
+        <source>Split a rig out, or merge with another entry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="850"/>
+        <source>Jochona grouped these into one Library Entry. Split one back out, or merge this entry into another.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="867"/>
+        <source>Split out into its own Library Entry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="868"/>
+        <source>The only rig in this entry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="883"/>
+        <source>Merge with another entry…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="899"/>
+        <source>Merge into…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="929"/>
+        <source>Merge entries?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="938"/>
+        <source>Merge “%1” into “%2”? Their apps will appear together across every rig; you can split any of them back out later.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="953"/>
+        <source>Merge</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="959"/>
+        <source>Keep separate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="974"/>
+        <source>Split out?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="982"/>
+        <source>Split “%1” into its own Library Entry? It stops sharing favorites, categories, and Library-level settings with the rest of this group.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="995"/>
+        <source>Split</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="1001"/>
+        <source>Keep grouped</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/HomeView.qml" line="1013"/>
         <source>Remove this rig?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="547"/>
+        <location filename="../gui/HomeView.qml" line="1021"/>
         <source>Jochona will forget %1. You can add it again at any time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/HomeView.qml" line="564"/>
+        <location filename="../gui/HomeView.qml" line="1038"/>
         <source>Keep rig</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1500,67 +1801,67 @@ Launch with the safe values?</source>
 <context>
     <name>LibraryManager</name>
     <message>
-        <location filename="../library/librarymanager.cpp" line="395"/>
+        <location filename="../library/librarymanager.cpp" line="424"/>
         <source>Direct (LAN)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="398"/>
+        <location filename="../library/librarymanager.cpp" line="427"/>
         <source>Tailscale</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="401"/>
+        <location filename="../library/librarymanager.cpp" line="430"/>
         <source>Private network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="468"/>
+        <location filename="../library/librarymanager.cpp" line="497"/>
         <source>Host Choice Pin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="472"/>
+        <location filename="../library/librarymanager.cpp" line="501"/>
         <source>Host identity changed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="476"/>
+        <location filename="../library/librarymanager.cpp" line="505"/>
         <source>Ready now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="480"/>
+        <location filename="../library/librarymanager.cpp" line="509"/>
         <source>Meets the Quality Floor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="484"/>
+        <location filename="../library/librarymanager.cpp" line="513"/>
         <source>Busy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="488"/>
+        <location filename="../library/librarymanager.cpp" line="517"/>
         <source>Wakeable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="493"/>
+        <location filename="../library/librarymanager.cpp" line="522"/>
         <source>Direct LAN path</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="497"/>
+        <location filename="../library/librarymanager.cpp" line="526"/>
         <source>Tailscale path</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="501"/>
+        <location filename="../library/librarymanager.cpp" line="530"/>
         <source>Private-network path</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../library/librarymanager.cpp" line="516"/>
+        <location filename="../library/librarymanager.cpp" line="545"/>
         <source>Previously successful</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1630,7 +1931,7 @@ Launch with the safe values?</source>
 <context>
     <name>NvHTTP</name>
     <message>
-        <location filename="../backend/nvhttp.cpp" line="391"/>
+        <location filename="../backend/nvhttp.cpp" line="430"/>
         <source>Missing audio capture device. Reinstalling GeForce Experience should resolve this error.</source>
         <translation>Trūksta garso įrašymo įrenginio. Pabandykite iš naujo parsiųsti GeForce Experience.</translation>
     </message>
@@ -1961,27 +2262,27 @@ Launch with the safe values?</source>
 <context>
     <name>PendingPairingTask</name>
     <message>
-        <location filename="../backend/computermanager.cpp" line="665"/>
+        <location filename="../backend/computermanager.cpp" line="759"/>
         <source>The PIN from the PC didn&apos;t match. Please try again.</source>
         <translation>PIN kodas iš kompiuterio nesutapo. Bandykite dar kartą.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="669"/>
+        <location filename="../backend/computermanager.cpp" line="763"/>
         <source>You cannot pair while a previous session is still running on the host PC. Quit any running games or reboot the host PC, then try pairing again.</source>
         <translation>Negalite susieti, kol praeita sesija vis dar įjungta host kompiuteryje. Išeikite iš visų žaidimų ar paleiskitė kompiuterį iš naujo, po to bandykite dar kartą.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="672"/>
+        <location filename="../backend/computermanager.cpp" line="766"/>
         <source>Pairing failed. Please try again.</source>
         <translation>Susiejimas nepavyko. Prašome pabandyti dar kartą.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="676"/>
+        <location filename="../backend/computermanager.cpp" line="770"/>
         <source>Another pairing attempt is already in progress.</source>
         <translation>Jau vyksta kitas susiejimas.</translation>
     </message>
     <message>
-        <location filename="../backend/computermanager.cpp" line="686"/>
+        <location filename="../backend/computermanager.cpp" line="787"/>
         <source>GeForce Experience returned error: %1</source>
         <translation>GeForce Experience klaida: %1</translation>
     </message>
@@ -1989,7 +2290,7 @@ Launch with the safe values?</source>
 <context>
     <name>PendingQuitTask</name>
     <message>
-        <location filename="../backend/computermanager.cpp" line="736"/>
+        <location filename="../backend/computermanager.cpp" line="837"/>
         <source>The running game wasn&apos;t started by this PC. You must quit the game on the host PC manually or use the device that originally started the game.</source>
         <translation>Žaidimas nebuvo paleistas šituo kompiuteriu. Turite išeiti iš žaidimo rankiniu būdų arba naudojant prietaisą, kuris paleido šį žaidimą.</translation>
     </message>
@@ -2092,47 +2393,47 @@ Launch with the safe values?</source>
 <context>
     <name>Session</name>
     <message>
-        <location filename="../streaming/session.cpp" line="122"/>
+        <location filename="../streaming/session.cpp" line="129"/>
         <source>No video received from host.</source>
         <translation>Video negautas iš kompiuterio.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="123"/>
+        <location filename="../streaming/session.cpp" line="130"/>
         <source>Check your firewall and port forwarding rules for port(s): %1</source>
         <translation>Patikrinkite prievadų persiuntimo taisykles ir Firewall prievadui(ams): %1</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="128"/>
+        <location filename="../streaming/session.cpp" line="135"/>
         <source>Your network connection isn&apos;t performing well. Reduce your video bitrate setting or try a faster connection.</source>
         <translation>Jūsų tinklo ryšys neveikia gerai. Sumažinkite vaizdo kokybę (Bitrate) arba pabandykite greitesnį tinklą.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="134"/>
+        <location filename="../streaming/session.cpp" line="141"/>
         <source>Something went wrong on your host PC when starting the stream.</source>
         <translation>kažkas nutiko ne taip jūsų host kompiuteryje pradedant transliaciją.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="135"/>
+        <location filename="../streaming/session.cpp" line="142"/>
         <source>Make sure you don&apos;t have any DRM-protected content open on your host PC. You can also try restarting your host PC.</source>
         <translation>Įsitikinkite, kad šiuo metu jūsų host kompiuteryje neatidarytas joks DRM apsaugotas tūrinys. Taip pat galite pabandyti paleisti kompiuterį iš naujo.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="140"/>
+        <location filename="../streaming/session.cpp" line="147"/>
         <source>The host PC reported a fatal video encoding error.</source>
         <translation>Host kompiuteris pranešė apie vaizdo kodavimo klaidą.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="141"/>
+        <location filename="../streaming/session.cpp" line="148"/>
         <source>Try disabling HDR mode, changing the streaming resolution, or changing your host PC&apos;s display resolution.</source>
         <translation>Pabandykite išjungti HDR režimą, pakeisti transliacijos kokybę arba pagrindinio kompiuterio ekrano skiriamąją gebą.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="149"/>
+        <location filename="../streaming/session.cpp" line="156"/>
         <source>Connection terminated</source>
         <translation>Ryšys nutrauktas</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="150"/>
+        <location filename="../streaming/session.cpp" line="157"/>
         <source>Error code: %1</source>
         <translation>Klaidos kodas: %1</translation>
     </message>
@@ -2141,194 +2442,265 @@ Launch with the safe values?</source>
         <translation type="vanished">Jūsų Moonlight nepalaiko %1 GeForce Experience versijos. Norėdami transliuoti iš %1, turite atnaujinti Moonlight.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1196"/>
+        <location filename="../streaming/session.cpp" line="1417"/>
         <source>Your selection to enable remote desktop mouse mode may cause problems in games.</source>
         <translation>Jūsų pasirinkimas įjungti nuotolinio darbastalio pėlę gali sukelti problemų žaidimuose.</translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1200"/>
+        <location filename="../streaming/session.cpp" line="1421"/>
         <source>Your settings selection to force software decoding may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1236"/>
+        <location filename="../streaming/session.cpp" line="1457"/>
         <source>Your host PC doesn&apos;t support encoding HEVC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1254"/>
+        <location filename="../streaming/session.cpp" line="1475"/>
         <source>Using software decoding due to your selection to force HEVC without GPU support. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1206"/>
+        <location filename="../streaming/session.cpp" line="1427"/>
         <source>Your host software or GPU doesn&apos;t support encoding AV1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1224"/>
+        <location filename="../streaming/session.cpp" line="1445"/>
         <source>Using software decoding due to your selection to force AV1 without GPU support. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1301"/>
+        <location filename="../streaming/session.cpp" line="1522"/>
         <source>Your host PC doesn&apos;t support HDR streaming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1293"/>
+        <location filename="../streaming/session.cpp" line="1514"/>
         <source>HDR is not supported using the H.264 codec.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1316"/>
+        <location filename="../streaming/session.cpp" line="1537"/>
         <source>This PC&apos;s GPU doesn&apos;t support AV1 Main10 decoding for HDR streaming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1297"/>
+        <location filename="../streaming/session.cpp" line="1518"/>
         <source>This PC&apos;s GPU doesn&apos;t support 10-bit HEVC or AV1 decoding for HDR streaming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1349"/>
+        <location filename="../streaming/session.cpp" line="1570"/>
         <source>Your host PC and client PC don&apos;t support the same HDR video codecs.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1442"/>
+        <location filename="../streaming/session.cpp" line="1663"/>
         <source>Video resolutions over 4K are not supported by the H.264 codec.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1918"/>
+        <location filename="../streaming/session.cpp" line="2228"/>
         <source>Host returned error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1273"/>
+        <location filename="../streaming/session.cpp" line="1494"/>
         <source>Using software decoding due to your selection to force H.264 without GPU support. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="677"/>
+        <location filename="../streaming/session.cpp" line="689"/>
         <source>Display changed to %1.
 Press Ctrl+Alt+Shift+R or Back+L1+R1+Y to reconnect.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="679"/>
+        <location filename="../streaming/session.cpp" line="691"/>
         <source>another display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1191"/>
+        <location filename="../streaming/session.cpp" line="813"/>
+        <source>Could not change Host Volume: no pinned connection is on file for this Host.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="814"/>
+        <source>Could not read Host Volume: no pinned connection is on file for this Host.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="868"/>
+        <source>The Host&apos;s certificate no longer matches the pinned Identity.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="876"/>
+        <source>Could not reach the Host to change Host Volume: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="877"/>
+        <source>Could not reach the Host to read Host Volume: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="885"/>
+        <source>The Host rejected the Host Volume change (HTTP %1).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="886"/>
+        <source>The Host rejected the Host Volume request (HTTP %1).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="894"/>
+        <source>The Host&apos;s Host Volume response was malformed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="905"/>
+        <location filename="../streaming/session.cpp" line="918"/>
+        <source>The Host&apos;s Host Volume response was missing required fields.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="911"/>
+        <source>This Host reports Host Volume is unavailable.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="927"/>
+        <source>The Host&apos;s Host Volume response bounds were invalid.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="1404"/>
+        <source>%1&apos;s identity has changed since you last paired. This can happen after a reinstall, or it can mean something else is answering in its place. Re-pair %1 to continue.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="1412"/>
         <source>The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1283"/>
+        <location filename="../streaming/session.cpp" line="1504"/>
         <source>Your host PC and client PC don&apos;t support the same video codecs. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1286"/>
+        <location filename="../streaming/session.cpp" line="1507"/>
         <source>Your client GPU doesn&apos;t support H.264 decoding. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1322"/>
-        <location filename="../streaming/session.cpp" line="1340"/>
+        <location filename="../streaming/session.cpp" line="1543"/>
+        <location filename="../streaming/session.cpp" line="1561"/>
         <source>Using software decoding due to your selection to force HDR without GPU support. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1334"/>
+        <location filename="../streaming/session.cpp" line="1555"/>
         <source>This PC&apos;s GPU doesn&apos;t support HEVC Main10 decoding for HDR streaming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1356"/>
+        <location filename="../streaming/session.cpp" line="1577"/>
         <source>Your host PC doesn&apos;t support YUV 4:4:4 streaming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1364"/>
+        <location filename="../streaming/session.cpp" line="1585"/>
         <source>Your host PC doesn&apos;t support YUV 4:4:4 streaming for selected video codec.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1379"/>
+        <location filename="../streaming/session.cpp" line="1600"/>
         <source>Using software decoding due to your selection to force YUV 4:4:4 without GPU support. This may cause poor streaming performance.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1385"/>
+        <location filename="../streaming/session.cpp" line="1606"/>
         <source>This PC&apos;s GPU doesn&apos;t support YUV 4:4:4 decoding for selected video codec.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1394"/>
+        <location filename="../streaming/session.cpp" line="1615"/>
         <source>GeForce Experience 3.0 or higher is required for 4K streaming.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1409"/>
+        <location filename="../streaming/session.cpp" line="1630"/>
         <source>Your selected surround sound setting is not supported by the current audio device.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1415"/>
+        <location filename="../streaming/session.cpp" line="1636"/>
         <source>Failed to open audio device. Audio will be unavailable during this session.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1420"/>
+        <location filename="../streaming/session.cpp" line="1641"/>
         <source>An attached gamepad has no mapping and won&apos;t be usable. Visit the Moonlight help to resolve this.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1438"/>
+        <location filename="../streaming/session.cpp" line="1659"/>
         <source>Your host PC&apos;s GPU doesn&apos;t support streaming video resolutions over 4K.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1456"/>
+        <location filename="../streaming/session.cpp" line="1677"/>
         <source>Your selection to force hardware decoding cannot be satisfied due to missing hardware decoding support on this PC&apos;s GPU.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1459"/>
+        <location filename="../streaming/session.cpp" line="1680"/>
         <source>Your codec selection and force hardware decoding setting are not compatible. This PC&apos;s GPU lacks support for decoding your chosen codec.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1835"/>
+        <location filename="../streaming/session.cpp" line="2042"/>
+        <source>The Host&apos;s encoder probe response was malformed or missing verification proof.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="2053"/>
+        <source>The Host&apos;s encoder probe returned a different encoder path than the one requested.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../streaming/session.cpp" line="2120"/>
         <source>This paired Client is not allowed to launch Sessions on this Jochona Host.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1843"/>
+        <location filename="../streaming/session.cpp" line="2128"/>
         <source>Virtual Display is selected, but this Host reports that its display adapter is unavailable.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1856"/>
+        <location filename="../streaming/session.cpp" line="2158"/>
         <source>This Host has no probe-verified encoder path for %1×%2 at %3 fps%4 on the selected display type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1862"/>
+        <location filename="../streaming/session.cpp" line="2164"/>
         <source> with HDR</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1896"/>
+        <location filename="../streaming/session.cpp" line="2206"/>
         <source>The Host could not initialize the requested encoder path.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1904"/>
+        <location filename="../streaming/session.cpp" line="2214"/>
         <source>
 
 Verified alternatives:
@@ -2336,12 +2708,12 @@ Verified alternatives:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="1912"/>
+        <location filename="../streaming/session.cpp" line="2222"/>
         <source>This Host is already running its maximum number of Sessions.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../streaming/session.cpp" line="2548"/>
+        <location filename="../streaming/session.cpp" line="2858"/>
         <source>Unable to initialize video decoder. Please check your streaming settings and try again.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2354,173 +2726,194 @@ Verified alternatives:
 <context>
     <name>SessionSettingsOverlay</name>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="97"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="99"/>
         <source>Session settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="105"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="107"/>
         <source>LIVE + RECONNECT</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="127"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="129"/>
         <source>Live now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="133"/>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="150"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="135"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="152"/>
         <source>Session Volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="154"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="156"/>
         <source>Muted</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="155"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="157"/>
         <source>%1 dB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="161"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="163"/>
         <source>Show performance overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/session/SessionSettingsOverlay.qml" line="170"/>
-        <source>Host Volume capability detected. Session Volume remains local to this Client.</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="191"/>
+        <source>Host Volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="171"/>
-        <source>Host Volume is unavailable on this Host. Session Volume is local to this Client.</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="203"/>
+        <source>%1%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="178"/>
-        <source>Microphone forwarding — Planned</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="204"/>
+        <source>—</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="179"/>
-        <source>Not negotiated in this beta</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="219"/>
+        <source>Host Volume is unavailable on this Host. Session Volume remains local to this Client.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="189"/>
-        <source>Reconnect required</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="195"/>
-        <source>Resolution</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="212"/>
-        <source>Frame rate</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="221"/>
+        <source>Host Volume adjusts audio output on the Host itself, separate from Session Volume.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/session/SessionSettingsOverlay.qml" line="222"/>
-        <source>Bitrate · %1 Mbps</source>
+        <source>Host Volume is visible but read-only for this Device ↔ Rig pairing. Session Volume remains local to this Client.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="233"/>
-        <source>Queued bitrate</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="229"/>
+        <source>Microphone forwarding — Planned</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="236"/>
-        <source>Codec</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="230"/>
+        <source>Not negotiated in this beta</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="239"/>
-        <source>Automatic</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="240"/>
+        <source>Reconnect required</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="249"/>
-        <source>HDR</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="246"/>
+        <source>Resolution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="256"/>
-        <source>Use Host virtual display</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="261"/>
-        <source>Audio layout</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="264"/>
-        <source>Stereo</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="264"/>
-        <source>5.1 surround</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="265"/>
-        <source>7.1 surround</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="270"/>
-        <source>Audio output</source>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="263"/>
+        <source>Frame rate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../gui/session/SessionSettingsOverlay.qml" line="273"/>
+        <source>Bitrate · %1 Mbps</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="284"/>
+        <source>Queued bitrate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="287"/>
+        <source>Codec</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="290"/>
+        <source>Automatic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="300"/>
+        <source>HDR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="307"/>
+        <source>Use Host virtual display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="312"/>
+        <source>Audio layout</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="315"/>
+        <source>Stereo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="315"/>
+        <source>5.1 surround</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="316"/>
+        <source>7.1 surround</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="321"/>
+        <source>Audio output</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="324"/>
         <source>System default</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="285"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="336"/>
         <source>Save To</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="291"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="342"/>
         <source>This Session only</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="292"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="343"/>
         <source>This Device ↔ Rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="295"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="346"/>
         <source>Library Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="296"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="347"/>
         <source>Host Application</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="310"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="361"/>
         <source>Keep current Session</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="314"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="365"/>
         <source>Apply &amp; reconnect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/session/SessionSettingsOverlay.qml" line="322"/>
+        <location filename="../gui/session/SessionSettingsOverlay.qml" line="373"/>
         <source>Open: Ctrl+Alt+Shift+O or Back+L1+R1+A</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3594,57 +3987,57 @@ Verified alternatives:
         <translation type="obsolete">Tinklas, kuriame šiuo metu esate, blokuoja Moonlight. Transliacija internetu gali neveikti, kol esate prisijungę prie šio tinklo.</translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="20"/>
+        <location filename="../gui/StreamSegue.qml" line="21"/>
         <source>Rig</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="63"/>
+        <location filename="../gui/StreamSegue.qml" line="84"/>
         <source>Resume stream</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="63"/>
+        <location filename="../gui/StreamSegue.qml" line="84"/>
         <source>Start stream</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="71"/>
+        <location filename="../gui/StreamSegue.qml" line="92"/>
         <source>Jochona could not prepare the stream</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="72"/>
+        <location filename="../gui/StreamSegue.qml" line="93"/>
         <source>Check the rig and local decoder settings, then try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="97"/>
+        <location filename="../gui/StreamSegue.qml" line="119"/>
         <source>Reconnect is no longer available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="98"/>
+        <location filename="../gui/StreamSegue.qml" line="120"/>
         <source>Return to the rig and start the game again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="160"/>
+        <location filename="../gui/StreamSegue.qml" line="189"/>
         <source>The stream could not start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="234"/>
+        <location filename="../gui/StreamSegue.qml" line="264"/>
         <source>another display</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="308"/>
+        <location filename="../gui/StreamSegue.qml" line="338"/>
         <source>Disconnect shortcut: Start + Select + L1 + R1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../gui/StreamSegue.qml" line="309"/>
+        <location filename="../gui/StreamSegue.qml" line="339"/>
         <source>Disconnect shortcut: Ctrl + Alt + Shift + Q</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3667,22 +4060,22 @@ Verified alternatives:
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/supportbundlemanager.cpp" line="325"/>
+        <location filename="../backend/supportbundlemanager.cpp" line="392"/>
         <source>Choose a file for the Support Bundle.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/supportbundlemanager.cpp" line="331"/>
+        <location filename="../backend/supportbundlemanager.cpp" line="398"/>
         <source>Could not open the Support Bundle destination.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/supportbundlemanager.cpp" line="337"/>
+        <location filename="../backend/supportbundlemanager.cpp" line="404"/>
         <source>Could not finish writing the Support Bundle.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../backend/supportbundlemanager.cpp" line="340"/>
+        <location filename="../backend/supportbundlemanager.cpp" line="407"/>
         <source>Support Bundle exported to %1.</source>
         <translation type="unfinished"></translation>
     </message>

@@ -1,7 +1,14 @@
+#include "adapters/hostcapabilities.h"
 #include "nvcomputer.h"
+#include "certificatepinning.h"
 #include <Limelight.h>
 
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QSet>
+#include <QUrlQuery>
 #include <QUuid>
 #include <QtNetwork/QNetworkReply>
 #include <QEventLoop>
@@ -23,6 +30,38 @@
 #else
 #define XML_NAME_EQUALS(x, y) ((x) == (u##y))
 #endif
+
+namespace {
+// Pairing (and every other) request embeds its unique ID, and pairing
+// requests additionally embed the salt, client certificate, challenge, and
+// pairing secret as raw hex query parameters (see NvPairingManager::pair()).
+// None of that may ever reach a log file -- Support Bundles excerpt recent
+// logs verbatim (SupportBundleManager::buildBundle()), so redact it here at
+// the source instead of relying on downstream scrubbing.
+QString sanitizedUrlForLog(const QUrl& url)
+{
+    static const QSet<QString> sensitiveParams = {
+        QStringLiteral("uniqueid"),
+        QStringLiteral("uuid"),
+        QStringLiteral("salt"),
+        QStringLiteral("clientcert"),
+        QStringLiteral("clientchallenge"),
+        QStringLiteral("serverchallengeresp"),
+        QStringLiteral("clientpairingsecret"),
+    };
+    QUrlQuery query(url);
+    QList<QPair<QString, QString>> items = query.queryItems();
+    for (auto& item : items) {
+        if (sensitiveParams.contains(item.first.toLower())) {
+            item.second = QStringLiteral("<redacted>");
+        }
+    }
+    query.setQueryItems(items);
+    QUrl sanitized(url);
+    sanitized.setQuery(query);
+    return sanitized.toString();
+}
+}
 
 NvHTTP::NvHTTP(NvAddress address, uint16_t httpsPort, QSslCertificate serverCert, bool useTrueUid, QNetworkAccessManager* nam) :
     m_Nam(nam ? nam : new QNetworkAccessManager(this)),
@@ -442,28 +481,6 @@ NvHTTP::getXmlString(QString xml,
     return QString();
 }
 
-void NvHTTP::handleSslErrors(QNetworkReply* reply, const QList<QSslError>& errors)
-{
-    bool ignoreErrors = true;
-
-    if (m_ServerCert.isNull()) {
-        // We should never make an HTTPS request without a cert
-        Q_ASSERT(!m_ServerCert.isNull());
-        return;
-    }
-
-    for (const QSslError& error : errors) {
-        if (m_ServerCert != error.certificate()) {
-            ignoreErrors = false;
-            break;
-        }
-    }
-
-    if (ignoreErrors) {
-        reply->ignoreSslErrors(errors);
-    }
-}
-
 QString
 NvHTTP::openConnectionToString(QUrl baseUrl,
                                QString command,
@@ -509,8 +526,12 @@ NvHTTP::openConnection(QUrl baseUrl,
 
     QNetworkRequest request(url);
 
-    // Add our client certificate
-    request.setSslConfiguration(IdentityManager::get()->getSslConfig());
+    // Add our client certificate, restricting the trusted CA list to
+    // exactly the pinned server certificate (defense-in-depth alongside
+    // CertificatePinning::install() below -- see certificatepinning.h).
+    QSslConfiguration sslConfig = IdentityManager::get()->getSslConfig();
+    CertificatePinning::restrictTrustToPin(sslConfig, m_ServerCert);
+    request.setSslConfiguration(sslConfig);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     // Disable HTTP/2 (GFE 3.22 doesn't like it) and Qt 6 enables it by default
@@ -524,7 +545,9 @@ NvHTTP::openConnection(QUrl baseUrl,
     request.setAttribute(QNetworkRequest::ConnectionCacheExpiryTimeoutSecondsAttribute, 0);
 #endif
 
-    auto sslErrorsConnection = connect(m_Nam, &QNetworkAccessManager::sslErrors, this, &NvHTTP::handleSslErrors);
+    bool certificateMismatch = false;
+    CertificatePinning::Connections pinningConnections =
+        CertificatePinning::install(m_Nam, this, m_ServerCert, &certificateMismatch);
     QNetworkReply* reply = m_Nam->get(request);
 
     // Run the request with a timeout if requested
@@ -535,7 +558,7 @@ NvHTTP::openConnection(QUrl baseUrl,
         QTimer::singleShot(timeoutMs, &loop, &QEventLoop::quit);
     }
     if (logLevel >= NvLogLevel::NVLL_VERBOSE) {
-        qInfo() << "Executing request:" << url.toString();
+        qInfo() << "Executing request:" << sanitizedUrlForLog(url);
     }
     loop.exec(QEventLoop::ExcludeUserInputEvents);
 
@@ -543,7 +566,7 @@ NvHTTP::openConnection(QUrl baseUrl,
     if (!reply->isFinished())
     {
         if (logLevel >= NvLogLevel::NVLL_ERROR) {
-            qWarning() << "Aborting timed out request for" << url.toString();
+            qWarning() << "Aborting timed out request for" << sanitizedUrlForLog(url);
         }
         reply->abort();
     }
@@ -552,7 +575,18 @@ NvHTTP::openConnection(QUrl baseUrl,
     // If we couldn't use fine-grained connection idle timeouts, kill them all now
     m_Nam->clearAccessCache();
 #endif
-    disconnect(sslErrorsConnection);
+    CertificatePinning::uninstall(pinningConnections);
+
+    if (certificateMismatch) {
+        // encrypted() aborted the reply before any request data was sent
+        // to a peer whose certificate didn't match the pinned one -- surface
+        // the same "Server certificate mismatch" contract as the
+        // SslHandshakeFailedError path below, which reply->abort() would
+        // otherwise mask as a generic OperationCanceledError.
+        GfeHttpResponseException exception(401, "Server certificate mismatch");
+        delete reply;
+        throw exception;
+    }
 
     // Handle error
     const int httpStatus = reply->attribute(
@@ -596,4 +630,138 @@ NvHTTP::openConnection(QUrl baseUrl,
     }
 
     return reply;
+}
+
+void
+NvHTTP::applyJochonaSslConfig(QNetworkRequest& request, const QSslCertificate& serverCert)
+{
+    QSslConfiguration sslConfig = IdentityManager::get()->getSslConfig();
+    CertificatePinning::restrictTrustToPin(sslConfig, serverCert);
+    request.setSslConfiguration(sslConfig);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(6, 3, 0)
+    request.setAttribute(QNetworkRequest::ConnectionCacheExpiryTimeoutSecondsAttribute, 0);
+#endif
+}
+
+void
+NvHTTP::jochonaWireFormat(int videoFormat, QString& codec, QString& profile, QString& chroma)
+{
+    const HostCapabilities::EncoderTuple tuple =
+        HostCapabilities::EncoderTuple::fromVideoFormat(videoFormat);
+    codec = tuple.codec;
+    profile = tuple.profile;
+    chroma = tuple.chroma;
+}
+
+QJsonObject
+NvHTTP::probeEncoderTuple(int videoFormat,
+                          int width,
+                          int height,
+                          int fps,
+                          bool hdr,
+                          bool virtualDisplay)
+{
+    QString codec, profile, chroma;
+    jochonaWireFormat(videoFormat, codec, profile, chroma);
+    if (codec.isEmpty()) {
+        throw GfeHttpResponseException(400, "Unsupported video format for Jochona encoder probe");
+    }
+
+    QUrl url = m_BaseUrlHttps;
+    url.setPath(QStringLiteral("/jochona/v1/probe"));
+
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("codec"), codec);
+    query.addQueryItem(QStringLiteral("profile"), profile);
+    query.addQueryItem(QStringLiteral("chroma"), chroma);
+    query.addQueryItem(QStringLiteral("width"), QString::number(width));
+    query.addQueryItem(QStringLiteral("height"), QString::number(height));
+    query.addQueryItem(QStringLiteral("fps"), QString::number(fps));
+    query.addQueryItem(QStringLiteral("hdr"), hdr ? QStringLiteral("1") : QStringLiteral("0"));
+    query.addQueryItem(QStringLiteral("capture"), virtualDisplay ? QStringLiteral("virtual") : QStringLiteral("physical"));
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    applyJochonaSslConfig(request, m_ServerCert);
+
+    bool certificateMismatch = false;
+    CertificatePinning::Connections pinningConnections =
+        CertificatePinning::install(m_Nam, this, m_ServerCert, &certificateMismatch);
+
+    // The exact-proof probe reconfigures the Host's display/capture path
+    // and mutates its proof cache -- not a safe/idempotent GET, hence POST
+    // with an empty body (same query params, same response/error shapes).
+    QNetworkReply* reply = m_Nam->post(request, QByteArray());
+
+    QEventLoop loop;
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    if (QCoreApplication::instance() != nullptr) {
+        connect(QCoreApplication::instance(), &QCoreApplication::aboutToQuit, &loop, &QEventLoop::quit);
+    }
+    QTimer::singleShot(REQUEST_TIMEOUT_MS, &loop, &QEventLoop::quit);
+    loop.exec(QEventLoop::ExcludeUserInputEvents);
+
+    if (!reply->isFinished()) {
+        reply->abort();
+    }
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 3, 0)
+    m_Nam->clearAccessCache();
+#endif
+    CertificatePinning::uninstall(pinningConnections);
+
+    if (certificateMismatch) {
+        delete reply;
+        throw GfeHttpResponseException(401, "Server certificate mismatch");
+    }
+
+    const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+    if (statusCode == 400 || statusCode == 409) {
+        const QByteArray responseBody = reply->readAll();
+        const QString reason = reply->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toString();
+        GfeHttpResponseException exception(
+            statusCode,
+            reason.isEmpty() ? QStringLiteral("Encoder probe rejected") : reason,
+            responseBody);
+        delete reply;
+        throw exception;
+    }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        if (reply->error() == QNetworkReply::SslHandshakeFailedError) {
+            delete reply;
+            throw GfeHttpResponseException(401, "Server certificate mismatch");
+        }
+        if (reply->error() == QNetworkReply::OperationCanceledError) {
+            delete reply;
+            throw QtNetworkReplyException(QNetworkReply::TimeoutError, "Encoder probe request timed out");
+        }
+        QNetworkReply::NetworkError error = reply->error();
+        QString errorText = reply->errorString();
+        delete reply;
+        throw QtNetworkReplyException(error, errorText);
+    }
+
+    if (statusCode < 200 || statusCode >= 300) {
+        const QByteArray responseBody = reply->readAll();
+        GfeHttpResponseException exception(statusCode, QStringLiteral("Encoder probe failed"), responseBody);
+        delete reply;
+        throw exception;
+    }
+
+    const QByteArray body = reply->readAll();
+    delete reply;
+
+    QJsonParseError parseError{};
+    const QJsonDocument document = QJsonDocument::fromJson(body, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        throw GfeHttpResponseException(statusCode, QStringLiteral("Encoder probe response was not a JSON object"), body);
+    }
+
+    return document.object();
 }

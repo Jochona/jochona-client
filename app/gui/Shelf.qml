@@ -103,6 +103,11 @@ Item {
             bottomMargin: Tokens.dp(4)
             clip: true
 
+            Keys.onMenuPressed: {
+                if (currentItem !== null)
+                    currentItem.pressHold()
+            }
+
             onCountChanged: {
                 if (count === 0)
                     currentIndex = -1

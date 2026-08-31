@@ -5,6 +5,7 @@
 #include "backend/richpresencemanager.h"
 #include "library/librarymanager.h"
 #include "backend/adapters/hostadaptermanager.h"
+#include "backend/certificatepinning.h"
 
 #include <Limelight.h>
 #include "SDL_compat.h"
@@ -32,6 +33,7 @@
 #define SDL_CODE_GAMECONTROLLER_SET_CONTROLLER_LED 104
 #define SDL_CODE_GAMECONTROLLER_SET_ADAPTIVE_TRIGGERS 105
 #define SDL_CODE_DISPLAY_CONTEXT_CHANGED 106
+#define HOST_VOLUME_REQUEST_TIMEOUT_MS 5000
 
 #include <openssl/rand.h>
 
@@ -41,6 +43,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkProxy>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QUrlQuery>
 #include <QSvgRenderer>
 #include <QPainter>
 #include <QImage>
@@ -607,6 +614,11 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_MouseEmulationRefCount(0),
       m_FlushingWindowEventsRef(0),
       m_ShouldExit(false),
+      m_HostVolumeLoaded(false),
+      m_HostVolumeMin(0),
+      m_HostVolumeMax(100),
+      m_HostVolumeCurrent(0),
+      m_HostVolumeRequestSerial(0),
       m_AsyncConnectionSuccess(false),
       m_PortTestResults(0),
       m_OpusDecoder(nullptr),
@@ -730,6 +742,200 @@ bool Session::hostVolumeAvailable() const
     return m_Computer != nullptr
         && HostAdapterManager::get()->capabilities(m_Computer->uuid)
                .hasCapability(HostCapabilities::VolumeControl);
+}
+
+bool Session::hostVolumeWritable() const
+{
+    if (m_Computer == nullptr) {
+        return false;
+    }
+    const HostCapabilities capabilities =
+        HostAdapterManager::get()->capabilities(m_Computer->uuid);
+    return capabilities.hasCapability(HostCapabilities::VolumeControl)
+        && capabilities.permissionNames.contains(QLatin1String("host.volume.write"));
+}
+
+bool Session::hostVolumeLoaded() const
+{
+    return m_HostVolumeLoaded;
+}
+
+int Session::hostVolumeMin() const
+{
+    return m_HostVolumeMin;
+}
+
+int Session::hostVolumeMax() const
+{
+    return m_HostVolumeMax;
+}
+
+int Session::hostVolumeCurrent() const
+{
+    return m_HostVolumeCurrent;
+}
+
+QString Session::hostVolumeErrorText() const
+{
+    return m_HostVolumeErrorText;
+}
+
+void Session::refreshHostVolume()
+{
+    if (!hostVolumeAvailable()) {
+        return;
+    }
+    performHostVolumeRequest(false, 0);
+}
+
+void Session::setHostVolume(int level)
+{
+    if (!hostVolumeAvailable() || !hostVolumeWritable()) {
+        return;
+    }
+    const int minimum = m_HostVolumeLoaded ? m_HostVolumeMin : 0;
+    const int maximum = m_HostVolumeLoaded ? m_HostVolumeMax : 100;
+    performHostVolumeRequest(true, qBound(minimum, level, maximum));
+}
+
+// Fully async GET/PUT against the Host's Jochona Host Volume control
+// plane (pinned mTLS, same identity as every other direct-to-Host call).
+// Uses QNetworkAccessManager's own non-blocking I/O -- no nested
+// QEventLoop, no worker thread -- so it never blocks the GUI thread this
+// is invoked from (Q_INVOKABLE calls from QML, or refreshHostVolume() from
+// the settings overlay opening).
+void Session::performHostVolumeRequest(bool isWrite, int level)
+{
+    const quint64 requestSerial = ++m_HostVolumeRequestSerial;
+    if (m_Computer == nullptr || m_Computer->serverCert.isNull()
+            || m_Computer->activeHttpsPort == 0) {
+        m_HostVolumeErrorText = isWrite
+            ? tr("Could not change Host Volume: no pinned connection is on file for this Host.")
+            : tr("Could not read Host Volume: no pinned connection is on file for this Host.");
+        emit hostVolumeErrorChanged();
+        return;
+    }
+
+    QUrl url;
+    url.setScheme(QStringLiteral("https"));
+    url.setHost(m_Computer->activeAddress.address());
+    url.setPort(m_Computer->activeHttpsPort);
+    url.setPath(QStringLiteral("/jochona/v1/volume"));
+    if (isWrite) {
+        QUrlQuery query;
+        query.addQueryItem(QStringLiteral("level"), QString::number(qBound(0, level, 100)));
+        url.setQuery(query);
+    }
+
+    QNetworkRequest request(url);
+    NvHTTP::applyJochonaSslConfig(request, m_Computer->serverCert);
+
+    // A fresh QNetworkAccessManager per request (matching NvHTTP's and
+    // HostProber's per-call pattern) rather than a shared one -- a fast
+    // slider drag can have more than one Host Volume request in flight,
+    // and CertificatePinning::install() installs its handlers at the NAM
+    // level, so two overlapping requests sharing one NAM would each see
+    // the other's sslErrors/encrypted signals. Parented to this Session
+    // provisionally; the finished handler below hands it off to
+    // deleteLater() once the request completes.
+    QNetworkAccessManager* nam = new QNetworkAccessManager(this);
+    QNetworkProxy noProxy(QNetworkProxy::NoProxy);
+    nam->setProxy(noProxy);
+
+    // mismatched must outlive both CertificatePinning::install()'s
+    // encrypted()-handler write and this lambda's later read; a
+    // shared_ptr keeps it alive exactly as long as the lambda itself.
+    const QSslCertificate pinnedCert = m_Computer->serverCert;
+    auto mismatched = std::make_shared<bool>(false);
+    CertificatePinning::Connections pinning =
+        CertificatePinning::install(nam, this, pinnedCert, mismatched.get());
+
+    QNetworkReply* reply = isWrite ? nam->put(request, QByteArray())
+                                   : nam->get(request);
+    QTimer* timeoutTimer = new QTimer(reply);
+    timeoutTimer->setSingleShot(true);
+    connect(timeoutTimer, &QTimer::timeout, reply, &QNetworkReply::abort);
+    timeoutTimer->start(HOST_VOLUME_REQUEST_TIMEOUT_MS);
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply, nam, isWrite, pinning, mismatched, requestSerial]() {
+        CertificatePinning::uninstall(pinning);
+        reply->deleteLater();
+        nam->deleteLater();
+        if (requestSerial != m_HostVolumeRequestSerial) {
+            return;
+        }
+        if (*mismatched) {
+            m_HostVolumeErrorText = tr("The Host's certificate no longer matches the pinned Identity.");
+            emit hostVolumeErrorChanged();
+            return;
+        }
+
+        const int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (statusCode == 0) {
+            m_HostVolumeErrorText = isWrite
+                ? tr("Could not reach the Host to change Host Volume: %1").arg(reply->errorString())
+                : tr("Could not reach the Host to read Host Volume: %1").arg(reply->errorString());
+            emit hostVolumeErrorChanged();
+            return;
+        }
+
+        const QByteArray body = reply->readAll();
+        if (statusCode < 200 || statusCode >= 300) {
+            m_HostVolumeErrorText = isWrite
+                ? tr("The Host rejected the Host Volume change (HTTP %1).").arg(statusCode)
+                : tr("The Host rejected the Host Volume request (HTTP %1).").arg(statusCode);
+            emit hostVolumeErrorChanged();
+            return;
+        }
+
+        QJsonParseError parseError {};
+        const QJsonDocument document = QJsonDocument::fromJson(body, &parseError);
+        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+            m_HostVolumeErrorText = tr("The Host's Host Volume response was malformed.");
+            emit hostVolumeErrorChanged();
+            return;
+        }
+
+        const QJsonObject object = document.object();
+        const QJsonValue availableValue = object.value(QStringLiteral("available"));
+        const QJsonValue minValue = object.value(QStringLiteral("min"));
+        const QJsonValue maxValue = object.value(QStringLiteral("max"));
+        const QJsonValue currentValue = object.value(QStringLiteral("current"));
+        if (!availableValue.isBool()) {
+            m_HostVolumeErrorText = tr("The Host's Host Volume response was missing required fields.");
+            emit hostVolumeErrorChanged();
+            return;
+        }
+        if (!availableValue.toBool()) {
+            m_HostVolumeLoaded = false;
+            m_HostVolumeErrorText = tr("This Host reports Host Volume is unavailable.");
+            emit hostVolumeStateChanged();
+            emit hostVolumeErrorChanged();
+            return;
+        }
+        if (!minValue.isDouble() || !maxValue.isDouble()
+                || !currentValue.isDouble()) {
+            m_HostVolumeErrorText = tr("The Host's Host Volume response was missing required fields.");
+            emit hostVolumeErrorChanged();
+            return;
+        }
+
+        const int min = minValue.toInt();
+        const int max = maxValue.toInt();
+        const int current = currentValue.toInt();
+        if (min < 0 || max > 100 || min > max || current < min || current > max) {
+            m_HostVolumeErrorText = tr("The Host's Host Volume response bounds were invalid.");
+            emit hostVolumeErrorChanged();
+            return;
+        }
+
+        m_HostVolumeMin = min;
+        m_HostVolumeMax = max;
+        m_HostVolumeCurrent = current;
+        m_HostVolumeLoaded = true;
+        m_HostVolumeErrorText.clear();
+        emit hostVolumeStateChanged();
+    });
 }
 
 void Session::setPerformanceOverlayEnabled(bool enabled)
@@ -1187,6 +1393,21 @@ void Session::emitLaunchWarning(QString text)
 
 bool Session::validateLaunch(SDL_Window* testWindow)
 {
+    // ADR-0007: an unexpected change to the Host's pinned certificate
+    // hard-blocks Sessions until the user deliberately re-pairs -- no soft
+    // "proceed anyway" path (PRODUCT.md "Capabilities and Constraints",
+    // proposal.md §6.4/§9). NvComputer::update() already refuses to adopt
+    // the new certificate silently; this is where that refusal becomes an
+    // actual launch refusal.
+    if (m_Computer->identityChanged) {
+        emit displayLaunchError(
+            tr("%1's identity has changed since you last paired. This can "
+               "happen after a reinstall, or it can mean something else is "
+               "answering in its place. Re-pair %1 to continue.")
+                .arg(m_Computer->name));
+        return false;
+    }
+
     if (!m_Computer->isSupportedServerVersion) {
         emit displayLaunchError(tr("The version of GeForce Experience on %1 is not supported by this build of Jochona. You must update Jochona to stream from %1.").arg(m_Computer->name));
         return false;
@@ -1792,6 +2013,70 @@ public:
     Session* m_Session;
 };
 
+// First-launch (or first-launch-at-this-mode) Encoder Tuple preflight
+// (ADR-0011). Called only from startConnectionAsync() below, which
+// already runs on AsyncConnectionStartThread -- a synchronous, blocking
+// HTTP round trip here never touches the GUI thread. Returns a default-
+// constructed (empty id) EncoderTuple and sets error on any failure;
+// never accepts or substitutes a tuple that doesn't resolve to exactly
+// videoFormat/width/height/fps/hdr/capture as requested.
+HostCapabilities::EncoderTuple
+Session::probeEncoderTupleForLaunch(int videoFormat, bool virtualDisplay, QString& error)
+{
+    error.clear();
+
+    try {
+        NvHTTP http(m_Computer);
+        const QJsonObject response = http.probeEncoderTuple(
+            videoFormat,
+            m_StreamConfig.width,
+            m_StreamConfig.height,
+            m_StreamConfig.fps,
+            m_Preferences->enableHdr,
+            virtualDisplay);
+
+        bool tupleOk = false;
+        const HostCapabilities::EncoderTuple tuple =
+            HostCapabilities::EncoderTuple::fromJson(response, &tupleOk);
+        if (!tupleOk) {
+            error = tr("The Host's encoder probe response was malformed or "
+                       "missing verification proof.");
+            return {};
+        }
+
+        if (tuple.videoFormat() != videoFormat
+                || tuple.width != m_StreamConfig.width
+                || tuple.height != m_StreamConfig.height
+                || tuple.fps != m_StreamConfig.fps
+                || tuple.hdr != m_Preferences->enableHdr
+                || !tuple.supportsCapture(virtualDisplay)) {
+            error = tr("The Host's encoder probe returned a different "
+                       "encoder path than the one requested.");
+            return {};
+        }
+
+        return tuple;
+    } catch (const GfeHttpResponseException& e) {
+        if ((e.getStatusCode() == 400 || e.getStatusCode() == 409)
+                && !e.responseBody().isEmpty()) {
+            QJsonParseError parseError {};
+            const QJsonDocument document =
+                QJsonDocument::fromJson(e.responseBody(), &parseError);
+            if (parseError.error == QJsonParseError::NoError && document.isObject()) {
+                const QString detail =
+                    document.object().value(QStringLiteral("detail")).toString();
+                error = detail.isEmpty() ? e.toQString() : detail;
+                return {};
+            }
+        }
+        error = e.toQString();
+        return {};
+    } catch (const QtNetworkReplyException& e) {
+        error = e.toQString();
+        return {};
+    }
+}
+
 // Called in a non-main thread
 bool Session::startConnectionAsync()
 {
@@ -1844,23 +2129,48 @@ bool Session::startConnectionAsync()
                    "its display adapter is unavailable."));
             return false;
         }
+        // m_StreamConfig.supportedVideoFormats was already locked to a
+        // single format (m_SupportedVideoFormats.front()) in initialize();
+        // select the Encoder Tuple against that SAME format, not the whole
+        // preference list, or the Host could hand back a tuple naming a
+        // different codec than the one actually negotiated on the wire --
+        // exactly the silent codec divergence ADR-0011 forbids.
         jochonaTuple = hostCapabilities.selectEncoderTuple(
             m_StreamConfig.width,
             m_StreamConfig.height,
             m_StreamConfig.fps,
-            m_SupportedVideoFormats,
+            QList<int>{m_StreamConfig.supportedVideoFormats},
             m_Preferences->enableHdr,
             m_Preferences->useVirtualDisplay);
         if (jochonaTuple.isEmpty()) {
-            emit displayLaunchError(
-                tr("This Host has no probe-verified encoder path for "
-                   "%1×%2 at %3 fps%4 on the selected display type.")
-                    .arg(m_StreamConfig.width)
-                    .arg(m_StreamConfig.height)
-                    .arg(m_StreamConfig.fps)
-                    .arg(m_Preferences->enableHdr
-                             ? tr(" with HDR") : QString()));
-            return false;
+            // No cached tuple for this exact wire format yet -- this is a
+            // first-launch (or first-launch-at-this-mode) preflight.
+            // Probe the Host once for a proof-verified Encoder Tuple
+            // covering exactly what was already locked in above; never
+            // substitute a different format if it doesn't check out.
+            QString probeError;
+            const HostCapabilities::EncoderTuple probedTuple =
+                probeEncoderTupleForLaunch(m_StreamConfig.supportedVideoFormats,
+                                            m_Preferences->useVirtualDisplay,
+                                            probeError);
+            if (probedTuple.id.isEmpty()) {
+                QString message =
+                    tr("This Host has no probe-verified encoder path for "
+                       "%1×%2 at %3 fps%4 on the selected display type.")
+                        .arg(m_StreamConfig.width)
+                        .arg(m_StreamConfig.height)
+                        .arg(m_StreamConfig.fps)
+                        .arg(m_Preferences->enableHdr
+                                 ? tr(" with HDR") : QString());
+                if (!probeError.isEmpty()) {
+                    message += QLatin1String("\n\n") + probeError;
+                }
+                emit displayLaunchError(message);
+                return false;
+            }
+            jochonaTuple = probedTuple.id;
+            HostAdapterManager::get()->recordProbedEncoderTuple(
+                m_Computer->uuid, probedTuple);
         }
     }
 

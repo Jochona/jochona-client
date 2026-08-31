@@ -70,6 +70,8 @@ bool isTrustedWakeRoute(const QString& route)
 #define SER_MACOVERRIDE "macoverride"
 #define SER_WAKEPORT "wakeport"
 #define SER_WAKEBROADCAST "wakebroadcast"
+#define SER_IDENTITYCHANGED "identitychanged"
+#define SER_PENDINGSRVCERT "pendingsrvcert"
 
 NvComputer::NvComputer(QSettings& settings)
 {
@@ -86,6 +88,8 @@ NvComputer::NvComputer(QSettings& settings)
     this->manualAddress = NvAddress(settings.value(SER_MANUALADDR).toString(),
                                     settings.value(SER_MANUALPORT, QVariant(DEFAULT_HTTP_PORT)).toUInt());
     this->serverCert = QSslCertificate(settings.value(SER_SRVCERT).toByteArray());
+    this->identityChanged = settings.value(SER_IDENTITYCHANGED, false).toBool();
+    this->pendingServerCert = QSslCertificate(settings.value(SER_PENDINGSRVCERT).toByteArray());
     this->isNvidiaServerSoftware = settings.value(SER_NVIDIASOFTWARE).toBool();
     this->manualMacAddress = settings.value(SER_MACOVERRIDE).toByteArray();
     this->wakePort = static_cast<quint16>(settings.value(SER_WAKEPORT, 0).toUInt());
@@ -143,6 +147,8 @@ void NvComputer::serialize(QSettings& settings, bool serializeApps) const
     settings.setValue(SER_MANUALADDR, manualAddress.address());
     settings.setValue(SER_MANUALPORT, manualAddress.port());
     settings.setValue(SER_SRVCERT, serverCert.toPem());
+    settings.setValue(SER_IDENTITYCHANGED, identityChanged);
+    settings.setValue(SER_PENDINGSRVCERT, pendingServerCert.toPem());
     settings.setValue(SER_NVIDIASOFTWARE, isNvidiaServerSoftware);
     settings.setValue(SER_MACOVERRIDE, manualMacAddress);
     settings.setValue(SER_WAKEPORT, wakePort);
@@ -171,6 +177,8 @@ bool NvComputer::isEqualSerialized(const NvComputer &that) const
            this->ipv6Address == that.ipv6Address &&
            this->manualAddress == that.manualAddress &&
            this->serverCert == that.serverCert &&
+           this->identityChanged == that.identityChanged &&
+           this->pendingServerCert == that.pendingServerCert &&
            this->isNvidiaServerSoftware == that.isNvidiaServerSoftware &&
            this->manualMacAddress == that.manualMacAddress &&
            this->wakePort == that.wakePort &&
@@ -698,7 +706,25 @@ bool NvComputer::update(const NvComputer& that)
     ASSIGN_IF_CHANGED(isNvidiaServerSoftware);
     ASSIGN_IF_CHANGED(maxLumaPixelsHEVC);
     ASSIGN_IF_CHANGED(gpuModel);
-    ASSIGN_IF_CHANGED_AND_NONNULL(serverCert);
+
+    // ADR-0007: an already-pinned certificate (this->serverCert non-null)
+    // observed to differ from a fresh probe is Identity Changed, not a
+    // routine update -- overwriting it here would defeat certificate
+    // pinning. Establishing the pin for the first time (this->serverCert
+    // still null, e.g. an unpaired host's first probe) is not a change.
+    // Deliberate re-pairing bypasses update() entirely
+    // (NvPairingManager::pair() writes serverCert directly) and is the
+    // only path that may clear identityChanged.
+    if (!that.serverCert.isNull() && this->serverCert != that.serverCert) {
+        if (this->serverCert.isNull()) {
+            this->serverCert = that.serverCert;
+        } else if (!this->identityChanged
+                       || this->pendingServerCert != that.serverCert) {
+            this->identityChanged = true;
+            this->pendingServerCert = that.serverCert;
+        }
+        changed = true;
+    }
     ASSIGN_IF_CHANGED_AND_NONEMPTY(displayModes);
 
     if (!that.appList.isEmpty()) {

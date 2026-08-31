@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
@@ -60,6 +60,15 @@ public:
     // resume/network change). A host must have been refresh()ed at least
     // once in this run for its connection info to be on file.
     Q_INVOKABLE void refreshAll();
+
+    // Records an Encoder Tuple this Client verified directly against
+    // /jochona/v1/probe (first-launch preflight, Session::
+    // probeEncoderTupleForLaunch()) so a later launch for the identical
+    // wire format can use the cache instead of probing again. A no-op if
+    // uuid has no Compatible manifest on file, or if tuple.id is already
+    // cached -- an Encoder Tuple is never trustworthy without the
+    // Compatible-manifest state it was proven against.
+    void recordProbedEncoderTuple(const QString& uuid, const HostCapabilities::EncoderTuple& tuple);
 
 signals:
     // Fires whenever a host's cached capabilities are replaced, whether by

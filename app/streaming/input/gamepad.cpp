@@ -114,6 +114,8 @@ SdlInputHandler::compileControllerMap(const QVariantMap& map) const
     result.curveRightTrigger =
         calibration.value(QStringLiteral("curveRightTrigger"),
                           result.curveRightTrigger).toDouble();
+    result.rawPassthrough =
+        map.value(QStringLiteral("rawPassthrough"), false).toBool();
 
     const QVariantMap remap =
         map.value(QStringLiteral("buttonRemap")).toMap();
@@ -150,6 +152,10 @@ SdlInputHandler::applyControllerMap(const GamepadState* state,
     const qsizetype index = state - m_GamepadState;
     if (index < 0 || index >= MAX_GAMEPADS) return;
     const ControllerMapTransform& map = m_ControllerMaps[index];
+    if (map.rawPassthrough) {
+        // Raw Passthrough: leave buttons/axes exactly as SDL reported them.
+        return;
+    }
 
     int knownFlags = 0;
     int mappedButtons = 0;
@@ -684,6 +690,7 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
         const char* mapping;
         char guidStr[33];
         uint32_t hapticCaps;
+        QVariantMap controllerMap;
 
         controller = SDL_GameControllerOpen(event->which);
         if (controller == NULL) {
@@ -748,11 +755,11 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
 
         state = &m_GamepadState[i];
         m_ControllerIds[i] = controllerId;
-        m_ControllerMaps[i] = compileControllerMap(
-            ControllerMapStore::get()->mapFor(
-                controllerId,
-                m_LibraryEntryId,
-                m_HostApplicationKey));
+        controllerMap = ControllerMapStore::get()->mapFor(
+            controllerId,
+            m_LibraryEntryId,
+            m_HostApplicationKey);
+        m_ControllerMaps[i] = compileControllerMap(controllerMap);
         if (m_MultiController) {
             state->index = i;
 
@@ -941,6 +948,15 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
             SDL_GameControllerGetBindForButton(state->controller, SDL_CONTROLLER_BUTTON_TOUCHPAD).bindType == SDL_CONTROLLER_BINDTYPE_NONE &&
 #endif
             type == LI_CTYPE_PS;
+
+        // Compatible transmission mode reports the lowest-common-denominator
+        // controller profile instead of this device's exact type and
+        // capabilities; see ControllerMap::applyCompatibleTransmission.
+        ControllerMap::applyCompatibleTransmission(
+            ControllerMap::transmissionModeFromString(
+                controllerMap.value(QStringLiteral("transmissionMode"))
+                    .toString()),
+            type, capabilities, supportedButtonFlags);
 
         LiSendControllerArrivalEvent(state->index, m_GamepadMask, type, supportedButtonFlags, capabilities);
 #else
