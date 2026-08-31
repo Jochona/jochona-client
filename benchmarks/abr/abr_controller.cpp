@@ -48,7 +48,7 @@ int Controller::update(const Observation& observation)
     const double queueDelayMs = std::max(0.0, observation.rttMs - m_BaselineRttMs);
     const bool severeCongestion =
         observation.packetLossFraction > 0.10
-        || observation.renderLateFraction > 0.25
+        || observation.renderLateFraction > 0.20
         || observation.decoderQueueMs > 120.0
         || queueDelayMs > 120.0;
     const bool congestion =
