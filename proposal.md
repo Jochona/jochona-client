@@ -417,7 +417,7 @@ The first release will preserve dependable manual controls and add a guided conn
 - Render lateness.
 - Network-interface transitions.
 
-Vibepollo hosts expose a runtime bitrate endpoint (`GET /bitrate?kbps=`) and a capability advertisement (`/api/abr/capabilities`) intended exactly for client-driven adaptation; the client-side ABR controller belongs to Jochona, and host support varies by adapter.
+Vibepollo hosts expose a runtime bitrate endpoint (`GET /bitrate?bitrate=<kbps>`) and a capability advertisement (`/api/abr/capabilities`) intended exactly for client-driven adaptation; the client-side ABR controller belongs to Jochona, and host support varies by adapter.
 
 Recommended degradation order:
 
