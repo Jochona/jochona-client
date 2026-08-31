@@ -41,7 +41,7 @@ int Controller::update(const Observation& observation)
         m_BaselineRttMs = observation.rttMs;
         m_ClearSeconds = 0.0;
         m_CongestedSeconds = 0.0;
-        setTarget(static_cast<int>(std::lround(m_TargetKbps * 0.70)));
+        setTarget(static_cast<int>(std::lround(m_TargetKbps * 0.50)));
         return m_TargetKbps;
     }
 
