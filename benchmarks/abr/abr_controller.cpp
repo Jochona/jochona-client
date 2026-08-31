@@ -86,7 +86,7 @@ int Controller::update(const Observation& observation)
             std::min(m_TargetKbps * 0.85, achievedKbps * 0.90))));
         m_CongestedSeconds = 0.0;
     }
-    else if (m_ClearSeconds >= 7.0 && m_SecondsSinceChange >= 7.0) {
+    else if (m_ClearSeconds >= 8.0 && m_SecondsSinceChange >= 8.0) {
         setTarget(m_TargetKbps + 500);
         m_ClearSeconds = 0.0;
     }
