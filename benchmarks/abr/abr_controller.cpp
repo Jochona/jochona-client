@@ -21,7 +21,9 @@ int Controller::targetKbps() const
 }
 void Controller::setTarget(int targetKbps)
 {
-    const int clamped = std::clamp(targetKbps, m_Limits.minimumKbps, m_Limits.maximumKbps);
+    constexpr int quantumKbps = 250;
+    const int quantized = (targetKbps / quantumKbps) * quantumKbps;
+    const int clamped = std::clamp(quantized, m_Limits.minimumKbps, m_Limits.maximumKbps);
     if (clamped != m_TargetKbps) {
         m_TargetKbps = clamped;
         m_SecondsSinceChange = 0.0;
