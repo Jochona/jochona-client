@@ -75,7 +75,7 @@ int Controller::update(const Observation& observation)
             ? std::min<double>(m_TargetKbps, observation.deliveredKbps)
             : m_TargetKbps;
         setTarget(static_cast<int>(std::lround(
-            std::min(m_TargetKbps * 0.80, achievedKbps * 0.55))));
+            std::min(m_TargetKbps * 0.80, achievedKbps * 0.50))));
         m_CongestedSeconds = 0.0;
     }
     else if (m_CongestedSeconds >= 2.0 && m_SecondsSinceChange >= 2.0) {
