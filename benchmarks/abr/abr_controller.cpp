@@ -87,7 +87,7 @@ int Controller::update(const Observation& observation)
         m_CongestedSeconds = 0.0;
     }
     else if (m_ClearSeconds >= 7.0 && m_SecondsSinceChange >= 7.0) {
-        setTarget(m_TargetKbps + 750);
+        setTarget(m_TargetKbps + 500);
         m_ClearSeconds = 0.0;
     }
 
