@@ -17,7 +17,9 @@
 #include <QQuickWindow>
 #include <QQuickItem>
 #include <QProcess>
+#ifdef Q_OS_MACOS
 #include <dlfcn.h>
+#endif
 #include <QTimer>
 
 #ifdef Q_OS_UNIX

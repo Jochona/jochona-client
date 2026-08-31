@@ -29,6 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          submodules: 'recursive'
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.11.1'
@@ -67,7 +69,7 @@ jobs:
   # Linguist extraction enforcement (proposal §6: every UI string extractable).
   # Runs lupdate against the declared TRANSLATIONS; a dirty languages/ tree
   # means someone added/changed a qsTr string without committing regenerated
-  # .ts files. Fix locally:  lupdate -project app/app.pro  &&  commit app/languages/
+  # .ts files. Fix locally:  cd app && lupdate app.pro && commit languages/
   i18n:
     runs-on: ubuntu-latest
     steps:
@@ -81,4 +83,4 @@ jobs:
         working-directory: app
         run: lupdate app.pro
       - name: Require committed translations
-        run: git diff --exit-code -- app/languages/ || (echo "::error::app/languages/*.ts stale — run 'lupdate -project app/app.pro' and commit the result"; exit 1)
+        run: git diff --exit-code -- app/languages/ || (echo "::error::app/languages/*.ts stale — run 'cd app && lupdate app.pro' and commit the result"; exit 1)

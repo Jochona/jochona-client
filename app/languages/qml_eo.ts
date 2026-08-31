@@ -2100,27 +2100,27 @@ Launch with the safe values?</source>
 <context>
     <name>QPlatformTheme</name>
     <message>
-        <location filename="../main.cpp" line="917"/>
+        <location filename="../main.cpp" line="921"/>
         <source>&amp;Yes</source>
         <translation>&amp;Jes</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="918"/>
+        <location filename="../main.cpp" line="922"/>
         <source>&amp;No</source>
         <translation>&amp;Ne</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="919"/>
+        <location filename="../main.cpp" line="923"/>
         <source>OK</source>
         <translation>Bone</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="920"/>
+        <location filename="../main.cpp" line="924"/>
         <source>Help</source>
         <translation>Helpo</translation>
     </message>
     <message>
-        <location filename="../main.cpp" line="921"/>
+        <location filename="../main.cpp" line="925"/>
         <source>Cancel</source>
         <translation>Nuligi</translation>
     </message>
