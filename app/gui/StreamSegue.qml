@@ -7,6 +7,7 @@ import SdlGamepadKeyNavigation 1.0
 import Session 1.0
 import SystemProperties 1.0
 import EffectiveSettings 1.0
+import LibraryManager 1.0
 
 import "session"
 import "style"
@@ -23,6 +24,26 @@ Item {
     property string launchWarning: ""
     property bool displayReconnectPending: false
     property bool sessionSettingsOpen: false
+    // Guards recordOutcome() so each Session object (one physical connection
+    // attempt) writes at most one Local History outcome record, even though
+    // failure can be observed from more than one signal path.
+    property bool _outcomeRecorded: false
+
+    onSessionChanged: streamSegue._outcomeRecorded = false
+
+    // Writes a single redacted, structured Local History outcome record for
+    // the current Session object. stage MUST be a short protocol phase name
+    // or fixed literal -- never host-supplied or free-form text.
+    function recordOutcome(success, stage, errorCode)
+    {
+        if (streamSegue._outcomeRecorded || !streamSegue.session
+                || streamSegue.session.hostUuid.length === 0)
+            return
+        streamSegue._outcomeRecorded = true
+        LibraryManager.recordSessionOutcome(streamSegue.session.hostUuid,
+                                            streamSegue.session.appId,
+                                            success, stage, errorCode)
+    }
 
     function openSessionSettings() {
         if (!session)
@@ -75,6 +96,7 @@ Item {
             statusOverlay.state = "failed"
             window.visible = true
             SdlGamepadKeyNavigation.enable()
+            streamSegue.recordOutcome(false, "initialize", 0)
             return
         }
 
@@ -134,8 +156,15 @@ Item {
         if (statusOverlay.state === "failed"
                 || statusOverlay.state === "reconnecting") {
             reconnectSource = session
+            streamSegue.recordOutcome(
+                        false,
+                        statusOverlay.stageText.length > 0
+                        ? statusOverlay.stageText : "connection_terminated",
+                        statusOverlay.errorCode)
             return
         }
+
+        streamSegue.recordOutcome(true, "", 0)
 
         if (!quitAfter) {
             stackView.pop()
@@ -162,6 +191,7 @@ Item {
         statusOverlay.errorCode = 0
         statusOverlay.state = "failed"
         window.visible = true
+        streamSegue.recordOutcome(false, "launch_error", 0)
     }
 
     StackView.onActivated: {

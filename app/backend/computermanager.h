@@ -16,26 +16,7 @@
 #include <QRunnable>
 #include <QTimer>
 #include <QMutex>
-#include <QWaitCondition>
 
-class ComputerManager;
-
-class DelayedFlushThread : public QThread
-{
-    Q_OBJECT
-
-public:
-    DelayedFlushThread(ComputerManager* cm)
-        : m_ComputerManager(cm)
-    {
-        setObjectName("CM Delayed Flush Thread");
-    }
-
-    void run();
-
-private:
-    ComputerManager* m_ComputerManager;
-};
 
 class MdnsPendingComputer : public QObject
 {
@@ -243,7 +224,6 @@ class ComputerManager : public QObject
     friend class DeferredHostDeletionTask;
     friend class PendingAddTask;
     friend class PendingPairingTask;
-    friend class DelayedFlushThread;
 
 public:
     explicit ComputerManager(StreamingPreferences* prefs);
@@ -297,6 +277,7 @@ private slots:
     void handleComputerStateChanged(NvComputer* computer);
 
     void handleMdnsServiceResolved(MdnsPendingComputer* computer, QVector<QHostAddress>& addresses);
+    void flushHosts();
 
 private:
     void saveHosts();
@@ -317,8 +298,7 @@ private:
     QMdnsEngine::Browser* m_MdnsBrowser;
     QVector<MdnsPendingComputer*> m_PendingResolution;
     CompatFetcher m_CompatFetcher;
-    DelayedFlushThread* m_DelayedFlushThread;
+    QTimer* m_DelayedFlushTimer;
     QMutex m_DelayedFlushMutex; // Lock ordering: Must never be acquired while holding NvComputer lock
-    QWaitCondition m_DelayedFlushCondition;
     bool m_NeedsDelayedFlush;
 };

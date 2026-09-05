@@ -35,24 +35,19 @@ git remote set-url --push upstream DISABLED             # accidental pushes are 
 
 `main` now carries upstream `master` at tip `1da6ff43` beneath our commits. Sync cadence: merge `upstream/master` into `main` at least weekly; `moonlight-common-c` is a submodule — `git submodule update --init` after any bump and bump deliberately.
 
-### GitHub Actions: intentionally DISABLED (repo-level, verified `enabled=false`)
+### GitHub Actions: enabled (repo-level, verified `enabled=true, allowed_actions=all, sha_pinning_required=false`)
 
-Inherited workflows must not run until trimmed — verified triggers today: `build.yml` fires on **every push** (no branch filter) and PRs to `master`, running the win x64/ARM64 + macOS matrix; private Free-plan macOS minutes burn at 10x. Before re-enabling, edit `.github/workflows/`: gate pushes to `main` on PRs only (or paths-filter), drop upstream's release automation triggers, and keep `build-steamlink`/`build-appimage` manual-dispatch until the Linux target is actually ours to ship. Then re-enable:
-
-```bash
-gh api -X PUT repos/Jochona/jochona-client/actions/permissions -F enabled=true
-```
+Inherited workflows run as pushed: `build.yml` fires on every push (no branch filter) and PRs to `master` (upstream's original trigger; confirm this repo's default branch and trigger filters match `main` before relying on it), running the win x64/ARM64 + macOS matrix. The repo has been public since 2026-08-27 (line 7 above), so Actions minutes are unlimited (macOS concurrency still capped) — the Free-plan private-repo minute-burn concern below no longer applies. `build-steamlink`/`build-appimage` remain manual-dispatch. `i18n.yml`'s Linguist-extraction gate (see PRODUCT.md) also runs on PRs.
 
 ## Domain — DONE 2026-08-27
 
-`jochona.com` purchased via Cloudflare; CNAME record set by owner. App id frozen as `com.jochona.client`. The future website (GitHub Pages) and the Flatpak OSTree repo share the same Pages infrastructure; Cloudflare Email Routing for `hello@jochona.com` is worth enabling before any public contact page.
+`jochona.com` purchased via Cloudflare; CNAME record set by owner. App id frozen as `com.jochona.client`. The website (GitHub Pages, custom domain `jochona.com` via the `Jochona/website` repo's `CNAME` file) is live, not future work; the Flatpak OSTree repo shares the same Pages infrastructure on a separate path. Cloudflare Email Routing for `hello@jochona.com` is worth enabling before any public contact page.
 
 ## Runners
 
 No setup required initially — upstream's own workflows already pin their runner images (currently `windows-2025`, `macos-26` (Apple Silicon), `ubuntu-latest`) and build Windows x64 + ARM64, macOS, AppImage, and Steam Link on GitHub-hosted runners. Adopt them.
 
-- Private repo on the Free plan: ~2,000 CI minutes/month, and macOS minutes consume at 10x. That is roughly 200 effective macOS minutes — enough for light per-PR builds, not for per-commit matrix builds. Verify current numbers at <https://docs.github.com/en/billing/understanding-billing/usage-limits-github-plans>.
-- Flipping the repo public removes minute caps (macOS concurrency is still limited). Do this before CI-heavy M1 work if minute pressure appears.
+- The repo has been public since 2026-08-27 (Domain/Upstream import sections above), so the Free-plan private-repo CI-minute cap (~2,000 minutes/month, macOS at 10x) no longer applies — Actions minutes are unlimited on the public plan (macOS concurrency is still capped). This paragraph is retained only as historical context for the brief private-bootstrap window.
 
 Self-hosted runners: defer until actually needed (e.g., a Linux box or the Steam Deck for hardware-in-the-loop tests). Registration is: repo → Settings → Actions → Runners → New self-hosted runner, then on the machine:
 

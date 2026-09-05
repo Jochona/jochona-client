@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
@@ -13,9 +13,9 @@
 // exception-based (GfeHttpResponseException/QtNetworkReplyException), which
 // is the right model when a failed request means "abort the operation the
 // user asked for", but wrong here, where a failed request just means
-// "this host doesn't have that endpoint". The mTLS/SSL-pinning setup is
-// copied from NvHTTP::openConnection (nvhttp.cpp) rather than shared,
-// per the constraint that nvhttp.{h,cpp} stay untouched.
+// "this host doesn't have that endpoint". The mTLS setup is copied from
+// NvHTTP::openConnection (nvhttp.cpp) for the same reason; certificate
+// pinning itself is shared via CertificatePinning (certificatepinning.h).
 //
 #pragma once
 
@@ -61,11 +61,9 @@ private:
         QByteArray body;
     };
 
-    ProbeResult get(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs) const;
-    ProbeResult head(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs) const;
-    ProbeResult request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, bool headOnly) const;
-
-    void handleSslErrors(QNetworkReply* reply, const QList<QSslError>& errors) const;
+    ProbeResult get(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs);
+    ProbeResult head(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs);
+    ProbeResult request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, bool headOnly);
 
     // Fills in permissions and the VirtualDisplay* bits from a /serverinfo
     // response body. Missing tags (plain Sunshine) leave the corresponding

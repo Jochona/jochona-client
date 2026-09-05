@@ -162,7 +162,7 @@ GlobalCommandLineParser::ParseResult GlobalCommandLineParser::parse(const QStrin
         "  stream          Start streaming an app\n"
         "  pair            Pair a new host\n"
         "\n"
-        "See 'moonlight <action> --help' for help of specific action."
+        "See 'Jochona <action> --help' for help with a specific action."
     );
     parser.addPositionalArgument("action", "Action to execute", "<action>");
     parser.parse(args);

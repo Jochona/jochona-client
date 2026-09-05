@@ -3,13 +3,18 @@
 #include <QAtomicInteger>
 #include <QDateTime>
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFile>
+#include <QSaveFile>
+#include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QStandardPaths>
 #include <QtDebug>
+
+#include <algorithm>
 
 namespace {
     // Every SettingsDatabase instance gets its own QSqlDatabase connection
@@ -114,11 +119,35 @@ bool SettingsDatabase::open(const QString& databasePath)
             continue;
         }
 
-        if (!backupBeforeMigration(migration.version) || !applyMigration(migration)) {
+        if (!backupBeforeMigration(migration.version)) {
+            closeConnection();
+            return false;
+        }
+
+        if (!applyMigration(migration)) {
+            // The migration's own transaction has already rolled back any
+            // partial DDL, but a non-transactional failure (a locked or
+            // corrupted file) could still leave the database unusable.
+            // Restore the pre-migration VACUUM snapshot so the next open()
+            // finds a guaranteed-good database at the prior schema version
+            // instead of a possibly broken one.
+            const QString failure = m_LastError;
+            if (restoreFromSnapshot(migration.version)) {
+                qWarning() << "SettingsDatabase: migration" << migration.version
+                           << "failed; restored the pre-migration snapshot so the database remains usable";
+            }
+            else {
+                qWarning() << "SettingsDatabase: migration" << migration.version
+                           << "failed and its pre-migration snapshot could not be restored; "
+                              "the database may be left partially migrated";
+            }
+            setLastError(failure);
             closeConnection();
             return false;
         }
     }
+
+    pruneBackupSnapshots();
 
     m_DatabasePath = path;
     m_LastError.clear();
@@ -175,9 +204,14 @@ int SettingsDatabase::currentSchemaVersion() const
     return query.value(0).toInt();
 }
 
+QString SettingsDatabase::backupSnapshotPath(int version) const
+{
+    return QStringLiteral("%1.bak-%2").arg(m_Db.databaseName()).arg(version);
+}
+
 bool SettingsDatabase::backupBeforeMigration(int version)
 {
-    const QString backupPath = QStringLiteral("%1.bak-%2").arg(m_Db.databaseName()).arg(version);
+    const QString backupPath = backupSnapshotPath(version);
 
     // VACUUM INTO refuses to overwrite an existing file, so clear out any
     // stale backup left behind by a previous interrupted migration attempt.
@@ -235,6 +269,104 @@ bool SettingsDatabase::applyMigration(const Migration& migration)
     }
 
     return true;
+}
+
+bool SettingsDatabase::restoreFromSnapshot(int version)
+{
+    const QString backupPath = backupSnapshotPath(version);
+    if (!QFile::exists(backupPath)) {
+        return false;
+    }
+
+    const QString livePath = m_Db.databaseName();
+    closeConnection();
+
+    // Drop any WAL/SHM sidecars from the failed attempt so nothing from
+    // the aborted migration gets replayed on top of the restored snapshot.
+    QFile::remove(livePath + QStringLiteral("-wal"));
+    QFile::remove(livePath + QStringLiteral("-shm"));
+
+    // Replace the live file atomically. The failed database stays in place
+    // until QSaveFile has copied and flushed the complete VACUUM snapshot,
+    // so a crash during recovery cannot leave the user with no database.
+    QFile backup(backupPath);
+    QSaveFile restored(livePath);
+    if (!backup.open(QIODevice::ReadOnly)
+            || !restored.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    while (!backup.atEnd()) {
+        const QByteArray chunk = backup.read(1024 * 1024);
+        if (chunk.isEmpty() && backup.error() != QFile::NoError) {
+            restored.cancelWriting();
+            return false;
+        }
+        if (restored.write(chunk) != chunk.size()) {
+            restored.cancelWriting();
+            return false;
+        }
+    }
+    if (!restored.commit()) {
+        return false;
+    }
+
+    // Verify the restored file actually opens and reports a schema version
+    // older than the migration that just failed before trusting it.
+    const QString verifyConnection = QStringLiteral("SettingsDatabase-restore-verify-%1")
+            .arg(s_ConnectionCounter.fetchAndAddOrdered(1));
+    bool ok = false;
+    {
+        QSqlDatabase verify = QSqlDatabase::addDatabase(QStringLiteral("QSQLITE"), verifyConnection);
+        verify.setDatabaseName(livePath);
+        if (verify.open()) {
+            QSqlQuery query(verify);
+            ok = query.exec(QStringLiteral("SELECT COALESCE(MAX(version), 0) FROM migrations"))
+                    && query.next() && query.value(0).toInt() < version;
+            verify.close();
+        }
+    }
+    QSqlDatabase::removeDatabase(verifyConnection);
+    return ok;
+}
+
+int SettingsDatabase::maxRetainedBackupSnapshots()
+{
+    return 3;
+}
+
+void SettingsDatabase::pruneBackupSnapshots()
+{
+    const QFileInfo info(m_Db.databaseName());
+    const QDir dir = info.dir();
+    const QString prefix = info.fileName() + QStringLiteral(".bak-");
+
+    QVector<QPair<int, QString>> snapshots;
+    const QStringList entries = dir.entryList(QDir::Files);
+    for (const QString& entry : entries) {
+        if (!entry.startsWith(prefix)) {
+            continue;
+        }
+        bool ok = false;
+        const int version = entry.mid(prefix.length()).toInt(&ok);
+        if (ok) {
+            snapshots.append(qMakePair(version, dir.filePath(entry)));
+        }
+    }
+
+    const int maxRetained = maxRetainedBackupSnapshots();
+    if (snapshots.size() <= maxRetained) {
+        return;
+    }
+
+    std::sort(snapshots.begin(), snapshots.end(),
+              [](const QPair<int, QString>& a, const QPair<int, QString>& b) {
+                  return a.first < b.first;
+              });
+
+    const int removeCount = snapshots.size() - maxRetained;
+    for (int i = 0; i < removeCount; i++) {
+        QFile::remove(snapshots.at(i).second);
+    }
 }
 
 QVariant SettingsDatabase::setting(const QString& key, const QVariant& defaultValue) const
@@ -1021,6 +1153,138 @@ bool SettingsDatabase::importLegacyControllerMaps(const QVariantMap& profiles,
     return true;
 }
 
+bool SettingsDatabase::ensureHostPlaceholder(const QString& hostId, const QString& name)
+{
+    QSqlQuery host(m_Db);
+    host.prepare(QStringLiteral(
+        "INSERT INTO hosts(id,name,updated_at) VALUES (?,?,?) "
+        "ON CONFLICT(id) DO NOTHING"));
+    host.addBindValue(hostId);
+    host.addBindValue(name.isEmpty() ? QStringLiteral("Unknown Host") : name);
+    host.addBindValue(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    return host.exec();
+}
+
+bool SettingsDatabase::upsertHostRecordsLocked(const QVariantList& records)
+{
+    for (const QVariant& recordVariant : records) {
+        const QVariantMap record = recordVariant.toMap();
+        const QString hostId = record.value(QStringLiteral("uuid")).toString();
+        if (hostId.isEmpty()) {
+            // Defensively skip malformed entries rather than failing the
+            // whole transaction over one unusable legacy Host record.
+            continue;
+        }
+        if (!ensureHostPlaceholder(hostId, record.value(QStringLiteral("name")).toString())) {
+            return false;
+        }
+
+        QSqlQuery query(m_Db);
+        query.prepare(QStringLiteral(
+            "INSERT INTO host_records(host_id,record_json,updated_at) VALUES (?,?,?) "
+            "ON CONFLICT(host_id) DO UPDATE SET "
+            "record_json=excluded.record_json,updated_at=excluded.updated_at"));
+        query.addBindValue(hostId);
+        query.addBindValue(mapToJson(record));
+        query.addBindValue(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+        if (!query.exec()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+QVariantList SettingsDatabase::hostRecords() const
+{
+    QVariantList records;
+    if (!m_Db.isOpen()) return records;
+    QSqlQuery query(QStringLiteral("SELECT record_json FROM host_records"), m_Db);
+    while (query.next()) {
+        records.append(jsonToMap(query.value(0)));
+    }
+    return records;
+}
+
+bool SettingsDatabase::replaceHostRecords(const QVariantList& records)
+{
+    if (!m_Db.isOpen()) return false;
+    if (!m_Db.transaction()) {
+        setLastError(QStringLiteral("Failed to begin Host record transaction: %1")
+                     .arg(m_Db.lastError().text()));
+        return false;
+    }
+
+    QSet<QString> keepIds;
+    for (const QVariant& recordVariant : records) {
+        const QString hostId = recordVariant.toMap().value(QStringLiteral("uuid")).toString();
+        if (!hostId.isEmpty()) {
+            keepIds.insert(hostId);
+        }
+    }
+
+    if (!upsertHostRecordsLocked(records)) {
+        m_Db.rollback();
+        setLastError(QStringLiteral("Failed to write Host records"));
+        return false;
+    }
+
+    QSqlQuery existing(QStringLiteral("SELECT host_id FROM host_records"), m_Db);
+    QStringList staleIds;
+    while (existing.next()) {
+        const QString id = existing.value(0).toString();
+        if (!keepIds.contains(id)) {
+            staleIds.append(id);
+        }
+    }
+    for (const QString& staleId : staleIds) {
+        QSqlQuery remove(m_Db);
+        remove.prepare(QStringLiteral("DELETE FROM host_records WHERE host_id = ?"));
+        remove.addBindValue(staleId);
+        if (!remove.exec()) {
+            m_Db.rollback();
+            setLastError(QStringLiteral("Failed to prune stale Host record %1: %2")
+                         .arg(staleId, remove.lastError().text()));
+            return false;
+        }
+    }
+
+    if (!m_Db.commit()) {
+        setLastError(QStringLiteral("Failed to commit Host record transaction: %1")
+                     .arg(m_Db.lastError().text()));
+        m_Db.rollback();
+        return false;
+    }
+    setLastError(QString());
+    return true;
+}
+
+bool SettingsDatabase::importLegacyHostRecords(const QVariantList& records,
+                                               const QString& markerKey)
+{
+    if (!m_Db.isOpen()) return false;
+    if (setting(markerKey, false).toBool()) return true;
+    if (!m_Db.transaction()) return false;
+
+    if (!upsertHostRecordsLocked(records)) {
+        m_Db.rollback();
+        setLastError(QStringLiteral("Failed to import legacy Host records"));
+        return false;
+    }
+
+    QSqlQuery marker(m_Db);
+    marker.prepare(QStringLiteral(
+        "INSERT INTO settings(key,value) VALUES (?,1) "
+        "ON CONFLICT(key) DO UPDATE SET value=1"));
+    marker.addBindValue(markerKey);
+    if (!marker.exec() || !m_Db.commit()) {
+        m_Db.rollback();
+        setLastError(QStringLiteral("Failed to commit legacy Host import"));
+        return false;
+    }
+    setLastError(QString());
+    return true;
+}
+
 QString SettingsDatabase::defaultDatabasePath()
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -1256,6 +1520,17 @@ QVector<SettingsDatabase::Migration> SettingsDatabase::migrations()
                                ")"),
                 QStringLiteral("CREATE INDEX idx_wake_routes_beacon "
                                "ON wake_routes(beacon_id)"),
+            },
+        },
+        {
+            6,
+            QStringLiteral("Exact paired Host records (SQLite as sole durable authority)"),
+            {
+                QStringLiteral("CREATE TABLE host_records ("
+                               "host_id TEXT PRIMARY KEY REFERENCES hosts(id) ON DELETE CASCADE,"
+                               "record_json TEXT NOT NULL,"
+                               "updated_at TEXT NOT NULL"
+                               ")"),
             },
         },
     };

@@ -10,6 +10,7 @@
 #include "video/decoder.h"
 #include "audio/renderers/renderer.h"
 #include "video/overlaymanager.h"
+#include "backend/adapters/hostcapabilities.h"
 #include <memory>
 #include <atomic>
 
@@ -122,10 +123,36 @@ public:
                WRITE setPerformanceOverlayEnabled
                NOTIFY currentSettingsChanged)
     Q_PROPERTY(bool hostVolumeAvailable READ hostVolumeAvailable CONSTANT)
+    // hostVolumeAvailable gates whether this Client holds host.volume.read
+    // for this Host (i.e. Host Volume can be fetched and displayed);
+    // hostVolumeWritable additionally gates host.volume.write (i.e. the
+    // slider can actually change it). Neither implies Session Volume,
+    // which stays local to this Client either way.
+    Q_PROPERTY(bool hostVolumeWritable READ hostVolumeWritable CONSTANT)
+    Q_PROPERTY(bool hostVolumeLoaded READ hostVolumeLoaded NOTIFY hostVolumeStateChanged)
+    Q_PROPERTY(int hostVolumeMin READ hostVolumeMin NOTIFY hostVolumeStateChanged)
+    Q_PROPERTY(int hostVolumeMax READ hostVolumeMax NOTIFY hostVolumeStateChanged)
+    Q_PROPERTY(int hostVolumeCurrent READ hostVolumeCurrent NOTIFY hostVolumeStateChanged)
+    Q_PROPERTY(QString hostVolumeErrorText READ hostVolumeErrorText NOTIFY hostVolumeErrorChanged)
     QString libraryEntryId() const;
     QVariantMap currentSettings() const;
     bool performanceOverlayEnabled() const;
     bool hostVolumeAvailable() const;
+    bool hostVolumeWritable() const;
+    bool hostVolumeLoaded() const;
+    int hostVolumeMin() const;
+    int hostVolumeMax() const;
+    int hostVolumeCurrent() const;
+    QString hostVolumeErrorText() const;
+    // Fetches the Host's current Host Volume state over pinned mTLS
+    // without blocking the calling (GUI) thread; hostVolumeStateChanged
+    // or hostVolumeErrorChanged reports the outcome. A no-op if this
+    // Client doesn't hold host.volume.read for this Host.
+    Q_INVOKABLE void refreshHostVolume();
+    // Requests the Host set its Host Volume to level (0-100, clamped
+    // to [hostVolumeMin, hostVolumeMax] once known). A no-op if this
+    // Client doesn't hold host.volume.write for this Host.
+    Q_INVOKABLE void setHostVolume(int level);
     Q_INVOKABLE void setPerformanceOverlayEnabled(bool enabled);
     void requestSessionSettings();
     Q_INVOKABLE void closeSessionSettings();
@@ -187,6 +214,8 @@ signals:
     void displayReconnectRequested();
     void sessionSettingsRequested();
     void currentSettingsChanged();
+    void hostVolumeStateChanged();
+    void hostVolumeErrorChanged();
 
 private:
     void exec();
@@ -196,6 +225,21 @@ private:
     bool validateLaunch(SDL_Window* testWindow);
 
     void emitLaunchWarning(QString text);
+
+    // First-launch (or first-launch-at-this-mode) Encoder Tuple preflight
+    // (ADR-0011): called from startConnectionAsync() when
+    // HostCapabilities::selectEncoderTuple() found no cached tuple for
+    // this exact already-locked wire format. Returns a default-
+    // constructed (empty id) EncoderTuple and sets error on any failure;
+    // never substitutes a different format.
+    HostCapabilities::EncoderTuple probeEncoderTupleForLaunch(
+            int videoFormat, bool virtualDisplay, QString& error);
+
+    // Issues one async, pinned-mTLS Host Volume GET (isWrite == false) or
+    // PUT (isWrite == true, level 0-100) without blocking the calling
+    // thread. Reports the outcome via hostVolumeStateChanged() or
+    // hostVolumeErrorChanged().
+    void performHostVolumeRequest(bool isWrite, int level);
 
     bool populateDecoderProperties(SDL_Window* window);
 
@@ -314,6 +358,18 @@ private:
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;
     bool m_ShouldExit;
+
+    // Host Volume live state. Each request creates its own short-lived
+    // QNetworkAccessManager (matching NvHTTP/HostProber's per-call
+    // pattern) so overlapping GET/PUT calls (e.g. a fast slider drag)
+    // never share pinning handler state; requests are fully async
+    // (connect+lambda), so they never block the GUI thread.
+    bool m_HostVolumeLoaded;
+    int m_HostVolumeMin;
+    int m_HostVolumeMax;
+    int m_HostVolumeCurrent;
+    QString m_HostVolumeErrorText;
+    quint64 m_HostVolumeRequestSerial;
 
     bool m_AsyncConnectionSuccess;
     int m_PortTestResults;

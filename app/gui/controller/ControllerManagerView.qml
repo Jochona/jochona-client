@@ -6,6 +6,7 @@ import QtQuick.Layouts 1.3
 
 import ControllerManager 1.0
 import ControllerMapStore 1.0
+import LibraryManager 1.0
 
 import ".."
 import "../style"
@@ -22,11 +23,18 @@ Item {
     property real rightCurve: 1.0
     property string pendingSourceButton: "a"
     property string pendingTargetButton: "b"
+    property bool rawPassthrough: false
+    property string transmissionMode: "native"
+    // "controller" (this controller, every game) or "library_entry" (this
+    // controller, one Library Entry only); mapScopeEntryId holds the
+    // Library Entry id when scoped to a game.
+    property string mapScope: "controller"
+    property string mapScopeEntryId: ""
 
     function silhouette(family) {
         if (family === "playstation")
             return "qrc:/res/controllers/playstation.svg"
-        if (family === "switch")
+        if (family === "nintendo")
             return "qrc:/res/controllers/switch.svg"
         if (family === "steam")
             return "qrc:/res/controllers/steam.svg"
@@ -35,7 +43,7 @@ Item {
     function familyLabel(family) {
         if (family === "playstation")
             return qsTr("PlayStation layout")
-        if (family === "switch")
+        if (family === "nintendo")
             return qsTr("Nintendo layout")
         if (family === "steam")
             return qsTr("Steam layout")
@@ -43,12 +51,58 @@ Item {
             return qsTr("Xbox layout")
         return qsTr("Generic SDL layout")
     }
+    function mapTargetScope() {
+        return root.mapScope === "library_entry"
+               && root.mapScopeEntryId.length > 0
+               ? "library_entry" : "controller"
+    }
+    function mapTargetContextKey() {
+        return root.mapTargetScope() === "library_entry"
+               ? root.mapScopeEntryId : ""
+    }
+    function commitMapPatch(patch) {
+        if (selectedEntry === null)
+            return
+        ControllerMapStore.saveMap(selectedEntry.path, root.mapTargetScope(),
+                                   root.mapTargetContextKey(), patch)
+        reloadControllerMap()
+    }
+    function currentMapPatch() {
+        return {
+            calibration: selectedMap.calibration || ({}),
+            buttonRemap: selectedMap.buttonRemap || ({}),
+            rawPassthrough: root.rawPassthrough,
+            transmissionMode: root.transmissionMode
+        }
+    }
+    function selectControllerScope() {
+        root.mapScope = "controller"
+        reloadControllerMap()
+    }
+    function selectGameScope(entryId) {
+        root.mapScope = "library_entry"
+        root.mapScopeEntryId = entryId
+        reloadControllerMap()
+    }
+    function updateRawPassthrough(enabled) {
+        var patch = root.currentMapPatch()
+        patch.rawPassthrough = enabled
+        root.commitMapPatch(patch)
+    }
+    function updateTransmissionMode(mode) {
+        var patch = root.currentMapPatch()
+        patch.transmissionMode = mode
+        root.commitMapPatch(patch)
+    }
     function reloadControllerMap() {
         if (selectedEntry === null) {
             selectedMap = ({})
             return
         }
-        selectedMap = ControllerMapStore.mapFor(selectedEntry.path)
+        selectedMap = root.mapTargetScope() === "library_entry"
+                      ? ControllerMapStore.mapFor(selectedEntry.path,
+                                                  root.mapScopeEntryId)
+                      : ControllerMapStore.mapFor(selectedEntry.path)
         var calibration = selectedMap.calibration || ({})
         leftDeadzone = calibration.deadzoneLeftStick !== undefined
                        ? calibration.deadzoneLeftStick : 0.10
@@ -58,20 +112,20 @@ Item {
                     ? calibration.curveLeftStick : 1.0
         rightCurve = calibration.curveRightStick !== undefined
                      ? calibration.curveRightStick : 1.0
+        rawPassthrough = selectedMap.rawPassthrough === true
+        transmissionMode = selectedMap.transmissionMode || "native"
     }
     function saveCalibration() {
         if (selectedEntry === null)
             return
-        ControllerMapStore.saveMap(selectedEntry.path, "controller", "", {
-            calibration: {
-                deadzoneLeftStick: leftDeadzone,
-                deadzoneRightStick: rightDeadzone,
-                curveLeftStick: leftCurve,
-                curveRightStick: rightCurve
-            },
-            buttonRemap: selectedMap.buttonRemap || ({})
-        })
-        reloadControllerMap()
+        var patch = root.currentMapPatch()
+        patch.calibration = {
+            deadzoneLeftStick: leftDeadzone,
+            deadzoneRightStick: rightDeadzone,
+            curveLeftStick: leftCurve,
+            curveRightStick: rightCurve
+        }
+        root.commitMapPatch(patch)
     }
     function commitRemap(swapConflict) {
         if (selectedEntry === null)
@@ -94,11 +148,9 @@ Item {
             remap[conflictingSource] = previousTarget
         }
         remap[pendingSourceButton] = pendingTargetButton
-        ControllerMapStore.saveMap(selectedEntry.path, "controller", "", {
-            calibration: selectedMap.calibration || ({}),
-            buttonRemap: remap
-        })
-        reloadControllerMap()
+        var patch = root.currentMapPatch()
+        patch.buttonRemap = remap
+        root.commitMapPatch(patch)
     }
     function requestRemap(source, target) {
         pendingSourceButton = source
@@ -514,6 +566,68 @@ Item {
                         }
 
                         Label {
+                            text: qsTr("Controller Map scope")
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            text: qsTr("Calibration, button remap, Raw "
+                                       + "Passthrough, and transmission mode "
+                                       + "below apply to the scope selected "
+                                       + "here.")
+                            font.family: Tokens.familyBody
+                            font.pixelSize: Tokens.tMeta
+                            color: Tokens.textSecondary
+                            wrapMode: Text.WordWrap
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Tokens.gutterTight
+                            NavigableButton {
+                                compact: true
+                                text: qsTr("This controller (every game)")
+                                highlighted: root.mapScope === "controller"
+                                onClicked: root.selectControllerScope()
+                            }
+                            NavigableButton {
+                                compact: true
+                                enabled: LibraryManager.entries.length > 0
+                                text: qsTr("This game")
+                                highlighted: root.mapScope === "library_entry"
+                                onClicked: root.selectGameScope(
+                                    root.mapScopeEntryId.length > 0
+                                    ? root.mapScopeEntryId
+                                    : LibraryManager.entries[0].id)
+                            }
+                        }
+                        AutoResizingComboBox {
+                            id: mapScopeGame
+                            Layout.fillWidth: true
+                            visible: root.mapScope === "library_entry"
+                                     && LibraryManager.entries.length > 0
+                            textRole: "title"
+                            model: LibraryManager.entries
+
+                            function syncSelection() {
+                                for (var i = 0; i < model.length; ++i) {
+                                    if (model[i].id === root.mapScopeEntryId) {
+                                        currentIndex = i
+                                        return
+                                    }
+                                }
+                            }
+                            Component.onCompleted: syncSelection()
+                            onModelChanged: syncSelection()
+                            onActivated: {
+                                if (currentIndex >= 0
+                                        && currentIndex < model.length)
+                                    root.selectGameScope(model[currentIndex].id)
+                            }
+                        }
+
+                        Label {
                             text: qsTr("Controller Map calibration")
                             font.family: Tokens.familyDisplay
                             font.pixelSize: Tokens.tCard
@@ -579,6 +693,40 @@ Item {
                             Layout.fillWidth: true
                             text: qsTr("Save calibration")
                             onClicked: root.saveCalibration()
+                        }
+
+                        Label {
+                            text: qsTr("Raw Passthrough & transmission mode")
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        CheckBox {
+                            id: rawPassthroughCheck
+                            Layout.fillWidth: true
+                            text: qsTr("Raw Passthrough (bypass calibration and button remap)")
+                            checked: root.rawPassthrough
+                            onCheckedChanged: root.updateRawPassthrough(checked)
+
+                            ToolTip.delay: 1000
+                            ToolTip.timeout: 5000
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("Sends this controller's raw button and stick state to the host exactly as SDL reports it, ignoring the deadzone/curve/remap settings above.")
+                        }
+                        Label {
+                            text: qsTr("Transmission mode")
+                            color: Tokens.textSecondary
+                        }
+                        AutoResizingComboBox {
+                            id: transmissionModeCombo
+                            Layout.fillWidth: true
+                            textRole: "name"
+                            model: [
+                                {name: qsTr("Native — report this controller's real type and capabilities"), value: "native"},
+                                {name: qsTr("Compatible — report as a standard pad for maximum host support"), value: "compatible"}
+                            ]
+                            currentIndex: root.transmissionMode === "compatible" ? 1 : 0
+                            onActivated: root.updateTransmissionMode(model[currentIndex].value)
                         }
 
                         Label {

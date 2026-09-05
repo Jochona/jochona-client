@@ -123,7 +123,7 @@ Clipboard: no endpoint on master; community consensus one-way client→host keys
 
 **Client-visible extended API** (`src/nvhttp.cpp`):
 * Routes: GameStream set + `/unpair`, `/appset`, `/actions/clipboard`, **`/bitrate`**, **`/api/abr/capabilities`**.
-* **The one true capability endpoint in the ecosystem:** `GET /api/abr/capabilities` → `{"supported":false,"version":1,"features":["runtime_bitrate"]}` (permission-gated); server-side ABR intentionally unimplemented — "Foundation-compatible clients … drive their own local ABR controller … through the runtime `/bitrate` endpoint". `GET /bitrate?kbps=N` applies live and returns the applied value.
+* **The one true capability endpoint in the ecosystem:** `GET /api/abr/capabilities` → `{"supported":false,"version":1,"features":["runtime_bitrate"]}` (permission-gated); server-side ABR intentionally unimplemented — "Foundation-compatible clients … drive their own local ABR controller … through the runtime `/bitrate` endpoint". `GET /bitrate?bitrate=N` applies live and returns the applied value.
 * `/serverinfo` publishes `VirtualDisplayCapable`/`VirtualDisplayDriverReady` **even unpaired**, `Permission`, `currentgameuid`, `appuuid`, `ServerCodecModeSupport`.
 * Launch params: `virtualDisplay`, `scaleFactor`, `hdrMode`, `enable_hdr`, `clientName`, **`clientVrrRequested`**, `bitrate`, `framenogen`, `output_name_override`, `app_metadata`, `gamepad`, `surroundAudio/Params`, `enable_sops`.
 

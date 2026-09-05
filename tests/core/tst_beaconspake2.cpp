@@ -1,5 +1,6 @@
 #include "tst_beaconspake2.h"
 
+#include "backend/beacon/beaconprotocol.h"
 #include "backend/beacon/spake2client.h"
 
 #include <QtTest>
@@ -77,4 +78,51 @@ void TestBeaconSpake2::rejectsWrongBeaconConfirmation()
     QVERIFY(!client.finish(kBeaconShare, wrong,
                            &clientConfirmation, &error));
     QVERIFY(!error.isEmpty());
+}
+
+void TestBeaconSpake2::acceptsWellFormedFingerprintField()
+{
+    QVERIFY(matchesSha256Fingerprint(
+        QJsonValue(QStringLiteral(
+            "sha256:6a53c1fafaf4afc33c5917075c5d29b21cd427f2649cbc7ecfa0b75a63946be9")),
+        kCertificateSpkiSha256));
+}
+
+void TestBeaconSpake2::rejectsFingerprintFieldWithWrongPrefix()
+{
+    QVERIFY(!matchesSha256Fingerprint(
+        QJsonValue(QStringLiteral(
+            "sha1:6a53c1fafaf4afc33c5917075c5d29b21cd427f2649cbc7ecfa0b75a63946be9")),
+        kCertificateSpkiSha256));
+}
+
+void TestBeaconSpake2::rejectsFingerprintFieldWithWrongLength()
+{
+    // 62 hex chars (31 bytes) instead of 64 -- the two-31-byte-fingerprint
+    // mistake the protocol doc's own prior draft made (client-v1.md's
+    // changelog note).
+    QVERIFY(!matchesSha256Fingerprint(
+        QJsonValue(QStringLiteral(
+            "sha256:6a53c1fafaf4afc33c5917075c5d29b21cd427f2649cbc7ecfa0b75a63946b")),
+        kCertificateSpkiSha256));
+}
+
+void TestBeaconSpake2::rejectsFingerprintFieldWithNonHexChars()
+{
+    QVERIFY(!matchesSha256Fingerprint(
+        QJsonValue(QStringLiteral(
+            "sha256:zz53c1fafaf4afc33c5917075c5d29b21cd427f2649cbc7ecfa0b75a63946be")),
+        kCertificateSpkiSha256));
+}
+
+void TestBeaconSpake2::rejectsFingerprintFieldValueMismatch()
+{
+    // Well-formed, but does not match the independently observed
+    // fingerprint -- the exact shape of a rogue/MITM Beacon claiming a
+    // different identity than the one presented over TLS.
+    QVERIFY(!matchesSha256Fingerprint(
+        QJsonValue(QStringLiteral(
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000")),
+        kCertificateSpkiSha256));
+    QVERIFY(!matchesSha256Fingerprint(QJsonValue(), kCertificateSpkiSha256));
 }

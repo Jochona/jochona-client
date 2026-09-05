@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
@@ -13,6 +13,7 @@
 #include <QMap>
 #include <QStringList>
 #include <QVariantMap>
+#include <cstdint>
 
 // One stick/trigger's calibration. The response curve is an exponent
 // applied to the normalized, deadzone-excluded magnitude
@@ -35,6 +36,16 @@ struct ControllerCalibration
     fromVariantMap(const QVariantMap& map);
 };
 
+// Compatible reports this controller to the host as a generic Xbox-style
+// pad (widest host/game compatibility, no exotic capability bits). Native
+// reports the controller's actual detected type/capabilities (default,
+// preserves prior behavior).
+enum class ControllerTransmissionMode
+{
+    Native,
+    Compatible,
+};
+
 struct ControllerMap
 {
     QString controllerPath;
@@ -42,11 +53,35 @@ struct ControllerMap
     ControllerCalibration calibration;
     QMap<QString, QString> buttonRemap; // logical name -> logical name, e.g. "a" -> "b"
 
+    // Raw Passthrough bypasses calibration reshaping and button remap
+    // entirely; SDL's button/axis state reaches the host unmodified.
+    bool rawPassthrough = false;
+
+    ControllerTransmissionMode transmissionMode = ControllerTransmissionMode::Native;
+
     QVariantMap
     toVariantMap() const;
 
     static ControllerMap
     fromVariantMap(const QString& controllerPath, const QString& appId, const QVariantMap& map);
+
+    static QString
+    transmissionModeToString(ControllerTransmissionMode mode);
+
+    static ControllerTransmissionMode
+    transmissionModeFromString(const QString& value);
+
+    // Masks a controller's reported Limelight arrival-event type,
+    // capability bits, and supported-button bits down to a lowest-
+    // common-denominator generic pad profile when mode is Compatible;
+    // leaves them untouched for Native. Pure bit manipulation (no SDL
+    // dependency) so app/streaming/input/gamepad.cpp's controller-arrival
+    // path can apply it right before wire serialization.
+    static void
+    applyCompatibleTransmission(ControllerTransmissionMode mode,
+                                uint8_t& type,
+                                uint32_t& capabilities,
+                                uint32_t& supportedButtonFlags);
 };
 
 // Persistence seam: ControllerMapStore never touches storage directly,

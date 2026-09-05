@@ -10,4 +10,9 @@ private slots:
     void hashesCompleteSubjectPublicKeyInfoDer();
     void matchesLockedProtocolVector();
     void rejectsWrongBeaconConfirmation();
+    void acceptsWellFormedFingerprintField();
+    void rejectsFingerprintFieldWithWrongPrefix();
+    void rejectsFingerprintFieldWithWrongLength();
+    void rejectsFingerprintFieldWithNonHexChars();
+    void rejectsFingerprintFieldValueMismatch();
 };

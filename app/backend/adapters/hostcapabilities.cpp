@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
@@ -99,6 +99,77 @@ HostCapabilities::EncoderTuple::videoFormat() const
     return 0;
 }
 
+HostCapabilities::EncoderTuple
+HostCapabilities::EncoderTuple::fromVideoFormat(int videoFormat)
+{
+    EncoderTuple tuple;
+    switch (videoFormat) {
+    case VIDEO_FORMAT_H264:
+        tuple.codec = QStringLiteral("h264");
+        tuple.profile = QStringLiteral("main8");
+        tuple.bitDepth = 8;
+        tuple.chroma = QStringLiteral("420");
+        break;
+    case VIDEO_FORMAT_H264_HIGH8_444:
+        tuple.codec = QStringLiteral("h264");
+        tuple.profile = QStringLiteral("main8");
+        tuple.bitDepth = 8;
+        tuple.chroma = QStringLiteral("444");
+        break;
+    case VIDEO_FORMAT_H265:
+        tuple.codec = QStringLiteral("hevc");
+        tuple.profile = QStringLiteral("main8");
+        tuple.bitDepth = 8;
+        tuple.chroma = QStringLiteral("420");
+        break;
+    case VIDEO_FORMAT_H265_MAIN10:
+        tuple.codec = QStringLiteral("hevc");
+        tuple.profile = QStringLiteral("main10");
+        tuple.bitDepth = 10;
+        tuple.chroma = QStringLiteral("420");
+        break;
+    case VIDEO_FORMAT_H265_REXT8_444:
+        tuple.codec = QStringLiteral("hevc");
+        tuple.profile = QStringLiteral("main8");
+        tuple.bitDepth = 8;
+        tuple.chroma = QStringLiteral("444");
+        break;
+    case VIDEO_FORMAT_H265_REXT10_444:
+        tuple.codec = QStringLiteral("hevc");
+        tuple.profile = QStringLiteral("main10");
+        tuple.bitDepth = 10;
+        tuple.chroma = QStringLiteral("444");
+        break;
+    case VIDEO_FORMAT_AV1_MAIN8:
+        tuple.codec = QStringLiteral("av1");
+        tuple.profile = QStringLiteral("main8");
+        tuple.bitDepth = 8;
+        tuple.chroma = QStringLiteral("420");
+        break;
+    case VIDEO_FORMAT_AV1_MAIN10:
+        tuple.codec = QStringLiteral("av1");
+        tuple.profile = QStringLiteral("main10");
+        tuple.bitDepth = 10;
+        tuple.chroma = QStringLiteral("420");
+        break;
+    case VIDEO_FORMAT_AV1_HIGH8_444:
+        tuple.codec = QStringLiteral("av1");
+        tuple.profile = QStringLiteral("main8");
+        tuple.bitDepth = 8;
+        tuple.chroma = QStringLiteral("444");
+        break;
+    case VIDEO_FORMAT_AV1_HIGH10_444:
+        tuple.codec = QStringLiteral("av1");
+        tuple.profile = QStringLiteral("main10");
+        tuple.bitDepth = 10;
+        tuple.chroma = QStringLiteral("444");
+        break;
+    default:
+        break;
+    }
+    return tuple;
+}
+
 bool
 HostCapabilities::EncoderTuple::supportsCapture(bool virtualDisplay) const
 {
@@ -124,6 +195,7 @@ HostCapabilities::EncoderTuple::toJson() const
         {QStringLiteral("fps"), fps},
         {QStringLiteral("hdr"), hdr},
         {QStringLiteral("capture"), captureArray},
+        {QStringLiteral("proof"), proof},
     };
 }
 
@@ -150,12 +222,50 @@ HostCapabilities::EncoderTuple::fromJson(const QJsonObject& object, bool* ok)
         }
     }
 
+    // ADR-0011: an Encoder Tuple is advertised only after the Host has
+    // actually run the exact vendor-query+probe-frame proof for it.
+    // Require the proof object and its six documented fields (method/gpu/
+    // driver/displayMode/hostBuild/verifiedAt, docs/protocols/jochona-host-
+    // capabilities.md) to be present as non-empty strings -- a tuple
+    // missing any of them is a manifest claiming proof it never ran, which
+    // this Client must not accept as compatible. Extra/unknown fields
+    // inside proof are tolerated.
+    const QJsonObject proof = object.value(QStringLiteral("proof")).toObject();
+    tuple.proof = proof;
+    static const QStringList kRequiredProofFields = {
+        QStringLiteral("method"), QStringLiteral("gpu"),
+        QStringLiteral("driver"), QStringLiteral("displayMode"),
+        QStringLiteral("hostBuild"), QStringLiteral("verifiedAt"),
+    };
+    bool proofValid = object.value(QStringLiteral("proof")).isObject();
+    for (const QString& field : kRequiredProofFields) {
+        if (!proof.value(field).isString() || proof.value(field).toString().isEmpty()) {
+            proofValid = false;
+            break;
+        }
+    }
+    const QString gpu = proof.value(QStringLiteral("gpu"))
+                            .toString().trimmed().toLower();
+    const QString driver = proof.value(QStringLiteral("driver"))
+                               .toString().trimmed().toLower();
+    proofValid = proofValid
+        && proof.value(QStringLiteral("method")).toString()
+            == QLatin1String("vendor-query+probe-frames")
+        && gpu != QLatin1String("unknown")
+        && gpu != QLatin1String("unspecified")
+        && driver != QLatin1String("unknown")
+        && driver != QLatin1String("unspecified");
+
     const bool valid = !tuple.id.isEmpty()
             && (tuple.bitDepth == 8 || tuple.bitDepth == 10)
+            && tuple.profile
+                == (tuple.bitDepth == 10 ? QLatin1String("main10")
+                                         : QLatin1String("main8"))
             && (tuple.chroma == QLatin1String("420")
                 || tuple.chroma == QLatin1String("444"))
             && tuple.width > 0 && tuple.height > 0 && tuple.fps > 0
-            && !tuple.capture.isEmpty() && tuple.videoFormat() != 0;
+            && !tuple.capture.isEmpty() && tuple.videoFormat() != 0
+            && proofValid;
     if (ok != nullptr) {
         *ok = valid;
     }
@@ -174,7 +284,8 @@ HostCapabilities::EncoderTuple::operator==(const EncoderTuple& other) const
             && height == other.height
             && fps == other.fps
             && hdr == other.hdr
-            && capture == other.capture;
+            && capture == other.capture
+            && proof == other.proof;
 }
 
 HostCapabilities::ManifestStatus
@@ -285,7 +396,12 @@ HostCapabilities::applyJochonaManifest(const QJsonObject& object,
     const QJsonObject hostVolume =
         object.value(QStringLiteral("runtimeControls")).toObject()
             .value(QStringLiteral("hostVolume")).toObject();
-    if (hostVolume.value(QStringLiteral("available")).toBool()) {
+    // The manifest can advertise hostVolume.available without this pinned
+    // client actually holding the permission to use it (permissions are
+    // granted per client cert, not globally) -- gate on the corresponding
+    // canonical permission name rather than trusting availability alone.
+    if (hostVolume.value(QStringLiteral("available")).toBool()
+            && permissionNames.contains(QLatin1String("host.volume.read"))) {
         capabilities |= VolumeControl;
     }
 

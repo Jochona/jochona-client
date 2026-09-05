@@ -55,6 +55,8 @@ Item {
         selectedAudioConfig = settings.audiocfg
         selectedAudioDevice = settings.audiodevice || ""
         saveScope = "session"
+        if (session.hostVolumeAvailable)
+            session.refreshHostVolume()
         visible = true
         forceActiveFocus()
         Qt.callLater(function() { volumeSlider.forceActiveFocus() })
@@ -165,10 +167,59 @@ Item {
                                            root.session.setPerformanceOverlayEnabled(checked)
                         }
                         Label {
+                            text: qsTr("Host Volume")
+                            visible: root.session && root.session.hostVolumeAvailable
+                            font.family: Tokens.familyDisplay
+                            font.pixelSize: Tokens.tCard
+                            color: Tokens.textPrimary
+                        }
+                        Row {
                             width: parent.width
-                            text: root.session && root.session.hostVolumeAvailable
-                                  ? qsTr("Host Volume capability detected. Session Volume remains local to this Client.")
-                                  : qsTr("Host Volume is unavailable on this Host. Session Volume is local to this Client.")
+                            spacing: Tokens.gutterTight
+                            visible: root.session && root.session.hostVolumeAvailable
+                            Slider {
+                                id: hostVolumeSlider
+                                width: parent.width * 0.72
+                                from: root.session ? root.session.hostVolumeMin : 0
+                                to: root.session ? root.session.hostVolumeMax : 100
+                                stepSize: 1
+                                enabled: root.session
+                                         && root.session.hostVolumeWritable
+                                         && root.session.hostVolumeLoaded
+                                value: root.session ? root.session.hostVolumeCurrent : 0
+                                onMoved: hostVolumeCommit.restart()
+                                Accessible.name: qsTr("Host Volume")
+                            }
+                            Timer {
+                                id: hostVolumeCommit
+                                interval: 120
+                                repeat: false
+                                onTriggered: if (root.session)
+                                                 root.session.setHostVolume(
+                                                     Math.round(hostVolumeSlider.value))
+                            }
+                            Label {
+                                text: root.session && root.session.hostVolumeLoaded
+                                      ? qsTr("%1%").arg(Math.round(hostVolumeSlider.value))
+                                      : qsTr("—")
+                                color: Tokens.textSecondary
+                            }
+                        }
+                        Label {
+                            width: parent.width
+                            visible: root.session && root.session.hostVolumeAvailable
+                                     && root.session.hostVolumeErrorText.length > 0
+                            text: root.session ? root.session.hostVolumeErrorText : ""
+                            color: Tokens.statusPairing
+                            wrapMode: Text.WordWrap
+                        }
+                        Label {
+                            width: parent.width
+                            text: !root.session || !root.session.hostVolumeAvailable
+                                  ? qsTr("Host Volume is unavailable on this Host. Session Volume remains local to this Client.")
+                                  : root.session.hostVolumeWritable
+                                    ? qsTr("Host Volume adjusts audio output on the Host itself, separate from Session Volume.")
+                                    : qsTr("Host Volume is visible but read-only for this Device ↔ Rig pairing. Session Volume remains local to this Client.")
                             color: Tokens.textSecondary
                             wrapMode: Text.WordWrap
                         }

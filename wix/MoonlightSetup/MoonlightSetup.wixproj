@@ -10,6 +10,12 @@
     <IntermediateOutputPath>$(BUILD_FOLDER)\</IntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup>
+    <!-- Jochona: output artifact renamed from MoonlightSetup.exe to
+         JochonaSetup.exe; scripts/generate-bundle.bat renames this further
+         to JochonaSetup-<version>.exe for publishing. -->
+    <OutputName>JochonaSetup</OutputName>
+  </PropertyGroup>
+  <PropertyGroup>
     <AcceptEula>wix7</AcceptEula>
   </PropertyGroup>
   <PropertyGroup Condition="$(SIGN)!=''">

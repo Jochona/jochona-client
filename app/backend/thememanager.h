@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //

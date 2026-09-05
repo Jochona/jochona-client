@@ -11,19 +11,32 @@
 #include <QVariantList>
 
 // SettingsDatabase owns the single SQLite database that stores settings,
-// paired hosts, per-host application caches, favorites, collections, and
+// paired Hosts, per-host application caches, favorites, collections, and
 // the event history (proposal.md 6.15, 7.1). It never stores secrets --
 // see CredentialStore for the OS vault used for pairing keys and tokens.
+//
+// Paired Hosts: host_records.record_json holds the exact, lossless
+// serialization of every persisted NvComputer field (see
+// ComputerManager's hostRecordFromComputer()/computerFromHostRecord());
+// SQLite is the single durable authority for this state. The normalized
+// `hosts` table remains a query-friendly projection (name/address/mac/...)
+// maintained by LibraryManager, not a second source of truth -- host_records
+// rows reference it only to guarantee a placeholder row exists.
 //
 // The database is opened with WAL journaling and foreign keys enabled, and
 // schema changes are applied by a small numbered migration runner: each
 // migration runs inside its own transaction, and a `VACUUM INTO` snapshot
-// of the database is taken immediately before that migration is applied so
-// a failed upgrade can be rolled back by restoring the snapshot. Opening a
-// database whose recorded schema version is newer than this build knows
-// about is refused outright (no downgrade path), matching the "no soft
-// proceed anyway" posture used elsewhere in the client for irreversible
-// state changes.
+// of the database is taken immediately before that migration is applied.
+// If applying the migration fails, the snapshot is restored automatically
+// so the database is left at a usable prior schema version instead of a
+// possibly half-migrated one; open() still reports failure so the caller
+// knows the requested schema version was not reached. Snapshots older than
+// the most recent few are pruned after every successful open() so backups
+// do not accumulate without bound across app updates. Opening a database
+// whose recorded schema version is newer than this build knows about is
+// refused outright (no downgrade path), matching the "no soft proceed
+// anyway" posture used elsewhere in the client for irreversible state
+// changes.
 class SettingsDatabase : public QObject
 {
     Q_OBJECT
@@ -138,6 +151,23 @@ public:
     bool importLegacyControllerMaps(const QVariantMap& profiles,
                                     const QString& markerKey);
 
+    // Paired Host records (proposal.md 6.15): each entry is the exact
+    // serialized NvComputer record produced by ComputerManager, decoded
+    // from JSON back into a QVariantMap. Order is unspecified.
+    QVariantList hostRecords() const;
+
+    // Transactionally replaces the entire Host record set with exactly
+    // `records` (each a map produced by ComputerManager, keyed by "uuid"),
+    // deleting any existing record not present in the new set. Used for
+    // every ordinary save so a torn write always leaves the previously
+    // committed Host set intact rather than a partial one.
+    bool replaceHostRecords(const QVariantList& records);
+
+    // Imports legacy QSettings-era Host records once. The marker is
+    // written in the same transaction, so a crash never produces a
+    // half-imported Host set.
+    bool importLegacyHostRecords(const QVariantList& records, const QString& markerKey);
+
     // The default per-platform location for the database file
     // (QStandardPaths::AppDataLocation + "/jochona.db"), creating the
     // containing directory if it does not already exist.
@@ -145,6 +175,11 @@ public:
 
     // The highest schema version this build knows how to migrate to.
     static int latestKnownSchemaVersion();
+
+    // Number of pre-migration snapshots retained on disk; older ones are
+    // pruned after a successful open() so backups do not accumulate
+    // without bound as the schema evolves across app updates.
+    static int maxRetainedBackupSnapshots();
 
 private:
     struct Migration
@@ -158,8 +193,13 @@ private:
 
     bool ensureMigrationsTable();
     int currentSchemaVersion() const;
+    QString backupSnapshotPath(int version) const;
     bool backupBeforeMigration(int version);
     bool applyMigration(const Migration& migration);
+    bool restoreFromSnapshot(int version);
+    void pruneBackupSnapshots();
+    bool ensureHostPlaceholder(const QString& hostId, const QString& name);
+    bool upsertHostRecordsLocked(const QVariantList& records);
     void setLastError(const QString& error);
     void closeConnection();
 

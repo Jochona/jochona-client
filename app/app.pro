@@ -13,13 +13,11 @@ unix:!macx {
     # and run alongside an official Moonlight.app.
     TARGET = Jochona
 } else {
-    # Jochona: the Windows executable keeps the upstream "Moonlight" target
-    # name for M0 (see QMAKE_TARGET_* below and wix/ for the Jochona-branded
-    # metadata that is independent of this filename). Renaming Moonlight.exe
-    # itself is deferred to a dedicated, build-verified follow-up since it
-    # cascades through scripts/build-arch.bat, scripts/generate-bundle.bat,
-    # and the WiX project/output filenames.
-    TARGET = Moonlight
+    # Jochona: Windows executable target, aligned with the Linux/macOS TARGET
+    # above. wix/Moonlight/Product.wxs, wix/MoonlightSetup/Bundle.wxs,
+    # scripts/build-arch.bat, and scripts/generate-bundle.bat all reference
+    # this exact "Jochona.exe"/"Jochona.msi" artifact naming.
+    TARGET = Jochona
 }
 
 include(../globaldefs.pri)
@@ -180,7 +178,7 @@ macx {
         CONFIG += discord-rpc libplacebo
     }
 
-    LIBS += -lobjc -framework VideoToolbox -framework AVFoundation -framework CoreVideo -framework CoreGraphics -framework CoreMedia -framework AppKit -framework Metal -framework QuartzCore -framework Security -framework CoreFoundation
+    LIBS += -lobjc -framework VideoToolbox -framework AVFoundation -framework CoreVideo -framework CoreGraphics -framework CoreMedia -framework AppKit -framework Metal -framework QuartzCore -framework Security -framework LocalAuthentication -framework CoreFoundation
     CONFIG += ffmpeg
 }
 
@@ -192,6 +190,7 @@ SOURCES += \
     backend/computerseeker.cpp \
     backend/identitymanager.cpp \
     backend/nvcomputer.cpp \
+    backend/certificatepinning.cpp \
     backend/nvhttp.cpp \
     backend/nvpairingmanager.cpp \
     backend/computermanager.cpp \
@@ -206,6 +205,7 @@ SOURCES += \
     backend/adapters/hostprober.cpp \
     backend/adapters/hostadaptermanager.cpp \
     backend/beacon/spake2client.cpp \
+    backend/beacon/beaconprotocol.cpp \
     backend/beacon/beaconmanager.cpp \
     backend/wake/wakeprovider.cpp \
     cli/commandlineparser.cpp \
@@ -218,6 +218,7 @@ SOURCES += \
     settings/mappingfetcher.cpp \
     settings/streamingpreferences.cpp \
     settings/effectivesettingsresolver.cpp \
+    settings/effectivesettingsruntime.cpp \
     library/librarymanager.cpp \
     streaming/input/abstouch.cpp \
     streaming/input/gamepad.cpp \
@@ -240,6 +241,8 @@ SOURCES += \
     backend/systemproperties.cpp \
     wm.cpp
 
+macx: OBJECTIVE_SOURCES += core/credentialstore_darwin.mm
+
 HEADERS += \
     SDL_compat.h \
     backend/nvaddress.h \
@@ -251,6 +254,7 @@ HEADERS += \
     backend/computerseeker.h \
     backend/identitymanager.h \
     backend/nvcomputer.h \
+    backend/certificatepinning.h \
     backend/nvhttp.h \
     backend/nvpairingmanager.h \
     backend/computermanager.h \
@@ -265,6 +269,7 @@ HEADERS += \
     backend/adapters/hostprober.h \
     backend/adapters/hostadaptermanager.h \
     backend/beacon/spake2client.h \
+    backend/beacon/beaconprotocol.h \
     backend/beacon/beaconmanager.h \
     backend/wake/wakeprovider.h \
     cli/commandlineparser.h \
@@ -603,9 +608,8 @@ unix:!macx: {
 }
 win32 {
     RC_ICONS = Jochona.ico
-    # Jochona: exe file metadata (Properties > Details, UAC prompts) carries
-    # Jochona identity even though TARGET keeps the upstream Moonlight.exe
-    # filename for M0 (see TARGET comment above).
+    # Jochona: exe file metadata (Properties > Details, UAC prompts) matches
+    # the "Jochona.exe" TARGET set above.
     QMAKE_TARGET_COMPANY = Jochona
     QMAKE_TARGET_DESCRIPTION = Jochona Game Streaming Client
     QMAKE_TARGET_PRODUCT = Jochona

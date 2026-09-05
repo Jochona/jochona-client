@@ -121,6 +121,15 @@ QString SupportBundleManager::redactLog(QString text, bool includeAddresses)
         QStringLiteral("(?i)(token|password|passphrase|secret|pin)"
                        "\\s*[:=]\\s*[^\\s,;]+")),
         QStringLiteral("\\1=<redacted>"));
+    // Defense-in-depth for log excerpts written before nvhttp.cpp stopped
+    // logging these as raw request-URL query parameters (pairing salt,
+    // client certificate, challenge/response, pairing secret) or the
+    // per-request unique ID/uuid that appears on every call.
+    text.replace(QRegularExpression(
+        QStringLiteral("(?i)\\b(uniqueid|uuid|salt|clientcert|"
+                       "clientchallenge|serverchallengeresp|"
+                       "clientpairingsecret)=[0-9A-Za-z%]+")),
+        QStringLiteral("\\1=<redacted>"));
     text.replace(QRegularExpression(
         QStringLiteral("\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
                        "[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
@@ -218,6 +227,64 @@ QJsonObject SupportBundleManager::buildBundle()
             capabilities.append(capability);
         }
         bundle.insert(QStringLiteral("capabilities"), capabilities);
+
+        // Support Bundle contract (CONTEXT.md "Support Bundle"): route
+        // state is part of "capabilities, route state, and recent
+        // failures" -- surface Wake Provider choice and Beacon identity
+        // state pulled straight from SettingsDatabase, the single durable
+        // authority for this data.
+        QJsonArray wakeRoutes;
+        QJsonArray beaconRoutes;
+        if (SettingsDatabase* settingsDb = SettingsDatabase::get()) {
+            for (const QVariant& value : settingsDb->wakeRoutes()) {
+                const QVariantMap route = value.toMap();
+                QJsonObject entry;
+                entry.insert(QStringLiteral("host"),
+                            pseudonym(route.value(QStringLiteral("hostId")).toString(),
+                                      QStringLiteral("host")));
+                entry.insert(QStringLiteral("provider"),
+                            route.value(QStringLiteral("provider")).toString());
+                const QString beaconId =
+                        route.value(QStringLiteral("beaconId")).toString();
+                if (!beaconId.isEmpty()) {
+                    entry.insert(QStringLiteral("beacon"),
+                                pseudonym(beaconId, QStringLiteral("beacon")));
+                    entry.insert(QStringLiteral("beaconHost"),
+                                pseudonym(route.value(QStringLiteral("beaconHostId"))
+                                                  .toString(),
+                                          QStringLiteral("host")));
+                }
+                entry.insert(QStringLiteral("updatedAt"),
+                            route.value(QStringLiteral("updatedAt")).toString());
+                wakeRoutes.append(entry);
+            }
+
+            for (const QVariant& value : settingsDb->beacons()) {
+                const QVariantMap beacon = value.toMap();
+                QJsonObject entry;
+                entry.insert(QStringLiteral("beacon"),
+                            pseudonym(beacon.value(QStringLiteral("id")).toString(),
+                                      QStringLiteral("beacon")));
+                entry.insert(QStringLiteral("name"),
+                            pseudonym(beacon.value(QStringLiteral("name")).toString(),
+                                      QStringLiteral("beacon-name")));
+                entry.insert(QStringLiteral("identityState"),
+                            beacon.value(QStringLiteral("identityState")).toString());
+                entry.insert(QStringLiteral("spkiFingerprint"),
+                            pseudonym(beacon.value(QStringLiteral("spkiFingerprint"))
+                                              .toString(),
+                                      QStringLiteral("spki")));
+                if (m_IncludeAddresses) {
+                    entry.insert(QStringLiteral("url"),
+                                beacon.value(QStringLiteral("url")).toString());
+                }
+                entry.insert(QStringLiteral("updatedAt"),
+                            beacon.value(QStringLiteral("updatedAt")).toString());
+                beaconRoutes.append(entry);
+            }
+        }
+        bundle.insert(QStringLiteral("wakeRoutes"), wakeRoutes);
+        bundle.insert(QStringLiteral("beacons"), beaconRoutes);
 
         QJsonArray displays;
         QSqlQuery displayQuery(QStringLiteral(

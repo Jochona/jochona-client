@@ -6,6 +6,8 @@
 #include "settings/effectivesettingsresolver.h"
 
 #include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QReadLocker>
 #include <QSet>
 #include <QSqlError>
@@ -98,6 +100,7 @@ void LibraryManager::synchronizeHosts()
         QString mac;
         QString manualMac;
         int manualPort;
+        bool identityChanged;
         QVector<AppCopy> apps;
     };
     QVector<HostCopy> hosts;
@@ -113,6 +116,7 @@ void LibraryManager::synchronizeHosts()
             QString::fromLatin1(computer->macAddress.toHex(':')),
             QString::fromLatin1(computer->manualMacAddress.toHex(':')),
             computer->wakePort,
+            computer->identityChanged,
             {},
         };
         for (const NvApp& app : computer->appList) {
@@ -130,11 +134,11 @@ void LibraryManager::synchronizeHosts()
     for (const HostCopy& host : hosts) {
         QSqlQuery upsertHost(m_Db);
         upsertHost.prepare(QStringLiteral(
-            "INSERT INTO hosts (id,name,last_address,last_port,mac,manual_mac,manual_port,updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
+            "INSERT INTO hosts (id,name,last_address,last_port,mac,manual_mac,manual_port,identity_state,updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET "
             "name=excluded.name,last_address=excluded.last_address,last_port=excluded.last_port,"
             "mac=excluded.mac,manual_mac=excluded.manual_mac,manual_port=excluded.manual_port,"
-            "updated_at=excluded.updated_at"));
+            "identity_state=excluded.identity_state,updated_at=excluded.updated_at"));
         upsertHost.addBindValue(host.uuid);
         upsertHost.addBindValue(host.name);
         upsertHost.addBindValue(host.address);
@@ -142,6 +146,12 @@ void LibraryManager::synchronizeHosts()
         upsertHost.addBindValue(host.mac);
         upsertHost.addBindValue(host.manualMac);
         upsertHost.addBindValue(host.manualPort);
+        // LibraryManager's own read path (entries()/hostCandidates() below)
+        // compares this column against the literal 'identity_changed', not
+        // beacons' 'changed' -- match that vocabulary exactly.
+        upsertHost.addBindValue(host.identityChanged
+                                     ? QStringLiteral("identity_changed")
+                                     : QStringLiteral("trusted"));
         upsertHost.addBindValue(now);
         if (!upsertHost.exec()) {
             qWarning() << "LibraryManager: host sync failed" << upsertHost.lastError();
@@ -259,6 +269,16 @@ void LibraryManager::setSearch(const QString& search)
     emit entriesChanged();
 }
 
+void LibraryManager::setShowHidden(bool showHidden)
+{
+    if (m_ShowHidden == showHidden) {
+        return;
+    }
+    m_ShowHidden = showHidden;
+    emit showHiddenChanged();
+    emit entriesChanged();
+}
+
 NvComputer* LibraryManager::hostForUuid(const QString& uuid) const
 {
     if (s_ComputerManager == nullptr) {
@@ -282,10 +302,19 @@ QVariantList LibraryManager::entries() const
     QString sql = QStringLiteral(
         "SELECT le.id,le.title,le.kind,le.artwork_path,le.favorite,le.hidden,"
         "COUNT(lea.host_app_id) FROM library_entries le "
-        "LEFT JOIN library_entry_apps lea ON lea.library_entry_id=le.id "
-        "WHERE le.hidden=0 ");
+        "LEFT JOIN library_entry_apps lea ON lea.library_entry_id=le.id ");
+    QString where;
+    if (!m_ShowHidden) {
+        where += QStringLiteral("le.hidden=0");
+    }
     if (!m_Search.isEmpty()) {
-        sql += QStringLiteral("AND le.title LIKE ? ESCAPE '\\\\' ");
+        if (!where.isEmpty()) {
+            where += QStringLiteral(" AND ");
+        }
+        where += QStringLiteral("le.title LIKE ? ESCAPE '\\\\'");
+    }
+    if (!where.isEmpty()) {
+        sql += QStringLiteral("WHERE ") + where + QStringLiteral(" ");
     }
     sql += QStringLiteral(
         "GROUP BY le.id ORDER BY le.favorite DESC, le.title COLLATE NOCASE");
@@ -588,6 +617,51 @@ void LibraryManager::recordLaunch(const QString& hostUuid, int appId)
     history.addBindValue(hostAppId);
     if (!history.exec() || !m_Db.commit()) { m_Db.rollback(); return; }
     emit entriesChanged();
+}
+
+void LibraryManager::recordSessionOutcome(const QString& hostUuid, int appId,
+                                          bool success, const QString& stage,
+                                          int errorCode)
+{
+    if (!ensureConnection() || hostUuid.isEmpty()) return;
+    QSqlQuery lookup(m_Db);
+    lookup.prepare(QStringLiteral(
+        "SELECT ha.id,lea.library_entry_id FROM host_apps ha "
+        "LEFT JOIN library_entry_apps lea ON lea.host_app_id=ha.id "
+        "WHERE ha.host_id=? AND ha.app_id=?"));
+    lookup.addBindValue(hostUuid);
+    lookup.addBindValue(QString::number(appId));
+    if (!lookup.exec() || !lookup.next()) return;
+
+    const qint64 hostAppId = lookup.value(0).toLongLong();
+    const QString entryId = lookup.value(1).toString();
+    const QString now = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
+
+    // Structured and bounded on purpose: stage is a short protocol phase
+    // name or fixed literal supplied by the caller, never raw host
+    // addresses, certificates, or free-form error text, so this summary is
+    // already safe to include verbatim in a Support Bundle.
+    const QJsonObject summary{
+        {QStringLiteral("stage"), stage},
+        {QStringLiteral("errorCode"), errorCode},
+    };
+    QSqlQuery history(m_Db);
+    history.prepare(QStringLiteral(
+        "INSERT INTO local_history "
+        "(ts,kind,host_id,library_entry_id,host_app_id,summary_json) "
+        "VALUES (?,?,?,?,?,?)"));
+    history.addBindValue(now);
+    history.addBindValue(success ? QStringLiteral("session_success")
+                                 : QStringLiteral("session_failure"));
+    history.addBindValue(hostUuid);
+    history.addBindValue(entryId);
+    history.addBindValue(hostAppId);
+    history.addBindValue(QString::fromUtf8(
+        QJsonDocument(summary).toJson(QJsonDocument::Compact)));
+    if (!history.exec()) {
+        qWarning() << "LibraryManager: session outcome write failed"
+                   << history.lastError();
+    }
 }
 
 bool LibraryManager::mergeEntries(const QString& targetEntryId,

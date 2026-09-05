@@ -1,11 +1,20 @@
 #include "overlaymanager.h"
-#include "path.h"
+#include <QFile>
 
 using namespace Overlay;
 
+namespace
+{
+QByteArray readOverlayFont()
+{
+    QFile font(QStringLiteral(":/fonts/SpaceGrotesk-Regular.ttf"));
+    return font.open(QIODevice::ReadOnly) ? font.readAll() : QByteArray();
+}
+}
+
 OverlayManager::OverlayManager() :
     m_Renderer(nullptr),
-    m_FontData(Path::readDataFile("ModeSeven.ttf"))
+    m_FontData(readOverlayFont())
 {
     memset(m_Overlays, 0, sizeof(m_Overlays));
 

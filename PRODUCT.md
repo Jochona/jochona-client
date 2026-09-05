@@ -45,7 +45,10 @@ has them.
 LAN and private-overlay (Tailscale) networks; hosts running Sunshine, Apollo,
 or Vibepollo; Wake-on-LAN and optional external wake service (user's Raspberry
 Pi); gamepads (Xbox, DualSense, Switch Pro, Steam Deck) wired and Bluetooth;
-multi-display, HDR, VRR. v1 is English only; all strings pass Qt Linguist
+multi-display, HDR, VRR. Inherited upstream Moonlight translations continue to
+ship (`languages/*.ts`/`.qm`); new Jochona-authored strings (Night Route
+shell, Library, Support Bundle, and everything added since the fork) use
+English until translated. All strings, inherited and new, pass Qt Linguist
 extraction enforced in CI.
 
 ## Capabilities and Constraints
@@ -83,8 +86,9 @@ names the action; errors name the problem and the recovery.
 - `assets/brand/` — tracked masters; `scripts/generate-brand-assets.py`
   regenerates every platform asset.
 - `assets/vendor/kenney-input-prompts-1.5.zip` — CC0 controller glyphs.
-- `app/gui/HomeView.qml` + `app/gui/style/Tokens.qml` — shipped modern home
-  screen and design tokens behind `modernHomeScreen`.
+- `app/gui/HomeView.qml` + `app/gui/style/Tokens.qml` — shipped Night Route
+  home screen and design tokens; the earlier `modernHomeScreen` feature
+  flag has been retired now that this shell is the only one.
 - Absences: no telemetry, no benchmarks, no testimonials — never fabricate.
 
 ## Product Principles

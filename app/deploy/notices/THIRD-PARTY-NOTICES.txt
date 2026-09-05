@@ -1,0 +1,683 @@
+Jochona Client — Third-Party Notices
+=====================================
+
+Jochona Client itself is GNU General Public License v3.0-or-later software;
+the full text is in "LICENSE" next to this file, and the pointer to its
+corresponding source is in "SOURCE-POINTER.txt" next to this file. This
+document lists every third-party component compiled into or shipped
+alongside this binary, its exact version as built, its license, and (for
+short permissive licenses) the full verbatim license text. Long copyleft
+license texts that are shared by more than one component are printed once,
+under "Shared license texts" at the end of this file, and referenced by
+name from each component's entry.
+
+Every fact below is sourced from this repository's build inputs: git
+submodule / vendored source LICENSE files, the headers and compiled
+binaries of the pinned moonlight-qt-deps v12 prebuilt libraries, and the
+CI workflow files that build the AppImage's bundled libraries from source.
+Where a build configuration could affect the applicable license (FFmpeg in
+particular), the notice below quotes the actual configure invocation baked
+into the shipped binary rather than a general public description of the
+project.
+
+Components
+----------
+
+1. moonlight-common-c (git submodule, statically linked)
+   License: GPL-3.0-only
+   Evidence: moonlight-common-c/moonlight-common-c/LICENSE.txt
+   Same license family as Jochona itself; see "LICENSE" next to this file.
+
+2. AntiHooking (vendored in-tree, linked as AntiHooking.dll on Windows)
+   License: part of the Jochona GPL-3.0-or-later work; no separate
+   third-party license applies.
+
+3. h264bitstream (vendored in-tree: h264bitstream/bs.h, h264_nal.c,
+   h264_stream.c, h264_stream.h; statically linked)
+   License: LGPL-2.1-or-later
+   Copyright (C) 2005-2007 Auroras Entertainment, LLC
+   Copyright (C) 2008-2011 Avail-TVN
+   Written by Alex Izvorski <aizvorski@gmail.com> and
+   Alex Giladi <alex.giladi@gmail.com>
+   Evidence: h264bitstream/LICENSE (full LGPL-2.1 text); per-file header
+   notices restored verbatim from the upstream aizvorski/h264bitstream
+   project atop each source file.
+   Full text: see "GNU Lesser General Public License v2.1" below.
+
+4. Qt 6.11.1 (core, gui, quick, quickcontrols2, network, svg, sql, QML
+   modules; dynamically deployed on every platform via windeployqt /
+   macdeployqt / apt Qt6 + linuxdeploy-plugin-qt)
+   License: LGPL-3.0-only (open-source edition)
+   Evidence: every CI workflow installs Qt via install-qt-action /
+   aqtinstall, which only ever fetches Qt's official open-source
+   (LGPL/GPL) package repository at download.qt.io; no Qt commercial
+   license key, account, or installer appears anywhere in this repository
+   or its CI configuration (checked: .github/workflows/*.yml). Dynamic
+   linking on every platform (windeployqt, macdeployqt, linuxdeploy --plugin
+   qt) preserves LGPL-3.0 relinking rights.
+   Full text: see "GNU Lesser General Public License v3.0" below.
+
+5. FFmpeg — libavcodec, libavutil, libswscale (from moonlight-qt-deps v12
+   for Windows/macOS; built from FFmpeg source in CI for the AppImage)
+   License: LGPL-2.1-or-later
+   Evidence (macOS / Windows prebuilt, moonlight-qt-deps v12):
+     - libavcodec.63.dylib / libavutil.61.dylib report build 63.1.100 /
+       61.1.100 (avcodec_version()/avutil_version() family); the binary's
+       own embedded license string (avcodec_license()) reads exactly
+       "LGPL version 2.1 or later".
+     - The configure invocation baked into the binary
+       (avcodec_configuration()) is:
+       --prefix=.../FFmpeg/../build/FFmpeg/build_arm64
+       --extra-cflags='-mmacosx-version-min=13.0 -arch arm64 ...'
+       --cc=clang --arch=arm64 --enable-cross-compile --enable-pic
+       --enable-lto --fatal-warnings --enable-shared --disable-static
+       --disable-all --disable-autodetect --enable-avcodec
+       --enable-avformat --enable-swscale --enable-vulkan
+       --enable-decoder=h264 --enable-decoder=hevc --enable-decoder=av1
+       --enable-videotoolbox --enable-hwaccel=h264_videotoolbox
+       --enable-hwaccel=hevc_videotoolbox --enable-hwaccel=av1_videotoolbox
+       --enable-libdav1d --enable-decoder=libdav1d
+       (x86_64 build is identical apart from -arch/--target/--cc-flags).
+       No --enable-gpl, --enable-nonfree, or --enable-version3 flag is
+       present, and no GPL-only component (libx264/libx265/etc.) is
+       enabled — confirming the LGPL license string above.
+     - FFmpeg internal build id (FFMPEG_VERSION / ffversion.h): "d32b387"
+       (moonlight-qt-deps' own FFmpeg fork/mirror commit, not a mainline
+       FFmpeg release tag).
+     - dav1d (see entry 15) is linked into this build with no separate
+       libdav1d.dylib shipped, i.e. statically embedded (no --enable-gpl
+       needed for this since dav1d is BSD-2-Clause; the LGPL "materials to
+       relink" obligation is satisfied by the published corresponding
+       source, see SOURCE-POINTER.txt).
+   Evidence (Linux AppImage, built from source in CI):
+     - .github/workflows/build-appimage.yml checks out `FFmpeg/FFmpeg` at
+       ref `n9.0` and configures with:
+       --enable-pic --enable-lto --disable-static --enable-shared
+       --disable-all --disable-autodetect --enable-avcodec
+       --enable-avformat --enable-swscale --enable-decoder=h264
+       --enable-decoder=hevc --enable-decoder=av1 --enable-vaapi
+       --enable-hwaccel=h264_vaapi --enable-hwaccel=hevc_vaapi
+       --enable-hwaccel=av1_vaapi --enable-vdpau
+       --enable-hwaccel=h264_vdpau --enable-hwaccel=hevc_vdpau
+       --enable-hwaccel=av1_vdpau --enable-libdrm --enable-vulkan
+       --enable-hwaccel=h264_vulkan --enable-hwaccel=hevc_vulkan
+       --enable-hwaccel=av1_vulkan --enable-libdav1d
+       --enable-decoder=libdav1d
+       Again, no --enable-gpl / --enable-nonfree / --enable-version3.
+       dav1d (entry 15) is built with `-Ddefault_library=static` and
+       linked in statically, same relink-via-published-source handling
+       as above.
+   Full text: see "GNU Lesser General Public License v2.1" below.
+
+6. libplacebo v7.371.0 (from moonlight-qt-deps v12 for Windows/macOS;
+   built from source at commit 4d82c6898551068d4ae6a6b5538efcddc2c7cf64
+   with this repository's patch applied for the AppImage)
+   License: LGPL-2.1-or-later — CORRECTED from an earlier "publicly MIT"
+   placeholder in this audit. libplacebo relicensed away from MIT; the
+   copy actually shipped is LGPL.
+   Evidence: libs/mac/include/libplacebo/config.h header block reads
+   "libplacebo is free software; you can redistribute it and/or modify it
+   under the terms of the GNU Lesser General Public License ... version
+   2.1 of the License, or (at your option) any later version."; the
+   compiled libplacebo.dylib reports build string "v7.371.0"
+   (PL_MAJOR_VER=7, PL_API_VER=371). Dynamically linked (libplacebo.dylib
+   / DLL), preserving relinking rights; the AppImage's patched build
+   (app/deploy/linux/appimage/libplacebo-disable-internally-synchronized-queues.patch)
+   lives in this GPL tree and ships with corresponding source per
+   SOURCE-POINTER.txt.
+   Full text: see "GNU Lesser General Public License v2.1" below.
+
+7. OpenSSL 3.6.3 — libssl/libcrypto (from moonlight-qt-deps v12 for
+   Windows/macOS)
+   License: Apache License 2.0
+   Evidence: libs/mac/include/openssl/opensslv.h:
+   OPENSSL_VERSION_STR "3.6.3". OpenSSL adopted the Apache License 2.0 for
+   all 3.x releases (openssl/openssl LICENSE.txt, verified against the
+   upstream project); no OpenSSL 1.x/dual-license copy is present in this
+   archive.
+   Full text: see "Apache License 2.0" below.
+
+8. Material Symbols & Icons (Google) — every SVG under app/res/ embedded
+   via app/resources.qrc (ic_videogame_asset_white_48px.svg,
+   desktop_windows-48px.svg, ic_add_to_queue_white_48px.svg,
+   baseline-lock-24px.svg, play_arrow_FILL1_wght700_GRAD200_opsz48.svg,
+   baseline-warning-24px.svg, warning_FILL1_wght300_GRAD200_opsz24.svg,
+   stop_FILL1_wght700_GRAD200_opsz48.svg, settings.svg, arrow_left.svg,
+   question_mark.svg, update.svg, baseline-help_outline-24px.svg,
+   baseline-error_outline-24px.svg, baseline-check_circle_outline-24px.svg)
+   License: Apache License 2.0
+   Copyright Google Inc.
+   Evidence: google/material-design-icons LICENSE (Apache License 2.0);
+   the icon naming convention (ic_*_white_48px, baseline-*-24px,
+   *_FILL1_wght*_GRAD*_opsz*) matches Google's Material Icons / Material
+   Symbols export naming exactly. This notice, plus the copy embedded at
+   app/res/LICENSE-MaterialIcons.txt (also bundled into the binary via
+   resources.qrc), is the Apache-2.0 attribution these icons require.
+   Full text: see "Apache License 2.0" below.
+
+9. enet (bundled inside the moonlight-common-c submodule checkout,
+   compiled into the static moonlight-common-c library)
+   License: MIT
+   Copyright (c) 2002-2020 Lee Salzman
+   Evidence: moonlight-common-c/moonlight-common-c/enet/LICENSE
+
+   Permission is hereby granted, free of charge, to any person obtaining a
+   copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be included
+   in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+10. nanors (bundled inside the moonlight-common-c submodule checkout,
+    compiled into the static moonlight-common-c library)
+    License: MIT
+    Copyright (c) 2021 Joseph Calderon
+    Evidence: moonlight-common-c/moonlight-common-c/nanors/LICENSE
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+    BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+    ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+11. qmdnsengine (git submodule, statically linked)
+    License: MIT
+    Copyright (c) 2018 Nathan Osman
+    Evidence: qmdnsengine/qmdnsengine/LICENSE.txt
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+    BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+    ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+12. discord-rpc (from moonlight-qt-deps v12 for Windows/macOS; optional,
+    CONFIG+=discord-rpc, enabled by default on win32:!winrt and macx)
+    License: MIT
+    Copyright 2017 Discord, Inc.
+    Evidence: this archive does not carry discord-rpc's LICENSE file, so
+    this was externally verified against the upstream
+    discordapp/discord-rpc repository's LICENSE file on 2026-08-30
+    (outside this repo's normal in-tree evidence rule, matching the
+    methodology already used for U1/U4 in the dependency-license
+    inventory) — reproduced here exactly:
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+    BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+    ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+13. SDL2 / SDL3 / sdl2-compat
+    - SDL2 (from moonlight-qt-deps v12 for Windows/macOS; libSDL2.dylib on
+      macOS, exact upstream release not recorded in the shipped headers)
+    - SDL3 3.4.14 (from moonlight-qt-deps v12 for Windows/macOS, headers
+      report SDL_MAJOR/MINOR/MICRO_VERSION 3/4/14; also built from source
+      for the AppImage at libsdl-org/SDL ref release-3.4.14)
+    - sdl2-compat (AppImage only, built from source at libsdl-org/sdl2-compat
+      ref release-2.32.70; provides the SDL2 API on top of SDL3 for the
+      Linux build, reports SDL_REVISION "SDL-2.32.70-...")
+    License: zlib
+    Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
+    Evidence: libs/mac/include/SDL2/SDL_copying.h and
+    libs/mac/include/SDL3/SDL_copying.h (header comment carrying the full
+    zlib license text, reproduced below); AppImage build refs from
+    .github/workflows/build-appimage.yml.
+
+    This software is provided 'as-is', without any express or implied
+    warranty.  In no event will the authors be held liable for any damages
+    arising from the use of this software.
+
+    Permission is granted to anyone to use this software for any purpose,
+    including commercial applications, and to alter it and redistribute it
+    freely, subject to the following restrictions:
+
+    1. The origin of this software must not be misrepresented; you must
+       not claim that you wrote the original software. If you use this
+       software in a product, an acknowledgment in the product
+       documentation would be appreciated but is not required.
+    2. Altered source versions must be plainly marked as such, and must
+       not be misrepresented as being the original software.
+    3. This notice may not be removed or altered from any source
+       distribution.
+
+14. SDL2_ttf / SDL_ttf (from moonlight-qt-deps v12 for Windows/macOS,
+    headers report SDL_TTF_MAJOR/MINOR_VERSION 2/25; also built from
+    source for the AppImage at libsdl-org/SDL_ttf commit
+    a883e490e30fb44a5336ea3dcb990c6982c5216f)
+    License: zlib (SDL_ttf itself)
+    Copyright (C) 2001-2025 Sam Lantinga <slouken@libsdl.org>
+    Evidence: libs/mac/include/SDL2/SDL_ttf.h header comment (full zlib
+    text, same as entry 13 above).
+    The v12 prebuilt and AppImage pin the same SDL_ttf commit. Its recursive
+    submodules are FreeType commit 535d2993d2cab67cc8b270132b1b1bcb62f269aa
+    (FreeType License) and HarfBuzz commit
+    950d232cdcd29e2e83a2099307e5624a8f1aa937 (Old MIT). Complete texts are
+    bundled at `licenses/FreeType-FTL.txt` and
+    `licenses/HarfBuzz-Old-MIT.txt`.
+    Portions of this software are copyright © The FreeType Project
+    (www.freetype.org). All rights reserved.
+
+15. libopus (from moonlight-qt-deps v12 for Windows/macOS/Steam Link;
+    exact upstream release not recorded in the shipped headers/binary,
+    reports ABI SONAME 0 — libopus.0.dylib)
+    License: BSD-3-Clause (IETF non-endorsement variant)
+    Copyright 2001-2023 Xiph.Org, Skype Limited, Octasic, Jean-Marc Valin,
+    Timothy B. Terriberry, CSIRO, Gregory Maxwell, Mark Borgerding, Erik
+    de Castro Lopo, Mozilla, Amazon
+    Evidence: libs/mac/include/opus.h header block (partial, 2-clause) and
+    the upstream xiph/opus COPYING file (full 3-clause text, verified
+    2026-08-30, reproduced below).
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    - Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    - Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+    - Neither the name of Internet Society, IETF or IETF Trust, nor the
+      names of specific contributors, may be used to endorse or promote
+      products derived from this software without specific prior written
+      permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+    Opus is subject to royalty-free patent licenses from Xiph.Org
+    Foundation, Microsoft Corporation, and Broadcom Corporation; see
+    https://datatracker.ietf.org/ipr/1524/, .../1914/, and .../1526/.
+
+16. dav1d 1.5.4 (AppImage only: built from source at
+    code.videolan.org/videolan/dav1d.git tag 1.5.4 with
+    `-Ddefault_library=static`, statically linked into libavcodec — see
+    entry 5. The macOS/Windows moonlight-qt-deps v12 FFmpeg build also
+    enables --enable-libdav1d with no separate libdav1d.dylib shipped,
+    i.e. also statically embedded, exact dav1d version not separately
+    recorded for that prebuilt archive)
+    License: BSD-2-Clause
+    Copyright (c) 2018-2025, VideoLAN and dav1d authors
+    Evidence: videolan/dav1d COPYING (verified 2026-08-30), reproduced
+    below.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in
+       the documentation and/or other materials provided with the
+       distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+17. libva 2.24.1 (AppImage only: built from source at intel/libva tag
+    2.24.1)
+    License: MIT-style (SGI Free Software License B / Precision Insight
+    style permissive license)
+    Evidence: intel/libva COPYING (verified 2026-08-30), reproduced below.
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sub license, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice (including the
+    next paragraph) shall be included in all copies or substantial
+    portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NON-INFRINGEMENT. IN NO EVENT SHALL PRECISION INSIGHT AND/OR ITS
+    SUPPLIERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+
+18. SDL_GameControllerDB (git submodule; gamecontrollerdb.txt embedded via
+    app/resources.qrc's /data prefix and copied beside the exe on
+    Windows)
+    License: zlib
+    Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+    Evidence: app/SDL_GameControllerDB/LICENSE (full text, same license
+    family as entry 13's zlib text above).
+
+19. Fonts embedded via app/fonts.qrc
+    - Inter (Regular/Medium/SemiBold/Bold), Space Grotesk
+      (Regular/Medium/Bold), Noto Emoji: SIL Open Font License 1.1; full
+      texts already shipped and embedded at app/fonts/LICENSE-Inter.txt,
+      app/fonts/LICENSE-SpaceGrotesk.txt, app/fonts/LICENSE-NotoEmoji.txt
+      respectively (embedded into the compiled binary via fonts.qrc, so
+      this obligation travels with every artifact already).
+    - Kenney input-prompt icon fonts (kenney_input_xbox_series.ttf,
+      kenney_input_playstation_series.ttf,
+      kenney_input_nintendo_switch.ttf, kenney_input_steam_deck.ttf,
+      kenney_input_generic.ttf): CC0 1.0 Universal (public domain
+      dedication), no attribution required; full text already shipped and
+      embedded at app/fonts/LICENSE-Kenney.txt via fonts.qrc.
+
+20. Steam Link SDK statics (SLVideo and SLAudio) — Steam Link artifact
+    only, `CONFIG+=config_SL`
+    License: UNKNOWN. The Valve Steam Link SDK repository carries no
+    LICENSE/COPYING file. This is why the Steam Link build is gated; see
+    scripts/build-steamlink-app.sh, .github/workflows/build-steamlink.yml,
+    and §5/U1 of docs/research/dependency-license-inventory.md.
+
+21. Steam-Link-optimized codec libraries from moonlight-qt-deps v12
+    `steamlink.zip`
+    - libopus.a and libarmasm.a are Opus 1.5.2 code. The archive embeds
+      the source path `opus-1.5.2/celt/arm/celt_pitch_xcorr_arm-gnu.S`;
+      both use the Opus BSD-3-Clause text reproduced in entry 15.
+    - libNE10.a is Project Ne10, BSD-3-Clause.
+      Copyright 2012-16 ARM Limited and Contributors.
+
+      Redistribution and use in source and binary forms, with or without
+      modification, are permitted provided that the following conditions
+      are met:
+      * Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+      * Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+      * Neither the name of ARM Limited nor the names of its contributors
+        may be used to endorse or promote products derived from this software
+        without specific prior written permission.
+
+      THIS SOFTWARE IS PROVIDED BY ARM LIMITED AND CONTRIBUTORS "AS IS" AND
+      ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+      IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+      PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL ARM LIMITED OR CONTRIBUTORS
+      BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+      CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+      SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+      BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+      WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+      OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+      IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Shared license texts
+---------------------
+
+### GNU Lesser General Public License v2.1
+
+Applies to: h264bitstream, FFmpeg (libavcodec/libavutil/libswscale),
+libplacebo.
+
+The complete LGPL-2.1 text is bundled beside this notice at
+`licenses/LGPL-2.1.txt`. Every component listed above is licensed
+"or later", so LGPL-2.1 or any later LGPL version may be used at the
+recipient's option.
+
+### GNU Lesser General Public License v3.0
+
+Applies to: Qt 6.11.1.
+
+LGPL-3.0 incorporates GNU GPL-3.0 by reference. The complete LGPL-3.0
+text is bundled beside this notice at `licenses/LGPL-3.0.txt`; the
+incorporated GPL-3.0 text is bundled as this application's `LICENSE.txt`.
+
+### Apache License 2.0
+
+Applies to: OpenSSL 3.6.3, Material Symbols & Icons.
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS

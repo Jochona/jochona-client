@@ -71,6 +71,15 @@ macdeployqt $BUILD_FOLDER/app/Jochona.app $EXTRA_ARGS -qmldir=$SOURCE_ROOT/app/g
 echo Removing dSYM files from app bundle
 find $BUILD_FOLDER/app/Jochona.app/ -name '*.dSYM' | xargs rm -rf
 
+echo Adding license and third-party notices to app bundle
+RESOURCES_DIR=$BUILD_FOLDER/app/Jochona.app/Contents/Resources
+mkdir -p $RESOURCES_DIR
+cp $SOURCE_ROOT/LICENSE $RESOURCES_DIR/LICENSE.txt || fail "LICENSE copy failed!"
+cp $SOURCE_ROOT/app/deploy/notices/THIRD-PARTY-NOTICES.txt $RESOURCES_DIR/ || fail "Notices copy failed!"
+cp $SOURCE_ROOT/app/deploy/notices/SOURCE-POINTER.txt $RESOURCES_DIR/ || fail "Source pointer copy failed!"
+cp -R $SOURCE_ROOT/app/deploy/notices/licenses $RESOURCES_DIR/ || fail "License texts copy failed!"
+echo $VERSION > $RESOURCES_DIR/VERSION.txt
+
 if [ "$SIGNING_IDENTITY" != "" ]; then
   echo Signing app bundle
   codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" $BUILD_FOLDER/app/Jochona.app || fail "Signing failed!"

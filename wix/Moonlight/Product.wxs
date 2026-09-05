@@ -86,11 +86,16 @@
     </Component>
 
     <DirectoryRef Id="INSTALLFOLDER">
+      <!-- Jochona: Source now points at the renamed Jochona.exe build output.
+           The Component's auto-generated GUID will legitimately change as a
+           result (the keypath file identity changed) — that's correct WiX/MSI
+           behavior for a renamed keypath file, not a GUID we're preserving.
+           ProductCode/UpgradeCode above are untouched. -->
       <Component Id="Moonlight">
         <File Id="MoonlightExe"
               KeyPath="yes"
               Checksum="yes"
-              Source="$(var.BuildDir)\app\$(var.Configuration)\Moonlight.exe">
+              Source="$(var.BuildDir)\app\$(var.Configuration)\Jochona.exe">
           <fire:FirewallException Id="MoonlightFirewallException"
                                   Scope="any"
                                   IgnoreFailure="yes"

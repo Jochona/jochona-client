@@ -3,6 +3,7 @@
 
 #include "tst_credentialstore.h"
 #include "tst_controllermapstore.h"
+#include "tst_effectivesettingsresolver.h"
 #include "tst_settingsdatabase.h"
 #include "tst_hostcapabilities.h"
 #include "tst_beaconspake2.h"
@@ -26,6 +27,9 @@ int main(int argc, char* argv[])
 
     TestBeaconSpake2 beaconSpake2Test;
     status |= QTest::qExec(&beaconSpake2Test, argc, argv);
+
+    TestEffectiveSettingsResolver effectiveSettingsTest;
+    status |= QTest::qExec(&effectiveSettingsTest, argc, argv);
 
 
     TestControllerMapStore controllerMapTest;

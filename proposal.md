@@ -417,7 +417,7 @@ The first release will preserve dependable manual controls and add a guided conn
 - Render lateness.
 - Network-interface transitions.
 
-Vibepollo hosts expose a runtime bitrate endpoint (`GET /bitrate?kbps=`) and a capability advertisement (`/api/abr/capabilities`) intended exactly for client-driven adaptation; the client-side ABR controller belongs to Jochona, and host support varies by adapter.
+Vibepollo hosts expose a runtime bitrate endpoint (`GET /bitrate?bitrate=<kbps>`) and a capability advertisement (`/api/abr/capabilities`) intended exactly for client-driven adaptation; the client-side ABR controller belongs to Jochona, and host support varies by adapter.
 
 Recommended degradation order:
 
@@ -486,7 +486,14 @@ Updates:
 
 Localization readiness:
 
-- v1 ships English only. Every UI string must pass through the Qt Linguist extraction pipeline from Milestone 1, enforced by CI; community translations are a post-1.0 concern.
+- Jochona inherits upstream Moonlight's community translations
+  (`languages/*.ts`/`.qm`, `app/resources.qrc`) and continues to ship them —
+  they are not removed. Every new Jochona-authored string (Night Route
+  shell, Library, Controller Maps, Support Bundle, and everything added
+  since the fork) passes through the Qt Linguist extraction pipeline from
+  Milestone 1, enforced by CI, and falls back to English until a community
+  or official translation exists; there is no requirement to translate new
+  strings before shipping them.
 
 Configuration migration:
 

@@ -2,6 +2,7 @@
 
 #include "backend/controllerprofilestore.h"
 
+#include <Limelight.h>
 #include <QMap>
 #include <QSignalSpy>
 #include <QTest>
@@ -113,4 +114,119 @@ void TestControllerMapStore::saveAndResetUseExplicitScopes()
                           QStringLiteral("host_application:host|9"))
                 .isEmpty());
     QCOMPARE(changed.count(), 2);
+}
+
+void TestControllerMapStore::roundTripsControllerTransmissionMode()
+{
+    ControllerMap map;
+    map.controllerPath = QStringLiteral("pad");
+    map.rawPassthrough = true;
+    map.transmissionMode = ControllerTransmissionMode::Compatible;
+
+    const QVariantMap serialized = map.toVariantMap();
+    QCOMPARE(serialized.value(QStringLiteral("rawPassthrough")).toBool(), true);
+    QCOMPARE(serialized.value(QStringLiteral("transmissionMode")).toString(),
+             QStringLiteral("compatible"));
+
+    const ControllerMap roundTripped = ControllerMap::fromVariantMap(
+        QStringLiteral("pad"), QString(), serialized);
+    QCOMPARE(roundTripped.rawPassthrough, true);
+    QVERIFY(roundTripped.transmissionMode
+            == ControllerTransmissionMode::Compatible);
+
+    // A map saved before this feature existed has neither field; it must
+    // decode to the prior, always-on behavior (Native, no passthrough).
+    const ControllerMap legacyDefaults =
+        ControllerMap::fromVariantMap(QStringLiteral("pad"), QString(), {});
+    QCOMPARE(legacyDefaults.rawPassthrough, false);
+    QVERIFY(legacyDefaults.transmissionMode
+            == ControllerTransmissionMode::Native);
+}
+
+void TestControllerMapStore::preservesRawPassthroughAndTransmissionModeAcrossLayers()
+{
+    auto* backend = new MemoryControllerMapBackend();
+    backend->save(QStringLiteral("pad"), QString(), {
+        {QStringLiteral("rawPassthrough"), false},
+        {QStringLiteral("transmissionMode"), QStringLiteral("native")},
+    });
+
+    ControllerMapStore store(backend);
+
+    const QVariantMap controllerWide = store.mapFor(QStringLiteral("pad"));
+    QCOMPARE(controllerWide.value(QStringLiteral("rawPassthrough")).toBool(),
+             false);
+    QCOMPARE(controllerWide.value(QStringLiteral("transmissionMode")).toString(),
+             QStringLiteral("native"));
+
+    // A per-game (Library Entry) override switches only that game to Raw
+    // Passthrough + Compatible transmission -- the controller-wide map
+    // (used by every other game) is untouched.
+    store.saveMap(QStringLiteral("pad"), QStringLiteral("library_entry"),
+                  QStringLiteral("entry"), {
+        {QStringLiteral("calibration"), QVariantMap()},
+        {QStringLiteral("buttonRemap"), QVariantMap()},
+        {QStringLiteral("rawPassthrough"), true},
+        {QStringLiteral("transmissionMode"), QStringLiteral("compatible")},
+    });
+
+    const QVariantMap gameEffective =
+        store.mapFor(QStringLiteral("pad"), QStringLiteral("entry"));
+    QCOMPARE(gameEffective.value(QStringLiteral("rawPassthrough")).toBool(),
+             true);
+    QCOMPARE(gameEffective.value(QStringLiteral("transmissionMode")).toString(),
+             QStringLiteral("compatible"));
+
+    const QVariantMap stillControllerWide = store.mapFor(QStringLiteral("pad"));
+    QCOMPARE(stillControllerWide.value(
+                 QStringLiteral("rawPassthrough")).toBool(), false);
+    QCOMPARE(stillControllerWide.value(
+                 QStringLiteral("transmissionMode")).toString(),
+             QStringLiteral("native"));
+}
+
+void TestControllerMapStore::compatibleTransmissionMasksToGenericPad()
+{
+    uint8_t type = LI_CTYPE_PS;
+    uint32_t capabilities = LI_CCAP_ANALOG_TRIGGERS | LI_CCAP_RUMBLE
+        | LI_CCAP_TOUCHPAD | LI_CCAP_ACCEL | LI_CCAP_GYRO | LI_CCAP_RGB_LED;
+    uint32_t buttonFlags =
+        A_FLAG | B_FLAG | PADDLE1_FLAG | TOUCHPAD_FLAG | MISC_FLAG;
+
+    ControllerMap::applyCompatibleTransmission(
+        ControllerTransmissionMode::Compatible, type, capabilities,
+        buttonFlags);
+
+    QCOMPARE(type, static_cast<uint8_t>(LI_CTYPE_XBOX));
+    // Widely-supported capabilities survive Compatible masking...
+    QVERIFY((capabilities & LI_CCAP_ANALOG_TRIGGERS) != 0);
+    QVERIFY((capabilities & LI_CCAP_RUMBLE) != 0);
+    // ...exotic/device-specific ones do not.
+    QVERIFY((capabilities & LI_CCAP_TOUCHPAD) == 0);
+    QVERIFY((capabilities & LI_CCAP_ACCEL) == 0);
+    QVERIFY((capabilities & LI_CCAP_GYRO) == 0);
+    QVERIFY((capabilities & LI_CCAP_RGB_LED) == 0);
+    // Standard face buttons survive; paddles/touchpad/share do not.
+    QVERIFY((buttonFlags & A_FLAG) != 0);
+    QVERIFY((buttonFlags & B_FLAG) != 0);
+    QVERIFY((buttonFlags & PADDLE1_FLAG) == 0);
+    QVERIFY((buttonFlags & TOUCHPAD_FLAG) == 0);
+    QVERIFY((buttonFlags & MISC_FLAG) == 0);
+}
+
+void TestControllerMapStore::nativeTransmissionLeavesReportedProfileUnchanged()
+{
+    uint8_t type = LI_CTYPE_PS;
+    uint32_t capabilities = LI_CCAP_TOUCHPAD | LI_CCAP_GYRO;
+    uint32_t buttonFlags = PADDLE1_FLAG | TOUCHPAD_FLAG;
+
+    ControllerMap::applyCompatibleTransmission(
+        ControllerTransmissionMode::Native, type, capabilities,
+        buttonFlags);
+
+    QCOMPARE(type, static_cast<uint8_t>(LI_CTYPE_PS));
+    QCOMPARE(capabilities,
+             static_cast<uint32_t>(LI_CCAP_TOUCHPAD | LI_CCAP_GYRO));
+    QCOMPARE(buttonFlags,
+             static_cast<uint32_t>(PADDLE1_FLAG | TOUCHPAD_FLAG));
 }

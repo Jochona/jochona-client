@@ -264,6 +264,11 @@ QVariantMap ComputerModel::hostInfoForIndex(int computerIndex) const
                 WakeProviderManager::providerName(computer->uuid));
     info.insert("wakeState", wake.state);
     info.insert("wakeError", wake.error);
+    info.insert("manualMac",
+                computer->manualMacAddress.isEmpty()
+                    ? QString() : QString(computer->manualMacAddress.toHex(':')));
+    info.insert("wakePort", computer->wakePort);
+    info.insert("wakeBroadcast", computer->wakeBroadcastAddress);
 
     QStringList summaryParts;
     if (computer->state == NvComputer::CS_ONLINE) {

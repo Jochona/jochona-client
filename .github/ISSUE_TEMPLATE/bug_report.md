@@ -40,5 +40,7 @@ List games that exhibit the issue. To check for game-specific behavior, stream t
 - Host software and version: [e.g. Vibepollo x.y.z / Apollo x.y.z / Sunshine v2025.x / GeForce Experience]
 - GPU and driver: [e.g. RX 7900 XT / driver 25.x]
 
-**Logs (please attach)**
-Log files named `Moonlight-###.log` live in `%TEMP%` on Windows and `/tmp` on macOS/Linux (the filename prefix is inherited from upstream and will change with a later code pass). Attach the file covering the failing session; Jochona's future in-app diagnostic export will replace this step.
+**Diagnostics (please attach)**
+Go to Settings > Diagnostics & privacy, click "Refresh preview" to see what will be exported, then "Export Support Bundle" to save it (defaults to your Documents folder). The bundle is redacted before export; check "Include Host addresses in this export" first if you want host IP/hostname values kept in for troubleshooting — leave it unchecked otherwise. Attach the exported bundle to this report.
+
+If the Support Bundle doesn't capture what you need, attach the raw log file instead. Logs are named `Moonlight-<unix-timestamp>.log` and are written to `%TEMP%` on Windows and `/tmp` on macOS/Linux; attach the file covering the failing session.

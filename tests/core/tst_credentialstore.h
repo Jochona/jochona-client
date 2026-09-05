@@ -15,6 +15,7 @@ private slots:
     void missingSecretReturnsEmpty();
     void removedSecretIsGone();
     void listAccountsReflectsStoredSecrets();
+    void identityCredentialImportIsIdempotentAndScoped();
 
 private:
     QString m_Service;

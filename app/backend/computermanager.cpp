@@ -1,5 +1,6 @@
 #include "computermanager.h"
 #include "boxartmanager.h"
+#include "core/settingsdatabase.h"
 #include "nvhttp.h"
 #include "nvpairingmanager.h"
 
@@ -12,8 +13,103 @@
 #include <QRandomGenerator>
 #include <atomic>
 
+// Read only during the one-time legacy import below; paired Hosts are never
+// written here again once SQLite (host_records) durably holds them.
 #define SER_HOSTS "hosts"
 #define SER_HOSTS_BACKUP "hostsbackup"
+
+namespace {
+    // The exact, lossless serialization of a Host's persisted fields,
+    // stored as host_records.record_json (SettingsDatabase) rather than
+    // QSettings. Field names mirror NvComputer::serialize()'s long-standing
+    // QSettings keys for continuity; only "Persisted traits" are included,
+    // matching that method -- ephemeral/live-probe state (online status,
+    // GFE version, display modes, ...) is never persisted here either.
+    QVariantMap hostRecordFromComputer(const NvComputer* computer)
+    {
+        QReadLocker lock(&computer->lock);
+
+        QVariantMap record;
+        record.insert(QStringLiteral("name"), computer->name);
+        record.insert(QStringLiteral("hasCustomName"), computer->hasCustomName);
+        record.insert(QStringLiteral("uuid"), computer->uuid);
+        record.insert(QStringLiteral("mac"), QString::fromLatin1(computer->macAddress.toBase64()));
+        record.insert(QStringLiteral("manualMac"), QString::fromLatin1(computer->manualMacAddress.toBase64()));
+        record.insert(QStringLiteral("localAddress"), computer->localAddress.address());
+        record.insert(QStringLiteral("localPort"), computer->localAddress.port());
+        record.insert(QStringLiteral("remoteAddress"), computer->remoteAddress.address());
+        record.insert(QStringLiteral("remotePort"), computer->remoteAddress.port());
+        record.insert(QStringLiteral("ipv6Address"), computer->ipv6Address.address());
+        record.insert(QStringLiteral("ipv6Port"), computer->ipv6Address.port());
+        record.insert(QStringLiteral("manualAddress"), computer->manualAddress.address());
+        record.insert(QStringLiteral("manualPort"), computer->manualAddress.port());
+        record.insert(QStringLiteral("serverCert"), QString::fromLatin1(computer->serverCert.toPem()));
+        // ADR-0007: Identity Changed must round-trip exactly -- silently
+        // dropping or adopting pendingServerCert here would either forget
+        // an unresolved identity change across a restart or (worse) make
+        // an unverified certificate look trusted again.
+        record.insert(QStringLiteral("identityChanged"), computer->identityChanged);
+        record.insert(QStringLiteral("pendingServerCert"), QString::fromLatin1(computer->pendingServerCert.toPem()));
+        record.insert(QStringLiteral("isNvidiaServerSoftware"), computer->isNvidiaServerSoftware);
+        record.insert(QStringLiteral("wakePort"), computer->wakePort);
+        record.insert(QStringLiteral("wakeBroadcastAddress"), computer->wakeBroadcastAddress);
+
+        QVariantList apps;
+        for (const NvApp& app : computer->appList) {
+            QVariantMap appRecord;
+            appRecord.insert(QStringLiteral("id"), app.id);
+            appRecord.insert(QStringLiteral("name"), app.name);
+            appRecord.insert(QStringLiteral("hdrSupported"), app.hdrSupported);
+            appRecord.insert(QStringLiteral("isAppCollectorGame"), app.isAppCollectorGame);
+            appRecord.insert(QStringLiteral("hidden"), app.hidden);
+            appRecord.insert(QStringLiteral("directLaunch"), app.directLaunch);
+            apps.append(appRecord);
+        }
+        record.insert(QStringLiteral("apps"), apps);
+
+        return record;
+    }
+
+    NvComputer* computerFromHostRecord(const QVariantMap& record)
+    {
+        NvComputer* computer = new NvComputer();
+        computer->name = record.value(QStringLiteral("name")).toString();
+        computer->hasCustomName = record.value(QStringLiteral("hasCustomName")).toBool();
+        computer->uuid = record.value(QStringLiteral("uuid")).toString();
+        computer->macAddress = QByteArray::fromBase64(record.value(QStringLiteral("mac")).toString().toLatin1());
+        computer->manualMacAddress = QByteArray::fromBase64(record.value(QStringLiteral("manualMac")).toString().toLatin1());
+        computer->localAddress = NvAddress(record.value(QStringLiteral("localAddress")).toString(),
+                                           static_cast<uint16_t>(record.value(QStringLiteral("localPort"), DEFAULT_HTTP_PORT).toUInt()));
+        computer->remoteAddress = NvAddress(record.value(QStringLiteral("remoteAddress")).toString(),
+                                            static_cast<uint16_t>(record.value(QStringLiteral("remotePort"), DEFAULT_HTTP_PORT).toUInt()));
+        computer->ipv6Address = NvAddress(record.value(QStringLiteral("ipv6Address")).toString(),
+                                          static_cast<uint16_t>(record.value(QStringLiteral("ipv6Port"), DEFAULT_HTTP_PORT).toUInt()));
+        computer->manualAddress = NvAddress(record.value(QStringLiteral("manualAddress")).toString(),
+                                            static_cast<uint16_t>(record.value(QStringLiteral("manualPort"), DEFAULT_HTTP_PORT).toUInt()));
+        computer->serverCert = QSslCertificate(record.value(QStringLiteral("serverCert")).toString().toLatin1());
+        computer->identityChanged = record.value(QStringLiteral("identityChanged")).toBool();
+        computer->pendingServerCert = QSslCertificate(record.value(QStringLiteral("pendingServerCert")).toString().toLatin1());
+        computer->isNvidiaServerSoftware = record.value(QStringLiteral("isNvidiaServerSoftware")).toBool();
+        computer->wakePort = static_cast<quint16>(record.value(QStringLiteral("wakePort"), 0).toUInt());
+        computer->wakeBroadcastAddress = record.value(QStringLiteral("wakeBroadcastAddress")).toString();
+
+        const QVariantList apps = record.value(QStringLiteral("apps")).toList();
+        computer->appList.reserve(apps.size());
+        for (const QVariant& appVariant : apps) {
+            const QVariantMap appRecord = appVariant.toMap();
+            NvApp app;
+            app.id = appRecord.value(QStringLiteral("id")).toInt();
+            app.name = appRecord.value(QStringLiteral("name")).toString();
+            app.hdrSupported = appRecord.value(QStringLiteral("hdrSupported")).toBool();
+            app.isAppCollectorGame = appRecord.value(QStringLiteral("isAppCollectorGame")).toBool();
+            app.hidden = appRecord.value(QStringLiteral("hidden")).toBool();
+            app.directLaunch = appRecord.value(QStringLiteral("directLaunch")).toBool();
+            computer->appList.append(app);
+        }
+
+        return computer;
+    }
+}
 
 class PcMonitorThread : public QThread, public IImmediateProber
 {
@@ -183,34 +279,67 @@ ComputerManager::ComputerManager(StreamingPreferences* prefs)
       m_PollingRef(0),
       m_MdnsBrowser(nullptr),
       m_CompatFetcher(nullptr),
+      m_DelayedFlushTimer(new QTimer(this)),
       m_NeedsDelayedFlush(false)
 {
-    QSettings settings;
+    SettingsDatabase* database = SettingsDatabase::get();
+    const QString migrationMarker = QStringLiteral("migration.qsettings_hosts_imported_v1");
+    const bool alreadyImported = database && database->isOpen()
+            && database->setting(migrationMarker, false).toBool();
 
-    // If there's a hosts backup copy, we must have failed to commit
-    // a previous update before exiting. Restore the backup now.
-    int hosts = settings.beginReadArray(SER_HOSTS_BACKUP);
-    if (hosts == 0) {
-        // If there's no host backup, read from the primary location.
+    if (!alreadyImported && database && database->isOpen()) {
+        QSettings settings;
+
+        // If there's a hosts backup copy, we must have failed to commit
+        // a previous QSettings-era update before exiting. Prefer the
+        // backup, matching the old flush thread's own recovery order.
+        int hostCount = settings.beginReadArray(SER_HOSTS_BACKUP);
+        if (hostCount == 0) {
+            settings.endArray();
+            hostCount = settings.beginReadArray(SER_HOSTS);
+        }
+
+        QVariantList legacyRecords;
+        legacyRecords.reserve(hostCount);
+        for (int i = 0; i < hostCount; i++) {
+            settings.setArrayIndex(i);
+            NvComputer legacyComputer(settings);
+            legacyRecords.append(hostRecordFromComputer(&legacyComputer));
+        }
         settings.endArray();
-        hosts = settings.beginReadArray(SER_HOSTS);
+
+        if (!database->importLegacyHostRecords(legacyRecords, migrationMarker)) {
+            qWarning() << "Failed to import legacy paired Hosts into the settings database:"
+                       << database->lastError();
+        }
+        // The legacy QSettings hosts/hostsbackup arrays are left untouched
+        // as rollback evidence -- the same policy every other QSettings ->
+        // SQLite import in this codebase follows (StreamingPreferences,
+        // ThemeManager, HostAdapterManager, ControllerProfileStore).
     }
 
-    // Inflate our hosts from QSettings
-    for (int i = 0; i < hosts; i++) {
-        settings.setArrayIndex(i);
-        NvComputer* computer = new NvComputer(settings);
-        m_KnownHosts[computer->uuid] = computer;
-        m_LastSerializedHosts[computer->uuid] = *computer;
+    if (database && database->isOpen()) {
+        const QVariantList records = database->hostRecords();
+        for (const QVariant& recordVariant : records) {
+            NvComputer* computer = computerFromHostRecord(recordVariant.toMap());
+            m_KnownHosts[computer->uuid] = computer;
+            m_LastSerializedHosts[computer->uuid] = *computer;
+        }
     }
-    settings.endArray();
+    else {
+        qWarning() << "Settings database is unavailable; paired Hosts cannot be loaded or persisted this session";
+    }
 
     // Fetch latest compatibility data asynchronously
     m_CompatFetcher.start();
 
-    // Start the delayed flush thread to handle saveHosts() calls
-    m_DelayedFlushThread = new DelayedFlushThread(this);
-    m_DelayedFlushThread->start();
+    // SQLite writes must run on the thread that opened the Qt SQL
+    // connection. Debounce Host snapshots on this manager's thread rather
+    // than writing through the old QSettings worker thread.
+    m_DelayedFlushTimer->setSingleShot(true);
+    m_DelayedFlushTimer->setInterval(50);
+    connect(m_DelayedFlushTimer, &QTimer::timeout,
+            this, &ComputerManager::flushHosts);
 
     // To quit in a timely manner, we must block additional requests
     // after we receive the aboutToQuit() signal. This is necessary
@@ -222,19 +351,9 @@ ComputerManager::ComputerManager(StreamingPreferences* prefs)
 
 ComputerManager::~ComputerManager()
 {
-    // Stop the delayed flush thread before acquiring the lock in write mode
-    // to avoid deadlocking with a flush that needs the lock in read mode.
-    {
-        // Wake the delayed flush thread
-        m_DelayedFlushThread->requestInterruption();
-        m_DelayedFlushCondition.wakeOne();
-
-        // Wait for it to terminate (and finish any pending flush)
-        m_DelayedFlushThread->wait();
-        delete m_DelayedFlushThread;
-
-        // Delayed flushes should have completed by now
-        Q_ASSERT(!m_NeedsDelayedFlush);
+    if (m_DelayedFlushTimer->isActive() || m_NeedsDelayedFlush) {
+        m_DelayedFlushTimer->stop();
+        flushHosts();
     }
 
     QWriteLocker lock(&m_Lock);
@@ -266,80 +385,51 @@ ComputerManager::~ComputerManager()
     }
 }
 
-void DelayedFlushThread::run() {
-    for (;;) {
-        // Wait for a delayed flush request or an interruption
-        {
-            QMutexLocker locker(&m_ComputerManager->m_DelayedFlushMutex);
-
-            while (!QThread::currentThread()->isInterruptionRequested() && !m_ComputerManager->m_NeedsDelayedFlush) {
-                m_ComputerManager->m_DelayedFlushCondition.wait(&m_ComputerManager->m_DelayedFlushMutex);
-            }
-
-            // Bail without flushing if we woke up for an interruption alone.
-            // If we have both an interruption and a flush request, do the flush.
-            if (!m_ComputerManager->m_NeedsDelayedFlush) {
-                Q_ASSERT(QThread::currentThread()->isInterruptionRequested());
-                break;
-            }
-
-            // Reset the delayed flush flag to ensure any racing saveHosts() call will set it again
-            m_ComputerManager->m_NeedsDelayedFlush = false;
-
-            // Update the last serialized hosts map under the delayed flush mutex
-            m_ComputerManager->m_LastSerializedHosts.clear();
-            for (const NvComputer* computer : std::as_const(m_ComputerManager->m_KnownHosts)) {
-                // Copy the current state of the NvComputer to allow us to check later if we need
-                // to serialize it again when attribute updates occur.
-                QReadLocker computerLock(&computer->lock);
-                m_ComputerManager->m_LastSerializedHosts[computer->uuid] = *computer;
-            }
-        }
-
-        // Perform the flush
-        {
-            QSettings settings;
-
-            // First, write to the backup location
-            settings.beginWriteArray(SER_HOSTS_BACKUP);
-            {
-                QReadLocker lock(&m_ComputerManager->m_Lock);
-                int i = 0;
-                for (const NvComputer* computer : std::as_const(m_ComputerManager->m_KnownHosts)) {
-                    settings.setArrayIndex(i++);
-                    computer->serialize(settings, false);
-                }
-            }
-            settings.endArray();
-
-            // Next, write to the primary location
-            settings.remove(SER_HOSTS);
-            settings.beginWriteArray(SER_HOSTS);
-            {
-                QReadLocker lock(&m_ComputerManager->m_Lock);
-                int i = 0;
-                for (const NvComputer* computer : std::as_const(m_ComputerManager->m_KnownHosts)) {
-                    settings.setArrayIndex(i++);
-                    computer->serialize(settings, true);
-                }
-            }
-            settings.endArray();
-
-            // Finally, delete the backup copy
-            settings.remove(SER_HOSTS_BACKUP);
-        }
-    }
-}
 
 void ComputerManager::saveHosts()
 {
-    Q_ASSERT(m_DelayedFlushThread != nullptr && m_DelayedFlushThread->isRunning());
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, [this]() {
+            saveHosts();
+        }, Qt::QueuedConnection);
+        return;
+    }
 
-    // Punt to a worker thread because QSettings on macOS can take ages (> 500 ms)
-    // to persist our host list to disk (especially when a host has a bunch of apps).
     QMutexLocker locker(&m_DelayedFlushMutex);
     m_NeedsDelayedFlush = true;
-    m_DelayedFlushCondition.wakeOne();
+    m_DelayedFlushTimer->start();
+}
+
+void ComputerManager::flushHosts()
+{
+    Q_ASSERT(QThread::currentThread() == thread());
+
+    QVariantList records;
+    QHash<QString, NvComputer> serialized;
+    {
+        QReadLocker lock(&m_Lock);
+        records.reserve(m_KnownHosts.size());
+        for (const NvComputer* computer : std::as_const(m_KnownHosts)) {
+            QReadLocker computerLock(&computer->lock);
+            records.append(hostRecordFromComputer(computer));
+            serialized.insert(computer->uuid, *computer);
+        }
+    }
+
+    SettingsDatabase* database = SettingsDatabase::get();
+    if (database == nullptr || !database->isOpen()
+            || !database->replaceHostRecords(records)) {
+        qWarning() << "Failed to persist paired Hosts to the settings database:"
+                   << (database ? database->lastError()
+                                : QStringLiteral("database unavailable"));
+        QMutexLocker locker(&m_DelayedFlushMutex);
+        m_NeedsDelayedFlush = true;
+        return;
+    }
+
+    QMutexLocker locker(&m_DelayedFlushMutex);
+    m_LastSerializedHosts = std::move(serialized);
+    m_NeedsDelayedFlush = false;
 }
 
 QHostAddress ComputerManager::getBestGlobalAddressV6(QVector<QHostAddress> &addresses)
@@ -481,11 +571,15 @@ void ComputerManager::handleMdnsServiceResolved(MdnsPendingComputer* computer,
 
 void ComputerManager::saveHost(NvComputer *computer)
 {
+    if (QThread::currentThread() != thread()) {
+        saveHosts();
+        return;
+    }
     // If no serializable properties changed, don't bother saving hosts
     QMutexLocker lock(&m_DelayedFlushMutex);
     QReadLocker computerLock(&computer->lock);
     if (!m_LastSerializedHosts.value(computer->uuid).isEqualSerialized(*computer)) {
-        // Queue a request for a delayed flush to QSettings outside of the lock
+        // Queue a debounced SQLite transaction outside of the lock.
         computerLock.unlock();
         lock.unlock();
         saveHosts();
@@ -676,6 +770,13 @@ private:
                emit pairingCompleted(m_Computer, tr("Another pairing attempt is already in progress."));
                break;
            case NvPairingManager::PairState::PAIRED:
+               // Deliberate, user-initiated re-pair is the only path that
+               // may clear Identity Changed (ADR-0007) -- pair() already
+               // wrote the newly pinned certificate into m_Computer->serverCert
+               // above; adopt it as trusted and drop the stale pending one.
+               m_Computer->identityChanged = false;
+               m_Computer->pendingServerCert = QSslCertificate();
+
                // Persist the newly pinned server certificate for this host
                m_ComputerManager->saveHost(m_Computer);
 

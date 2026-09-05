@@ -17,7 +17,9 @@
 #include <QQuickWindow>
 #include <QQuickItem>
 #include <QProcess>
+#ifdef Q_OS_MACOS
 #include <dlfcn.h>
+#endif
 #include <QTimer>
 
 #ifdef Q_OS_UNIX
@@ -302,7 +304,7 @@ LONG WINAPI UnhandledExceptionHandler(struct _EXCEPTION_POINTERS *ExceptionInfo)
     }
 
     WCHAR dmpFileName[MAX_PATH];
-    swprintf_s(dmpFileName, L"%ls\\Moonlight-%I64u.dmp",
+    swprintf_s(dmpFileName, L"%ls\\Jochona-%I64u.dmp",
                (PWCHAR)QDir::toNativeSeparators(Path::getLogDir()).utf16(), QDateTime::currentSecsSinceEpoch());
     QString qDmpFileName = QString::fromUtf16((const char16_t*)dmpFileName);
     HANDLE dumpHandle = CreateFileW(dmpFileName, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -510,7 +512,7 @@ int main(int argc, char *argv[])
     if (IS_UNSPECIFIED_HANDLE(oldConErr))
 #endif
     {
-        s_LoggerFile = new QFile(tempDir.filePath(QString("Moonlight-%1.log").arg(QDateTime::currentSecsSinceEpoch())));
+        s_LoggerFile = new QFile(tempDir.filePath(QString("Jochona-%1.log").arg(QDateTime::currentSecsSinceEpoch())));
         if (s_LoggerFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
             QTextStream(stderr) << "Redirecting log output to " << s_LoggerFile->fileName() << Qt::endl;
             s_LoggerStream.setDevice(s_LoggerFile);
@@ -543,7 +545,9 @@ int main(int argc, char *argv[])
 
 #ifdef LOG_TO_FILE
     // Prune the oldest existing logs if there are more than 10
-    QStringList existingLogNames = tempDir.entryList(QStringList("Moonlight-*.log"), QDir::NoFilter, QDir::SortFlag::Time);
+    QStringList existingLogNames = tempDir.entryList(
+        {QStringLiteral("Jochona-*.log"), QStringLiteral("Moonlight-*.log")},
+        QDir::NoFilter, QDir::SortFlag::Time);
     for (int i = 10; i < existingLogNames.size(); i++) {
         qInfo() << "Removing old log file:" << existingLogNames.at(i);
         QFile(tempDir.filePath(existingLogNames.at(i))).remove();
@@ -980,9 +984,17 @@ int main(int argc, char *argv[])
 #endif
 
     // This is necessary to show our icon correctly on Wayland
-    app.setDesktopFileName("com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_X11_WMCLASS", "com.moonlight_stream.Moonlight");
+    app.setDesktopFileName("com.jochona.client");
+    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "com.jochona.client");
+    qputenv("SDL_VIDEO_X11_WMCLASS", "com.jochona.client");
+
+    EffectiveSettingsResolver::setBaselineProvider([]() {
+        return StreamingPreferences::get()->toVariantMap();
+    });
+    EffectiveSettingsResolver::setCapabilitySafetyProvider(
+        [](const QString& hostUuid, const QVariantMap& candidate) {
+            return Negotiator::get()->clampQualityFor(hostUuid, candidate);
+        });
 
     // Register our C++ types for QML
     qmlRegisterType<ComputerModel>("ComputerModel", 1, 0, "ComputerModel");

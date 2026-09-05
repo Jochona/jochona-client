@@ -1,10 +1,11 @@
 //
-// SPDX-FileCopyrightText: Lunaframe Client Contributors
+// SPDX-FileCopyrightText: Jochona Client Contributors
 //
 // SPDX-License-Identifier: GPL-3.0-only
 //
 #include "hostprober.h"
 
+#include "backend/certificatepinning.h"
 #include "backend/identitymanager.h"
 #include "backend/nvhttp.h"
 
@@ -230,44 +231,31 @@ HostProber::parseServerInfo(const QByteArray& body, HostCapabilities& capabiliti
     }
 }
 
-void
-HostProber::handleSslErrors(QNetworkReply* reply, const QList<QSslError>& errors) const
-{
-    if (m_ServerCert.isNull()) {
-        // No pinned cert to compare against; never blindly trust a host.
-        return;
-    }
-
-    for (const QSslError& error : errors) {
-        if (m_ServerCert != error.certificate()) {
-            return;
-        }
-    }
-
-    reply->ignoreSslErrors(errors);
-}
-
 HostProber::ProbeResult
-HostProber::get(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs) const
+HostProber::get(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs)
 {
     return request(nam, url, timeoutMs, false);
 }
 
 HostProber::ProbeResult
-HostProber::head(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs) const
+HostProber::head(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs)
 {
     return request(nam, url, timeoutMs, true);
 }
 
 HostProber::ProbeResult
-HostProber::request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, bool headOnly) const
+HostProber::request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, bool headOnly)
 {
     ProbeResult result;
 
     QNetworkRequest netRequest(url);
 
-    // Client-cert (mTLS) identity, same as NvHTTP::openConnection.
-    netRequest.setSslConfiguration(IdentityManager::get()->getSslConfig());
+    // Client-cert (mTLS) identity, same as NvHTTP::openConnection, plus a
+    // CA list restricted to exactly the pinned server certificate
+    // (defense-in-depth alongside CertificatePinning::install() below).
+    QSslConfiguration sslConfig = IdentityManager::get()->getSslConfig();
+    CertificatePinning::restrictTrustToPin(sslConfig, m_ServerCert);
+    netRequest.setSslConfiguration(sslConfig);
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     netRequest.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
@@ -276,10 +264,8 @@ HostProber::request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, 
     netRequest.setAttribute(QNetworkRequest::ConnectionCacheExpiryTimeoutSecondsAttribute, 0);
 #endif
 
-    auto sslErrorsConnection = connect(&nam, &QNetworkAccessManager::sslErrors, this,
-                                        [this](QNetworkReply* reply, const QList<QSslError>& errors) {
-                                            handleSslErrors(reply, errors);
-                                        });
+    CertificatePinning::Connections pinningConnections =
+        CertificatePinning::install(&nam, this, m_ServerCert);
 
     QNetworkReply* reply = headOnly ? nam.head(netRequest) : nam.get(netRequest);
 
@@ -295,7 +281,7 @@ HostProber::request(QNetworkAccessManager& nam, const QUrl& url, int timeoutMs, 
         reply->abort();
     }
 
-    disconnect(sslErrorsConnection);
+    CertificatePinning::uninstall(pinningConnections);
 
     result.statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     result.responded = result.statusCode != 0;

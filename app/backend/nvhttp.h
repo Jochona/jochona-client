@@ -6,6 +6,8 @@
 
 #include <Limelight.h>
 
+#include <QJsonObject>
+
 #include <QUrl>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -194,12 +196,43 @@ public:
     QVector<NvDisplayMode>
     getDisplayModeList(QString serverInfo);
 
+    // Builds the pinned-mTLS SSL config + connection-hygiene attributes
+    // shared by every direct-to-Host Jochona control-plane request
+    // (encoder probe, Host Volume) that must NOT go through
+    // openConnection()'s GFE uniqueid/uuid quirk parameters.
+    static
+    void
+    applyJochonaSslConfig(QNetworkRequest& request, const QSslCertificate& serverCert);
+
+    // Maps one already-negotiated Limelight VIDEO_FORMAT_* constant to the
+    // codec/profile/chroma triple the Jochona wire format (manifest
+    // EncoderTuple and /jochona/v1/probe) expects. codec is left empty if
+    // videoFormat isn't a single value this Client recognizes.
+    static
+    void
+    jochonaWireFormat(int videoFormat, QString& codec, QString& profile, QString& chroma);
+
+    // POSTs /jochona/v1/probe for one exact already-locked wire format
+    // (ADR-0011 first-launch preflight, invoked when no cached Encoder
+    // Tuple already covers it). Returns the raw manifest-shaped Encoder
+    // Tuple JSON object on a 200 response; throws
+    // GfeHttpResponseException carrying the response body for a
+    // structured 400 (invalid request) or 409 (unavailable/busy)
+    // response, or QtNetworkReplyException for a lower-level transport
+    // failure. Never retries with a different format -- the caller MUST
+    // strictly validate the returned tuple against the exact request
+    // before trusting it; this method does not select or substitute.
+    QJsonObject
+    probeEncoderTuple(int videoFormat,
+                      int width,
+                      int height,
+                      int fps,
+                      bool hdr,
+                      bool virtualDisplay);
+
     QUrl m_BaseUrlHttp;
     QUrl m_BaseUrlHttps;
 private:
-    void
-    handleSslErrors(QNetworkReply* reply, const QList<QSslError>& errors);
-
     QNetworkReply*
     openConnection(QUrl baseUrl,
                    QString command,
