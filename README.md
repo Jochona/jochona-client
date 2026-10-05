@@ -26,6 +26,13 @@ The separate Jochona Host project is under active development in its own reposit
 - Gamepad support with force feedback and motion controls for up to 16 players
 - Pointer capture and direct mouse control; system shortcut forwarding
 
+## Install
+
+No stable releases exist yet. Builds come from GitHub Actions artifacts —
+see [`docs/install.md`](docs/install.md) for Windows/macOS/Linux (AppImage,
+including Bazzite), fetching a build with `gh`, pairing with a Host, and
+Wake-on-LAN notes.
+
 ## Building
 
 Jochona builds with the upstream toolchain unchanged.
@@ -54,9 +61,33 @@ qml6-module-qtqml-workerscript qml6-module-qtquick-window qml6-module-qtquick
 1. `git submodule update --init --recursive`
 2. Windows/macOS only: run `setup-deps.ps1` / `setup-deps.py`
 3. Build: `qmake6 moonlight-qt.pro && make release` (macOS/Linux), or open in Qt Creator
-4. Distribution builds: `scripts/generate-dmg.sh` (macOS), `scripts\build-arch.bat` + `scripts\generate-bundle.bat` (Windows, from a Qt prompt), `scripts/build-steamlink-app.sh` (Steam Link)
+4. Distribution builds:
+   - macOS: `scripts/generate-dmg.sh`
+   - Windows (from a Qt command prompt): `scripts\build-arch.bat Release` per architecture (run once from an x64 Qt prompt, once from an ARM64 Qt prompt — the script detects the architecture from the active Qt toolchain, not from an argument); once both are built, `scripts\generate-bundle.bat Release` combines them into the installer bundle
+   - Linux AppImage: `scripts/build-appimage.sh` — needs `linuxdeploy-<arch>.AppImage` on `PATH` and the same from-source SDL3/FFmpeg/libva/libplacebo/dav1d stack CI builds (see `.github/workflows/build-appimage.yml`); most contributors should grab the CI artifact instead (`docs/install.md`)
+   - Steam Link: `scripts/build-steamlink-app.sh`
 
 Embedded targets: `qmake6 "CONFIG+=embedded" moonlight-qt.pro`; slow GPUs: add `CONFIG+=gpuslow`.
+
+### Experimental PyroWave (Apple Silicon)
+
+PyroWave is a GPU wavelet codec, disabled in default builds and never selected
+by automatic codec negotiation. Build with
+`qmake6 -r moonlight-qt.pro CONFIG+=pyrowave && make release`.
+The Host must also be built with `-DSUNSHINE_ENABLE_PYROWAVE=ON`, have
+`pyrowave_encoder = enabled`, and be restarted before connecting.
+
+Select **PyroWave** under the Client's video codec setting, or pass
+`--video-codec PyroWave` to `Jochona stream`. Both endpoints require a
+compatible Apple Silicon Metal GPU. Only even-sized 8-bit SDR YUV 4:2:0 physical
+capture is supported; HDR, 4:4:4, virtual displays and software decoding fail
+explicitly. Unsupported endpoints do not silently fall back to H.264/HEVC/AV1.
+
+This experimental decoder presents directly through Metal and does not use the
+FFmpeg statistics/overlay compositor. See
+[`libs/pyrowave-metal/NOTICE.md`](libs/pyrowave-metal/NOTICE.md) for upstream
+provenance and maintenance limitations.
+
 
 ## Relationship to upstream
 
