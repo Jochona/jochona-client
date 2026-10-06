@@ -1,10 +1,27 @@
 # Installing Jochona Client
 
-Jochona Client has no stable releases yet — there is no GitHub Releases page,
-no Flathub listing, and no winget/Homebrew package. Every build comes from
-GitHub Actions artifacts produced by [`.github/workflows/build.yml`](../.github/workflows/build.yml),
-which runs on pull requests and on manual dispatch (see
-[`docs/github-setup.md`](github-setup.md)).
+Jochona Client has no tagged release yet, so there is no GitHub Releases page, no Flathub listing, and no
+winget/Homebrew package today. Every build currently comes from GitHub Actions artifacts produced by
+[`.github/workflows/build.yml`](../.github/workflows/build.yml), which runs on pull requests and on manual
+dispatch (see [`docs/github-setup.md`](github-setup.md)). The sections below cover that CI-artifact path.
+
+## Once a release is tagged
+
+[`.github/workflows/release.yml`](../.github/workflows/release.yml) publishes a GitHub Release on a `v*` tag push
+(or a `workflow_dispatch` run with `publish: true`), attaching:
+
+- `Jochona-Windows-x64-<tag>.zip` — the portable x64 deployment folder, zipped.
+- A Linux `.AppImage` (x86_64).
+- A macOS `.dmg`.
+- `SHA256SUMS` for all of the above.
+
+The release body states plainly that all of these are **unsigned**: no code-signing certificate is wired into CI
+for Windows (`signtool`) or macOS (`codesign`/notarization), so expect SmartScreen (Windows) and Gatekeeper
+(macOS) warnings on first run — see those platform sections below. **Windows ARM64 is not currently part of the
+tagged release** even though CI builds it (see [Windows](#windows) below) — ARM64 users need a CI artifact or a
+source build until that gap is closed. Once a release exists, grab assets directly from
+[`/releases/latest`](https://github.com/Jochona/jochona-client/releases/latest) instead of following the
+`gh run download` steps below.
 
 ## Fetching a build with `gh`
 
@@ -38,12 +55,16 @@ download.
 
 ## Windows
 
-Artifact: `Jochona-Windows-x64-<ver>` or `Jochona-Windows-arm64-<ver>`.
+Artifact: `Jochona-Windows-x64-<ver>` or `Jochona-Windows-arm64-<ver>` (CI artifact only — not in the tagged
+release yet, see above).
 
 The CI artifact is the raw deployment folder (`Jochona.exe`, Qt DLLs, FFmpeg
 DLLs, and the Visual C++ redistributable DLLs already copied in) — there is
 no installer in the artifact, only the portable form. Unzip it anywhere and
 run `Jochona.exe` directly; nothing else to install.
+
+This build is unsigned (no code-signing certificate configured in CI). Windows SmartScreen will show an
+"unrecognized app" warning on first run — click **More info** → **Run anyway** to proceed.
 
 ## macOS
 
@@ -91,6 +112,9 @@ build workflow exists in this repository yet. Use the AppImage artifact
 instead.
 
 ## Pairing with a Host
+
+See the [cross-repo getting-started walkthrough](https://github.com/Jochona/jochona-constellation#getting-started-windows-host--bazzite-client)
+for a full Windows-Host-plus-Bazzite-Client setup. The short version:
 
 1. Make sure Jochona Host is running on the Windows machine you want to
    stream from.

@@ -16,7 +16,7 @@ This repository is a history-preserving import of [moonlight-stream/moonlight-qt
 - Local History controls and previewed Support Bundle export with address redaction, Wake route and Beacon route state, and recent session outcomes
 - Stable and preview update channels for Jochona releases
 
-The separate Jochona Host project is under active development in its own repository: a Sunshine-derived fork that preserves baseline GameStream while exposing authenticated, versioned Jochona extensions (`/jochona/v1/...` — Host Volume control, Encoder Tuple preflight, and more) that this client already speaks. Its first hosting-hardware target is strict AV1 encoding on Windows with an NVIDIA RTX 5090.
+The separate Jochona Host project is under active development in its own repository: a Sunshine-derived fork that preserves baseline GameStream while exposing authenticated, versioned Jochona extensions (`/jochona/v1/...` — Host Volume control, Encoder Tuple preflight, and more) that this client already speaks. Its first hosting-hardware target is strict AV1 encoding on Windows with an NVIDIA RTX 5090. When paired with a Jochona Host on Windows running its DualSense (DS5) backend, a PS5 controller gets real end-to-end DualSense features: touchpad, motion, rumble, and adaptive triggers (`SdlInputHandler::setAdaptiveTriggers`) — see [Jochona Host's gamepad docs](https://github.com/Jochona/jochona-host/blob/main/docs/gamepads.md) for the Host-side setup. For a full Windows-Host-plus-Bazzite-Client walkthrough, see the [cross-repo getting-started guide](https://github.com/Jochona/jochona-constellation#getting-started-windows-host--bazzite-client).
 
 ## Upstream features inherited today
 
@@ -74,8 +74,11 @@ Embedded targets: `qmake6 "CONFIG+=embedded" moonlight-qt.pro`; slow GPUs: add `
 PyroWave is a GPU wavelet codec, disabled in default builds and never selected
 by automatic codec negotiation. Build with
 `qmake6 -r moonlight-qt.pro CONFIG+=pyrowave && make release`.
-The Host must also be built with `-DSUNSHINE_ENABLE_PYROWAVE=ON`, have
-`pyrowave_encoder = enabled`, and be restarted before connecting.
+
+**Jochona Host does not implement a PyroWave encoder.** This decoder only works against a Sunshine-family host
+that has its own PyroWave encoder built in (built with `-DSUNSHINE_ENABLE_PYROWAVE=ON`, `pyrowave_encoder = enabled`,
+and restarted) — Jochona Host is not that host today. Porting a cross-platform PyroWave encoder into Jochona Host
+is tracked as post-1.0 work; see the [1.0 plan](https://github.com/Jochona/jochona-constellation/blob/main/docs/plan-1.0.md#post-10-roadmap-ranked).
 
 Select **PyroWave** under the Client's video codec setting, or pass
 `--video-codec PyroWave` to `Jochona stream`. Both endpoints require a
