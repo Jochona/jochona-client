@@ -76,8 +76,8 @@ jobs:
         run: |
           mkdir -p release
           cp artifacts/Jochona-LinuxAppImage-*/*.AppImage release/
-          cp artifacts/Jochona-Windows-x64-*/* release/
           cp artifacts/Jochona-macOS-*/*.dmg release/
+          ( cd artifacts/Jochona-Windows-x64-*/ && zip -r -X "${GITHUB_WORKSPACE}/release/Jochona-Windows-x64-${{ needs.setup.outputs.tag_name }}.zip" . )
           cd release && sha256sum * > SHA256SUMS
 
       - name: Create GitHub Release
