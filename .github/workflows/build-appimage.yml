@@ -10,6 +10,10 @@ on:
       ci_version:
         required: true
         type: string
+      release_version:
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -23,6 +27,10 @@ jobs:
         with:
           submodules: 'recursive'
           fetch-depth: 1
+
+      - name: Set release version
+        if: inputs.release_version != ''
+        run: echo -n "${{ inputs.release_version }}" > app/version.txt
 
       - name: Setup environment
         run: |
